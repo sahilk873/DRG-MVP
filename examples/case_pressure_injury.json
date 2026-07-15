@@ -1,0 +1,45 @@
+{
+  "schema_version": "1.0.0",
+  "case_id": "CASE-DEMO-001",
+  "patient_id": "PATIENT-DEIDENTIFIED-001",
+  "encounter_id": "ENC-DEMO-001",
+  "admitted_at": "2026-06-01T09:00:00Z",
+  "discharged_at": "2026-06-06T15:00:00Z",
+  "metadata": {"payer": "demo", "facility": "demo-hospital", "poa_status": "Y"},
+  "evidence": [
+    {
+      "evidence_id": "EV-001",
+      "document_id": "WOUND-CONSULT-001",
+      "author_role": "physician",
+      "recorded_at": "2026-06-01T14:30:00Z",
+      "text": "Stage 4 pressure injury of the sacral region with exposed muscle. Present on admission."
+    }
+  ],
+  "assertions": [
+    {
+      "assertion_id": "AS-001",
+      "concept": "pressure_injury",
+      "status": "present",
+      "documentation_status": "explicit",
+      "confidence": 0.98,
+      "attributes": {"site": "sacral_region", "stage": 4, "poa": "Y"},
+      "evidence_ids": ["EV-001"],
+      "contradicting_evidence_ids": []
+    }
+  ],
+  "claim": {
+    "diagnoses": ["A41.9"],
+    "procedures": [],
+    "charges": ["ROOM-BOARD"],
+    "drg": "DEMO-292",
+    "allowed_amount_cents": 1000000
+  },
+  "provenance": {
+    "framework": "mastra",
+    "model_id": "synthetic/test-fixture",
+    "agent_id": "encounter-evidence-extractor",
+    "extracted_at": "2026-06-06T16:00:00Z",
+    "schema_version": "1.0.0"
+  }
+}
+

@@ -1,0 +1,24 @@
+{
+  "name": "@kunal/revenue-integrity-agent",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "mastra dev",
+    "build": "mastra build",
+    "test": "node --import tsx --test src/**/*.test.ts",
+    "check": "npm run test && npm run typecheck",
+    "typecheck": "tsc --noEmit",
+    "extract": "tsx src/extract.ts"
+  },
+  "dependencies": {
+    "@mastra/core": "1.51.0",
+    "mastra": "1.19.0",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "26.1.1",
+    "tsx": "4.20.6",
+    "typescript": "7.0.2"
+  }
+}

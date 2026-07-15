@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/schemas/source-bundle-v1.json",
+  "title": "Encounter Source Bundle",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["case_id", "patient_id", "encounter_id", "admitted_at", "discharged_at", "documents", "claim"],
+  "properties": {
+    "case_id": {"type": "string", "minLength": 1},
+    "patient_id": {"type": "string", "minLength": 1},
+    "encounter_id": {"type": "string", "minLength": 1},
+    "admitted_at": {"type": "string", "format": "date-time"},
+    "discharged_at": {"type": "string", "format": "date-time"},
+    "metadata": {"type": "object"},
+    "documents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["document_id", "author_role", "recorded_at", "text"],
+        "properties": {
+          "document_id": {"type": "string", "minLength": 1},
+          "author_role": {"type": "string", "minLength": 1},
+          "recorded_at": {"type": "string", "format": "date-time"},
+          "text": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "claim": {"$ref": "encounter_case.schema.json#/$defs/claim"}
+  }
+}

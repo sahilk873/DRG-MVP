@@ -1,0 +1,49 @@
+{
+  "package_id": "wound-care-revenue-integrity",
+  "version": "1.0.0-demo",
+  "status": "approved-for-demo",
+  "effective_from": "2026-01-01",
+  "rules": [
+    {
+      "rule_id": "WC-PI-OMITTED-001",
+      "title": "Explicitly documented stage 4 sacral pressure injury absent from claim",
+      "when": {
+        "all": [
+          {"field": "concept", "op": "eq", "value": "pressure_injury"},
+          {"field": "status", "op": "eq", "value": "present"},
+          {"field": "documentation_status", "op": "eq", "value": "explicit"},
+          {"field": "confidence", "op": "gte", "value": 0.9},
+          {"field": "attributes.site", "op": "eq", "value": "sacral_region"},
+          {"field": "attributes.stage", "op": "eq", "value": 4}
+        ]
+      },
+      "case_conditions": [
+        {"field": "claim.diagnoses", "op": "not_contains", "value": "L89.154"}
+      ],
+      "then": {
+        "disposition": "coding_review",
+        "requires_human_review": true,
+        "proposed_change": {"add_diagnoses": ["L89.154"]},
+        "rationale": "The structured evidence graph contains an explicit, high-confidence stage 4 sacral pressure-injury assertion, while the corresponding diagnosis is absent from the claim. Confirm coding and POA before claim modification."
+      }
+    },
+    {
+      "rule_id": "WC-PI-QUERY-002",
+      "title": "Pressure-injury indicators require physician clarification",
+      "when": {
+        "all": [
+          {"field": "concept", "op": "eq", "value": "pressure_injury"},
+          {"field": "status", "op": "eq", "value": "present"},
+          {"field": "documentation_status", "op": "in", "value": ["inferred", "conflicted"]},
+          {"field": "confidence", "op": "gte", "value": 0.75}
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Clinical indicators are present, but the documentation does not independently support direct coding. Review a compliant, non-leading CDI query."
+      }
+    }
+  ]
+}
