@@ -2,6 +2,7 @@
   "manifest_version": "1.0.0",
   "source_id": "wound-care-clinical-rules-workbook",
   "source_file": "Wound Care Clinical Rules Raw file(1).xlsx",
+  "repository_path": "knowledge/sources/wound_care_clinical_rules_raw.xlsx",
   "sha256": "0477f8c56c76a540fcb13ae32b44bfd39c7cc011a7f380089f5bf6aebf86ba27",
   "classification": "clinical_decision_support_source",
   "execution_status": "not_executable",

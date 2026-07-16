@@ -111,9 +111,33 @@ class RuleAction:
 
 
 @dataclass(frozen=True, slots=True)
+class RuleScope:
+    subject_types: tuple[str, ...]
+    include_subtypes: bool
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> "RuleScope":
+        if not isinstance(data, Mapping) or set(data) != {"subject_types", "include_subtypes"}:
+            raise ValueError("rule applies_to requires exactly subject_types and include_subtypes")
+        subject_types = data["subject_types"]
+        if (
+            not isinstance(subject_types, list)
+            or not subject_types
+            or any(not isinstance(item, str) or not item for item in subject_types)
+        ):
+            raise ValueError("rule applies_to.subject_types must be a non-empty string array")
+        if len(subject_types) != len(set(subject_types)):
+            raise ValueError("rule applies_to.subject_types must not contain duplicates")
+        if not isinstance(data["include_subtypes"], bool):
+            raise ValueError("rule applies_to.include_subtypes must be a boolean")
+        return cls(tuple(subject_types), data["include_subtypes"])
+
+
+@dataclass(frozen=True, slots=True)
 class Rule:
     rule_id: str
     title: str
+    applies_to: RuleScope
     when: Condition
     case_conditions: tuple[Condition, ...]
     action: RuleAction
@@ -122,7 +146,7 @@ class Rule:
     def from_dict(cls, data: Mapping[str, Any]) -> "Rule":
         if not isinstance(data, Mapping):
             raise ValueError("rule must be an object")
-        required = {"rule_id", "title", "when", "then"}
+        required = {"rule_id", "title", "applies_to", "when", "then"}
         allowed = required | {"case_conditions"}
         if missing := required - set(data):
             raise ValueError(f"rule missing fields: {sorted(missing)}")
@@ -137,6 +161,7 @@ class Rule:
         return cls(
             rule_id=rule_id,
             title=title,
+            applies_to=RuleScope.from_dict(data["applies_to"]),
             when=Condition.from_dict(data["when"]),
             case_conditions=tuple(Condition.from_dict(item) for item in case_conditions),
             action=RuleAction.from_dict(data["then"]),
@@ -147,16 +172,24 @@ class Rule:
 class OntologyBinding:
     ontology_id: str
     version: str
+    digest: str
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> "OntologyBinding":
-        if not isinstance(data, Mapping) or set(data) != {"ontology_id", "version"}:
-            raise ValueError("rule package ontology requires exactly ontology_id and version")
+        if not isinstance(data, Mapping) or set(data) != {"ontology_id", "version", "digest"}:
+            raise ValueError("rule package ontology requires exactly ontology_id, version and digest")
         ontology_id = data["ontology_id"]
         version = data["version"]
+        digest = data["digest"]
         if not isinstance(ontology_id, str) or not ontology_id or not isinstance(version, str) or not version:
             raise ValueError("rule package ontology values must be non-empty strings")
-        return cls(ontology_id, version)
+        if (
+            not isinstance(digest, str)
+            or len(digest) != 64
+            or any(character not in "0123456789abcdef" for character in digest)
+        ):
+            raise ValueError("rule package ontology digest must be a lowercase SHA-256 hex digest")
+        return cls(ontology_id, version, digest)
 
 
 @dataclass(frozen=True, slots=True)

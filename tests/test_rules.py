@@ -19,6 +19,20 @@ class RuleValidationTests(unittest.TestCase):
         self.assertEqual(len(parsed.rules), 2)
         self.assertEqual(parsed.rule_domain, "revenue_integrity")
         self.assertEqual(parsed.ontology.ontology_id, "wound-care-encounter-ontology")
+        self.assertEqual(len(parsed.ontology.digest), 64)
+        self.assertEqual(parsed.rules[0].applies_to.subject_types, ("Wound",))
+
+    def test_malformed_ontology_digest_is_rejected(self):
+        payload = package()
+        payload["ontology"]["digest"] = "not-a-digest"
+        with self.assertRaisesRegex(ValueError, "SHA-256"):
+            RulePackage.from_dict(payload)
+
+    def test_rule_scope_boolean_fails_closed(self):
+        payload = package()
+        payload["rules"][0]["applies_to"]["include_subtypes"] = "true"
+        with self.assertRaisesRegex(ValueError, "must be a boolean"):
+            RulePackage.from_dict(payload)
 
     def test_duplicate_rule_ids_are_rejected(self):
         payload = package()

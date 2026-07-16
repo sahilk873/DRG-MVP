@@ -33,7 +33,9 @@ Every clinical assertion contains:
 
 Evidence records preserve the source document, author role, time and minimal exact excerpt. The current boundary verifies each excerpt is a literal substring and source metadata is unchanged. In production, evidence IDs should point to access-controlled source objects rather than duplicating unrestricted PHI.
 
-Ontology relations carry the same assertion status, documentation status, confidence and evidence references. The definition validator enforces concrete classes, inheritance-aware relation domains and ranges, evidence requirements, unique IDs, and exact ontology-version compatibility. Revenue rule packages declare the ontology version against which they were reviewed.
+Ontology relations carry the same assertion status, documentation status, confidence and evidence references. The definition validator enforces concrete classes, inheritance-aware relation domains and ranges, evidence requirements, unique IDs, and exact ontology ID/version/digest compatibility. Revenue rule packages declare the semantic ontology fingerprint and typed subject scopes against which they were reviewed.
+
+Source and extraction volume are governed by a configurable Mastra `ExtractionPolicy`; Python independently enforces case-validation limits. The resolved extraction policy is recorded in provenance so an accepted graph can be reproduced and audited under the same operational boundary.
 
 ## Human review policy
 

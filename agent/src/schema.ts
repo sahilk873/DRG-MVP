@@ -77,6 +77,12 @@ export const ontologyRelationSchema = z.object({
 export const ontologyGraphSchema = z.object({
   ontology_id: nonEmptyString,
   ontology_version: nonEmptyString,
+  ontology_digest: z.string().regex(/^[0-9a-f]{64}$/),
+  entities: z.array(ontologyEntitySchema),
+  relations: z.array(ontologyRelationSchema),
+}).strict()
+
+export const structuralGraphSchema = z.object({
   entities: z.array(ontologyEntitySchema),
   relations: z.array(ontologyRelationSchema),
 }).strict()
@@ -99,9 +105,26 @@ export const agentExtractionOutputSchema = z.object({
   assertions: z.array(assertionSchema),
 }).strict()
 
-export const agentExtractionSchema = agentExtractionOutputSchema.superRefine((value, context) => {
-  validateLineage(value, context, new Set(['root:patient', 'root:encounter', 'root:claim']))
-})
+export function createAgentExtractionSchema(allowedExternalEntityIds: Iterable<string> = []) {
+  const allowed = new Set(allowedExternalEntityIds)
+  return agentExtractionOutputSchema.superRefine((value, context) => {
+    validateLineage(value, context, allowed)
+  })
+}
+
+export const agentExtractionSchema = createAgentExtractionSchema()
+
+export const extractionPolicyRecordSchema = z.object({
+  max_documents: z.number().int().positive(),
+  max_document_characters: z.number().int().positive(),
+  max_total_document_characters: z.number().int().positive(),
+  max_evidence_items: z.number().int().positive(),
+  max_evidence_characters: z.number().int().positive(),
+  max_total_evidence_characters: z.number().int().positive(),
+  max_entities: z.number().int().positive(),
+  max_relations: z.number().int().positive(),
+  max_assertions: z.number().int().positive(),
+}).strict()
 
 export const provenanceSchema = z.object({
   framework: z.literal('mastra'),
@@ -109,6 +132,7 @@ export const provenanceSchema = z.object({
   agent_id: nonEmptyString,
   extracted_at: isoDateTime,
   schema_version: z.literal(SCHEMA_VERSION),
+  extraction_policy: extractionPolicyRecordSchema,
 }).strict()
 
 export const encounterCaseSchema = z.object({
@@ -131,22 +155,27 @@ export const ontologyDefinitionSchema = z.object({
   version: nonEmptyString,
   status: z.enum(['draft', 'clinical-review-required', 'approved']),
   purpose: nonEmptyString.optional(),
-  sources: z.array(z.record(z.string(), z.unknown())).optional(),
+  sources: z.array(z.object({
+    source_id: nonEmptyString,
+    title: nonEmptyString,
+    contribution: nonEmptyString,
+  }).strict()).optional(),
+  structural_graph: structuralGraphSchema,
   classes: z.array(z.object({
     class_id: nonEmptyString,
     label: nonEmptyString,
     parent: nonEmptyString.optional(),
     abstract: z.boolean().optional(),
     value_set: nonEmptyString.optional(),
-  }).passthrough()).min(1),
+  }).strict()).min(1),
   relations: z.array(z.object({
     relation_id: nonEmptyString,
     domain: uniqueNonEmptyStringArray,
     range: uniqueNonEmptyStringArray,
     requires_evidence: z.boolean(),
-  }).passthrough()),
+  }).strict()),
   value_sets: z.record(z.string(), uniqueNonEmptyStringArray).optional(),
-}).passthrough()
+}).strict()
 
 export type SourceBundle = z.infer<typeof sourceBundleSchema>
 export type AgentExtraction = z.infer<typeof agentExtractionSchema>

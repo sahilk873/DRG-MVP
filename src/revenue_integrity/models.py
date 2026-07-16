@@ -6,6 +6,17 @@ from enum import StrEnum
 from typing import Any, Mapping
 
 SUPPORTED_SCHEMA_VERSION = "2.0.0"
+EXTRACTION_POLICY_FIELDS = (
+    "max_documents",
+    "max_document_characters",
+    "max_total_document_characters",
+    "max_evidence_items",
+    "max_evidence_characters",
+    "max_total_evidence_characters",
+    "max_entities",
+    "max_relations",
+    "max_assertions",
+)
 
 
 class AssertionStatus(StrEnum):
@@ -32,19 +43,56 @@ class Disposition(StrEnum):
 
 
 @dataclass(frozen=True, slots=True)
+class CaseValidationLimits:
+    max_evidence_items: int = 2_000
+    max_evidence_characters: int = 2_000
+    max_total_evidence_characters: int = 250_000
+    max_ontology_entities: int = 2_000
+    max_ontology_relations: int = 5_000
+    max_assertions: int = 2_000
+
+    def __post_init__(self) -> None:
+        for name in self.__dataclass_fields__:
+            value = getattr(self, name)
+            if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+                raise ValueError(f"case validation limit {name} must be a positive integer")
+
+
+DEFAULT_CASE_VALIDATION_LIMITS = CaseValidationLimits()
+
+
+@dataclass(frozen=True, slots=True)
 class ExtractionProvenance:
     framework: str
     model_id: str
     agent_id: str
     extracted_at: str
     schema_version: str
+    extraction_policy: Mapping[str, int]
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> "ExtractionProvenance":
         fields = ("framework", "model_id", "agent_id", "extracted_at", "schema_version")
-        _validate_keys(data, required=fields, allowed=fields, object_name="provenance")
+        required = fields + ("extraction_policy",)
+        _validate_keys(data, required=required, allowed=required, object_name="provenance")
         _parse_iso_datetime(str(data["extracted_at"]), "provenance.extracted_at")
-        provenance = cls(**{name: _nonempty_string(data[name], f"provenance.{name}") for name in fields})
+        policy = _mapping(data["extraction_policy"], "provenance.extraction_policy")
+        _validate_keys(
+            policy,
+            required=EXTRACTION_POLICY_FIELDS,
+            allowed=EXTRACTION_POLICY_FIELDS,
+            object_name="provenance.extraction_policy",
+        )
+        parsed_policy: dict[str, int] = {}
+        for name in EXTRACTION_POLICY_FIELDS:
+            value = policy[name]
+            if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+                raise ValueError(f"provenance.extraction_policy.{name} must be a positive integer")
+            parsed_policy[name] = value
+        provenance = cls(
+            **{name: _nonempty_string(data[name], f"provenance.{name}") for name in fields},
+            extraction_policy=parsed_policy,
+        )
         if provenance.framework != "mastra":
             raise ValueError("provenance.framework must be 'mastra'")
         return provenance
@@ -163,6 +211,7 @@ class EncounterCase:
         data: Mapping[str, Any],
         *,
         ontology_definition: "OntologyDefinition | None" = None,
+        validation_limits: CaseValidationLimits | None = None,
     ) -> "EncounterCase":
         required = (
             "schema_version", "case_id", "patient_id", "encounter_id", "admitted_at", "discharged_at",
@@ -170,6 +219,7 @@ class EncounterCase:
         )
         allowed = required + ("metadata",)
         _validate_keys(data, required=required, allowed=allowed, object_name="case")
+        _validate_case_limits(data, validation_limits or DEFAULT_CASE_VALIDATION_LIMITS)
         admitted_at = _nonempty_string(data["admitted_at"], "case.admitted_at")
         discharged_at = _nonempty_string(data["discharged_at"], "case.discharged_at")
         admitted = _parse_iso_datetime(admitted_at, "case.admitted_at")
@@ -248,6 +298,7 @@ class Finding:
     disposition: Disposition
     confidence: float
     proposed_change: Mapping[str, Any]
+    subject_ids: tuple[str, ...]
     assertion_ids: tuple[str, ...]
     evidence_ids: tuple[str, ...]
     contradicting_evidence_ids: tuple[str, ...]
@@ -269,6 +320,7 @@ class Finding:
             "disposition": self.disposition.value,
             "confidence": self.confidence,
             "proposed_change": dict(self.proposed_change),
+            "subject_ids": list(self.subject_ids),
             "assertion_ids": list(self.assertion_ids),
             "evidence_ids": list(self.evidence_ids),
             "contradicting_evidence_ids": list(self.contradicting_evidence_ids),
@@ -289,6 +341,36 @@ def _validate_keys(data: Mapping[str, Any], *, required: tuple[str, ...], allowe
         raise ValueError(f"{object_name} missing required fields: {missing}")
     if unknown:
         raise ValueError(f"{object_name} contains unknown fields: {unknown}")
+
+
+def _validate_case_limits(data: Mapping[str, Any], limits: CaseValidationLimits) -> None:
+    evidence = _list(data["evidence"], "case.evidence")
+    assertions = _list(data["assertions"], "case.assertions")
+    ontology = _mapping(data["ontology"], "case.ontology")
+    entities = _list(ontology.get("entities"), "case.ontology.entities")
+    relations = _list(ontology.get("relations"), "case.ontology.relations")
+    counts = (
+        (len(evidence), limits.max_evidence_items, "max_evidence_items"),
+        (len(assertions), limits.max_assertions, "max_assertions"),
+        (len(entities), limits.max_ontology_entities, "max_ontology_entities"),
+        (len(relations), limits.max_ontology_relations, "max_ontology_relations"),
+    )
+    for actual, maximum, name in counts:
+        if actual > maximum:
+            raise ValueError(f"case exceeds {name} ({maximum})")
+    total_evidence_characters = 0
+    for item in evidence:
+        if not isinstance(item, Mapping) or not isinstance(item.get("text"), str):
+            continue
+        length = len(item["text"])
+        if length > limits.max_evidence_characters:
+            raise ValueError(f"case evidence exceeds max_evidence_characters ({limits.max_evidence_characters})")
+        total_evidence_characters += length
+        if total_evidence_characters > limits.max_total_evidence_characters:
+            raise ValueError(
+                "case evidence exceeds max_total_evidence_characters "
+                f"({limits.max_total_evidence_characters})"
+            )
 
 
 def _mapping(value: Any, name: str) -> Mapping[str, Any]:

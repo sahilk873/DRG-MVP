@@ -24,17 +24,21 @@ The case model separates what happened clinically, what was explicitly documente
 
 - Canonical source-bundle and encounter-case JSON Schemas
 - Data-driven ontology definitions with inheritance and relation domain/range validation
+- Cross-runtime semantic ontology digests that reject unversioned definition drift
 - Patient-specific graphs linking assertions to typed subjects and exact evidence
 - Mastra model routing through a configurable `provider/model` ID
 - Claims, charges, DRGs and payment fields excluded from model generation
 - Exact-excerpt grounding against immutable source documents
 - Supporting and contradicting evidence lineage
 - Strict, declarative JSON rules with no generated-code execution path
+- Ontology-scoped rule targeting with explicit subtype semantics
 - Fail-closed package approval and action validation
 - Replaceable licensed DRG grouper/pricer interface
 - Integer-cent payment simulation
 - Deterministic finding IDs and hash-chained audit records
 - Atomic CLI output, CI, dependency monitoring and cross-language tests
+- Configurable input/output resource budgets at both trust boundaries
+- Governed source artifacts with checksum and authority enforcement
 
 ## Repository layout
 
@@ -68,7 +72,7 @@ make demo
 
 The deterministic demo creates a review finding, supporting evidence, a proposed code change, demo regrouping and payment delta. It never modifies or submits a claim.
 
-The v0.3 release uses encounter-case schema `2.0.0`. Earlier case payloads intentionally fail closed until they add a versioned `ontology` graph and bind every assertion through `subject_id`. Revenue rule packages must also declare their compatible ontology ID and version.
+The v0.4 release uses encounter-case schema `2.0.0`. Earlier case payloads intentionally fail closed until they add a versioned, fingerprinted `ontology` graph and bind every assertion through `subject_id`. Revenue rule packages must declare their compatible ontology ID, version, digest and typed subject scope.
 
 ## Run the Mastra extraction layer
 
@@ -107,6 +111,8 @@ New specialties are added as versioned ontology definitions and compatible rule 
 Before real use, the project still requires licensed terminology and grouping components, FHIR/HL7 and claim adapters, institution-approved rules, representative positive and negative validation data, model/retrieval evaluations, a reviewer application and the security controls in [SECURITY.md](SECURITY.md).
 
 See [docs/ONTOLOGY.md](docs/ONTOLOGY.md) for the domain-extension contract, [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for trust-boundary decisions and [CONTRIBUTING.md](CONTRIBUTING.md) for change requirements.
+
+The supplied raw wound-care workbook is preserved at [knowledge/sources/wound_care_clinical_rules_raw.xlsx](knowledge/sources/wound_care_clinical_rules_raw.xlsx), governed by [knowledge/wound_care_source_manifest.json](knowledge/wound_care_source_manifest.json), and intentionally non-executable. See [docs/ITERATIVE_REVIEW.md](docs/ITERATIVE_REVIEW.md) for the completed five-pass design review and remaining production roadmap.
 
 ## License
 

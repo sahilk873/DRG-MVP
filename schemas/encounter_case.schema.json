@@ -16,7 +16,7 @@
     "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}},
     "ontology": {"$ref": "#/$defs/ontologyGraph"},
     "assertions": {"type": "array", "items": {"$ref": "#/$defs/assertion"}},
-    "claim": {"$ref": "#/$defs/claim"},
+    "claim": {"$ref": "https://example.org/schemas/claim-v1.json"},
     "provenance": {"$ref": "#/$defs/provenance"}
   },
   "$defs": {
@@ -75,10 +75,11 @@
     "ontologyGraph": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["ontology_id", "ontology_version", "entities", "relations"],
+      "required": ["ontology_id", "ontology_version", "ontology_digest", "entities", "relations"],
       "properties": {
         "ontology_id": {"$ref": "#/$defs/nonEmptyString"},
         "ontology_version": {"$ref": "#/$defs/nonEmptyString"},
+        "ontology_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
         "entities": {"type": "array", "items": {"$ref": "#/$defs/ontologyEntity"}},
         "relations": {"type": "array", "items": {"$ref": "#/$defs/ontologyRelation"}}
       }
@@ -99,28 +100,33 @@
         "contradicting_evidence_ids": {"$ref": "#/$defs/uniqueStringArray"}
       }
     },
-    "claim": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["diagnoses", "procedures", "charges"],
-      "properties": {
-        "diagnoses": {"$ref": "#/$defs/uniqueStringArray"},
-        "procedures": {"$ref": "#/$defs/uniqueStringArray"},
-        "charges": {"$ref": "#/$defs/uniqueStringArray"},
-        "drg": {"anyOf": [{"$ref": "#/$defs/nonEmptyString"}, {"type": "null"}]},
-        "allowed_amount_cents": {"type": ["integer", "null"], "minimum": 0}
-      }
-    },
     "provenance": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["framework", "model_id", "agent_id", "extracted_at", "schema_version"],
+      "required": ["framework", "model_id", "agent_id", "extracted_at", "schema_version", "extraction_policy"],
       "properties": {
         "framework": {"const": "mastra"},
         "model_id": {"$ref": "#/$defs/nonEmptyString"},
         "agent_id": {"$ref": "#/$defs/nonEmptyString"},
         "extracted_at": {"type": "string", "format": "date-time"},
-        "schema_version": {"const": "2.0.0"}
+        "schema_version": {"const": "2.0.0"},
+        "extraction_policy": {"$ref": "#/$defs/extractionPolicy"}
+      }
+    },
+    "extractionPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["max_documents", "max_document_characters", "max_total_document_characters", "max_evidence_items", "max_evidence_characters", "max_total_evidence_characters", "max_entities", "max_relations", "max_assertions"],
+      "properties": {
+        "max_documents": {"type": "integer", "minimum": 1},
+        "max_document_characters": {"type": "integer", "minimum": 1},
+        "max_total_document_characters": {"type": "integer", "minimum": 1},
+        "max_evidence_items": {"type": "integer", "minimum": 1},
+        "max_evidence_characters": {"type": "integer", "minimum": 1},
+        "max_total_evidence_characters": {"type": "integer", "minimum": 1},
+        "max_entities": {"type": "integer", "minimum": 1},
+        "max_relations": {"type": "integer", "minimum": 1},
+        "max_assertions": {"type": "integer", "minimum": 1}
       }
     }
   }

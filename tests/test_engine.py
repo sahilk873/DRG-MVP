@@ -28,6 +28,7 @@ class RuleEngineTests(unittest.TestCase):
         self.assertEqual(findings[0].current_drg, "DEMO-292")
         self.assertEqual(findings[0].simulated_drg, "DEMO-290")
         self.assertEqual(findings[0].estimated_impact_cents, 842000)
+        self.assertEqual(findings[0].subject_ids, ("wound:1",))
         self.assertEqual(findings[0].assertion_ids, ("AS-001",))
         self.assertEqual(findings[0].grouper_version, "demo-0.2-not-for-billing")
         self.assertTrue(findings[0].requires_human_review)
@@ -73,6 +74,13 @@ class RuleEngineTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "incompatible ontology"):
             RuleEngine(rules, DeterministicDemoGrouper()).evaluate(case)
 
+    def test_rule_package_digest_drift_is_rejected(self):
+        rules = load("rules/wound_care_v1.json")
+        rules["ontology"]["digest"] = "0" * 64
+        case = EncounterCase.from_dict(load("examples/case_pressure_injury.json"))
+        with self.assertRaisesRegex(ValueError, "incompatible ontology"):
+            RuleEngine(rules, DeterministicDemoGrouper()).evaluate(case)
+
     def test_rules_can_target_generic_ontology_subject_fields(self):
         rules = load("rules/wound_care_v1.json")
         rules["rules"][0]["when"]["all"].append({
@@ -83,6 +91,28 @@ class RuleEngineTests(unittest.TestCase):
         case = EncounterCase.from_dict(load("examples/case_pressure_injury.json"))
         findings = RuleEngine(rules, DeterministicDemoGrouper()).evaluate(case)
         self.assertTrue(any(item.rule_id == "WC-PI-OMITTED-001" for item in findings))
+
+    def test_rule_scope_rejects_matching_free_form_fields_on_wrong_entity_type(self):
+        payload = load("examples/case_pressure_injury.json")
+        payload["assertions"][0]["subject_id"] = "root:patient"
+        case = EncounterCase.from_dict(payload)
+        findings = RuleEngine(
+            load("rules/wound_care_v1.json"), DeterministicDemoGrouper()
+        ).evaluate(case)
+        self.assertEqual(findings, [])
+
+    def test_rule_scope_can_exclude_subclasses(self):
+        rules = load("rules/wound_care_v1.json")
+        rules["rules"][0]["applies_to"]["include_subtypes"] = False
+        case = EncounterCase.from_dict(load("examples/case_pressure_injury.json"))
+        findings = RuleEngine(rules, DeterministicDemoGrouper()).evaluate(case)
+        self.assertFalse(any(item.rule_id == "WC-PI-OMITTED-001" for item in findings))
+
+    def test_unknown_rule_scope_class_is_rejected_before_evaluation(self):
+        rules = load("rules/wound_care_v1.json")
+        rules["rules"][0]["applies_to"]["subject_types"] = ["NotAClass"]
+        with self.assertRaisesRegex(ValueError, "unknown ontology classes"):
+            RuleEngine(rules, DeterministicDemoGrouper())
 
     def test_finding_retains_contradicting_evidence(self):
         payload = load("examples/case_pressure_injury.json")

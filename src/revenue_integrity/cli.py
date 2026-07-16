@@ -55,6 +55,7 @@ def main(argv: list[str] | None = None) -> int:
             rules_payload,
             DeterministicDemoGrouper(),
             allow_unapproved=args.allow_unapproved_rules,
+            ontology_definition=ontology_definition,
         ).evaluate(case)
         result = audit_record(
             case_payload=case_payload,

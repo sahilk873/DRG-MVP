@@ -2,7 +2,7 @@
 
 from .engine import RuleEngine
 from .grouper import DeterministicDemoGrouper, Grouper
-from .models import EncounterCase, Finding
+from .models import CaseValidationLimits, EncounterCase, Finding
 from .ontology import (
     OntologyDefinition,
     OntologyGraph,
@@ -14,6 +14,7 @@ from .rules import RulePackage
 __all__ = [
     "EncounterCase",
     "Finding",
+    "CaseValidationLimits",
     "RuleEngine",
     "RulePackage",
     "Grouper",

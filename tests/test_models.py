@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 import unittest
 
-from revenue_integrity.models import EncounterCase
+from revenue_integrity.models import CaseValidationLimits, EncounterCase
 
 
 ROOT = Path(__file__).parents[1]
@@ -51,4 +51,28 @@ class EncounterCaseValidationTests(unittest.TestCase):
         payload = fixture()
         payload["assertions"][0]["subject_id"] = "missing:entity"
         with self.assertRaisesRegex(ValueError, "unknown ontology subject"):
+            EncounterCase.from_dict(payload)
+
+    def test_configurable_entity_budget_fails_closed(self):
+        with self.assertRaisesRegex(ValueError, "max_ontology_entities"):
+            EncounterCase.from_dict(
+                fixture(),
+                validation_limits=CaseValidationLimits(max_ontology_entities=2),
+            )
+
+    def test_configurable_evidence_excerpt_budget_fails_closed(self):
+        with self.assertRaisesRegex(ValueError, "max_evidence_characters"):
+            EncounterCase.from_dict(
+                fixture(),
+                validation_limits=CaseValidationLimits(max_evidence_characters=10),
+            )
+
+    def test_invalid_validation_limit_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "positive integer"):
+            CaseValidationLimits(max_assertions=0)
+
+    def test_extraction_policy_is_required_and_validated_in_provenance(self):
+        payload = fixture()
+        payload["provenance"]["extraction_policy"]["max_documents"] = 0
+        with self.assertRaisesRegex(ValueError, "max_documents must be a positive integer"):
             EncounterCase.from_dict(payload)

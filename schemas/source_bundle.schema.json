@@ -26,6 +26,6 @@
         }
       }
     },
-    "claim": {"$ref": "encounter_case.schema.json#/$defs/claim"}
+    "claim": {"$ref": "https://example.org/schemas/claim-v1.json"}
   }
 }

@@ -1,6 +1,6 @@
 {
   "name": "@kunal/revenue-integrity-agent",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -18,6 +18,8 @@
   },
   "devDependencies": {
     "@types/node": "26.1.1",
+    "ajv": "8.18.0",
+    "ajv-formats": "3.0.1",
     "tsx": "4.20.6",
     "typescript": "7.0.2"
   }

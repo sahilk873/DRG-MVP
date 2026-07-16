@@ -40,6 +40,21 @@ class OntologyValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "not in value set"):
             EncounterCase.from_dict(payload)
 
+    def test_semantic_definition_drift_is_rejected_without_version_change(self):
+        payload = fixture()
+        definition_payload = json.loads(
+            (ROOT / "src/revenue_integrity/data/wound_care_ontology_v1.json").read_text()
+        )
+        pressure_injury = next(
+            item for item in definition_payload["classes"] if item["class_id"] == "PressureInjury"
+        )
+        pressure_injury["label"] = "Changed label that also changes the agent contract"
+        changed_definition = OntologyDefinition.from_dict(definition_payload)
+
+        self.assertNotEqual(payload["ontology"]["ontology_digest"], changed_definition.digest)
+        with self.assertRaisesRegex(ValueError, "digest"):
+            EncounterCase.from_dict(payload, ontology_definition=changed_definition)
+
     def test_evidence_required_by_relation_definition(self):
         payload = fixture()
         relation = next(item for item in payload["ontology"]["relations"] if item["predicate"] == "hasStage")
@@ -59,6 +74,17 @@ class OntologyValidationTests(unittest.TestCase):
             "ontology_id": "general-observation-ontology",
             "version": "1",
             "status": "draft",
+            "structural_graph": {
+                "entities": [
+                    {"entity_id": "root:patient", "entity_type": "Patient", "label": "Patient", "properties": {}},
+                    {"entity_id": "root:encounter", "entity_type": "Encounter", "label": "Encounter", "properties": {}},
+                    {"entity_id": "root:claim", "entity_type": "Claim", "label": "Claim", "properties": {}},
+                ],
+                "relations": [
+                    {"relation_id": "rel:patient-encounter", "predicate": "hasEncounter", "source_id": "root:patient", "target_id": "root:encounter", "assertion_status": "present", "documentation_status": "explicit", "confidence": 1, "evidence_ids": []},
+                    {"relation_id": "rel:encounter-claim", "predicate": "hasClaim", "source_id": "root:encounter", "target_id": "root:claim", "assertion_status": "present", "documentation_status": "explicit", "confidence": 1, "evidence_ids": []},
+                ],
+            },
             "classes": [
                 {"class_id": "Entity", "label": "Entity", "abstract": True},
                 {"class_id": "Patient", "label": "Patient", "parent": "Entity"},
@@ -76,6 +102,7 @@ class OntologyValidationTests(unittest.TestCase):
         payload["ontology"] = {
             "ontology_id": "general-observation-ontology",
             "ontology_version": "1",
+            "ontology_digest": definition.digest,
             "entities": [
                 {"entity_id": "root:patient", "entity_type": "Patient", "label": "Patient", "properties": {}},
                 {"entity_id": "root:encounter", "entity_type": "Encounter", "label": "Encounter", "properties": {}},
@@ -98,6 +125,7 @@ class OntologyValidationTests(unittest.TestCase):
                 "ontology_id": "cyclic",
                 "version": "1",
                 "status": "draft",
+                "structural_graph": {"entities": [], "relations": []},
                 "classes": [
                     {"class_id": "A", "label": "A", "parent": "B"},
                     {"class_id": "B", "label": "B", "parent": "A"},
@@ -111,6 +139,7 @@ class OntologyValidationTests(unittest.TestCase):
                 "ontology_id": "invalid",
                 "version": "1",
                 "status": "draft",
+                "structural_graph": {"entities": [], "relations": []},
                 "classes": [{"class_id": "Entity", "label": "Entity"}],
                 "relations": [{
                     "relation_id": "relatedTo",
@@ -119,3 +148,11 @@ class OntologyValidationTests(unittest.TestCase):
                     "requires_evidence": "false",
                 }],
             })
+
+    def test_unknown_definition_extension_fails_until_contract_is_versioned(self):
+        payload = json.loads(
+            (ROOT / "src/revenue_integrity/data/wound_care_ontology_v1.json").read_text()
+        )
+        payload["classes"][0]["unreviewed_semantics"] = True
+        with self.assertRaisesRegex(ValueError, "unknown fields"):
+            OntologyDefinition.from_dict(payload)
