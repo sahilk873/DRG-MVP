@@ -1,0 +1,2 @@
+encounter_id,note_id,author_role,recorded_at,note_text
+ENC-ALPHA-001,NOTE-ALPHA-001,physician,2026-06-01T14:30:00Z,Patient admitted for sepsis treatment. Wound service assessment is documented separately.

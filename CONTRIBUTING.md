@@ -17,6 +17,9 @@ Run `make demo` to inspect the deterministic review packet. No model credential 
 - Never commit PHI, credentials, licensed terminology files or customer data.
 - Keep agent output schema-constrained and evidence-grounded.
 - Do not allow generated code to enter the rule-execution path.
+- Keep adapter design and adapter execution in separate trust boundaries; agents may emit only draft declarative DSL.
+- Add malformed-file, schema-drift, unlinked-row, unmapped-value and resource-budget tests for reader or adapter changes.
+- Version adapter definitions and require new approval whenever source schema, ontology binding or transformation behavior changes.
 - Add positive, negative, contradictory and malformed-input tests for rule changes.
 - Version ontology definitions and test class inheritance, relation domains/ranges, evidence requirements and semantic digest compatibility.
 - Give every executable rule an ontology subject scope and retain subject/assertion/evidence lineage in findings.

@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
+import type { Agent } from '@mastra/core/agent'
 
-import { resolveModelId, validateGrounding } from './agents/encounter-extractor.ts'
+import { extractEncounterCase, resolveModelId, validateGrounding } from './agents/encounter-extractor.ts'
+import { validateAdapterSemantics } from './agents/adapter-designer.ts'
+import { adapterDefinitionSchema, bulkProfileSchema } from './onboarding/schema.ts'
 import {
   DEFAULT_ONTOLOGY_DEFINITION,
   mergeWithStructuralGraph,
@@ -122,6 +125,151 @@ test('source metadata changes are rejected', () => {
     evidence: [{ ...extraction.evidence[0], author_role: 'unknown' }],
   })
   assert.throws(() => validateGrounding(source, parsed), /does not preserve source metadata/)
+})
+
+test('model evidence cannot claim deterministic row lineage', () => {
+  const source = sourceBundleSchema.parse(fixture)
+  const parsed = createAgentExtractionSchema(
+    DEFAULT_ONTOLOGY_DEFINITION.structural_graph.entities.map(entity => entity.entity_id),
+  ).parse({
+    ...extraction,
+    evidence: [{
+      ...extraction.evidence[0],
+      source_locator: {
+        adapter_id: 'fabricated',
+        adapter_version: '1',
+        resource: 'fake',
+        path: 'fake.csv',
+        row_number: 1,
+        source_record_id: 'fake',
+        field_names: ['fake'],
+      },
+    }],
+  })
+  assert.throws(() => validateGrounding(source, parsed), /cannot provide a deterministic source locator/)
+})
+
+test('deterministic and model ontology fragments merge into one validated case', async () => {
+  const structuredEvidence = {
+    ...extraction.evidence[0],
+    evidence_id: 'STRUCTURED-EV-001',
+    document_id: 'structured-source:1',
+    author_role: 'source-system',
+    source_locator: {
+      adapter_id: 'clinic-alpha',
+      adapter_version: '1.0.0',
+      resource: 'wounds',
+      path: 'wounds.csv',
+      row_number: 1,
+      source_record_id: 'W-1',
+      field_names: ['stage'],
+    },
+  }
+  const structured = {
+    evidence: [structuredEvidence],
+    ontology: {
+      ...extraction.ontology,
+      entities: [{
+        entity_id: 'wound:structured',
+        entity_type: 'PressureInjury',
+        label: 'Structured pressure injury',
+        properties: {},
+      }],
+      relations: [{
+        ...extraction.ontology.relations[0],
+        relation_id: 'rel:structured-wound',
+        target_id: 'wound:structured',
+        evidence_ids: ['STRUCTURED-EV-001'],
+      }],
+    },
+    assertions: [{
+      ...extraction.assertions[0],
+      assertion_id: 'AS-STRUCTURED-001',
+      subject_id: 'wound:structured',
+      evidence_ids: ['STRUCTURED-EV-001'],
+    }],
+  }
+  const fakeAgent = {
+    generate: async () => ({
+      object: {
+        evidence: [],
+        ontology: {
+          ontology_id: DEFAULT_ONTOLOGY_DEFINITION.ontology_id,
+          ontology_version: DEFAULT_ONTOLOGY_DEFINITION.version,
+          ontology_digest: ontologyDigest(DEFAULT_ONTOLOGY_DEFINITION),
+          entities: [],
+          relations: [],
+        },
+        assertions: [],
+      },
+    }),
+  } as unknown as Agent
+  const transformed = {
+    ...fixture,
+    structured_extraction: structured,
+    ingestion_provenance: {
+      framework: 'deterministic-adapter',
+      adapter_id: 'clinic-alpha',
+      adapter_version: '1.0.0',
+      source_schema_fingerprint: '1'.repeat(64),
+      input_manifest_digest: '2'.repeat(64),
+      transformed_at: '2026-07-15T00:00:00Z',
+      runtime_version: '1.0.0',
+    },
+  }
+
+  const encounter = await extractEncounterCase(transformed, {
+    agent: fakeAgent,
+    modelId: 'test/empty-extraction',
+    now: () => new Date('2026-07-15T00:01:00Z'),
+  })
+  assert.equal(encounter.assertions[0]?.assertion_id, 'AS-STRUCTURED-001')
+  assert.equal(encounter.evidence[0]?.source_locator?.row_number, 1)
+  assert.equal(encounter.provenance.ingestion?.adapter_id, 'clinic-alpha')
+})
+
+test('adapter contract accepts the governed fixture and rejects ontology drift', async () => {
+  const adapter = adapterDefinitionSchema.parse(
+    JSON.parse(await readFile('../examples/adapters/clinic_alpha_wound_care_v1.json', 'utf8')),
+  )
+  const columnsByPath: Record<string, string[]> = {
+    'encounters.csv': ['case_id', 'patient_id', 'encounter_id', 'admitted_at', 'discharged_at', 'facility'],
+    'notes.csv': ['encounter_id', 'note_id', 'author_role', 'recorded_at', 'note_text'],
+    'claims.csv': ['encounter_id', 'submitted_drg', 'allowed_amount_cents'],
+    'diagnoses.csv': ['encounter_id', 'diagnosis_code'],
+    'charges.csv': ['encounter_id', 'charge_code'],
+    'wound_assessments.csv': ['encounter_id', 'assessment_id', 'wound_id', 'recorded_at', 'stage', 'site', 'poa'],
+  }
+  const profile = bulkProfileSchema.parse({
+    profile_version: '1.0.0',
+    schema_fingerprint: adapter.source_schema_fingerprint,
+    input_manifest_digest: '0'.repeat(64),
+    artifact_count: 6,
+    total_bytes: 691,
+    artifacts: Object.values(adapter.resources).map(resource => ({
+      artifact_id: resource.sheet ? `${resource.path}#${resource.sheet}` : resource.path,
+      path: resource.path,
+      format: resource.format,
+      ...(resource.sheet ? { sheet: resource.sheet } : {}),
+      size_bytes: 1,
+      profiled_rows: 1,
+      truncated: false,
+      columns: (columnsByPath[resource.path] ?? []).map(name => ({
+        name,
+        inferred_types: ['string'],
+        missing_count: 0,
+        distinct_count: 1,
+      })),
+      sample_rows: [],
+    })),
+  })
+  assert.deepEqual(validateAdapterSemantics(profile, DEFAULT_ONTOLOGY_DEFINITION, adapter), [])
+  const changed = structuredClone(adapter)
+  changed.structured_projections[0]!.entities[0]!.entity_type = 'UnknownClass'
+  assert.match(
+    validateAdapterSemantics(profile, DEFAULT_ONTOLOGY_DEFINITION, changed).join(';'),
+    /unknown class/,
+  )
 })
 
 test('model IDs require provider/model format', () => {

@@ -174,25 +174,38 @@ function validateOntologyGraphSemantics(
 
 export function mergeWithStructuralGraph(
   definition: OntologyDefinition,
-  fragment: OntologyGraph,
+  ...fragments: OntologyGraph[]
 ): OntologyGraph {
   const digest = ontologyDigest(definition)
-  if (
-    fragment.ontology_id !== definition.ontology_id
-    || fragment.ontology_version !== definition.version
-    || fragment.ontology_digest !== digest
-  ) {
-    throw new Error('agent ontology fragment does not match the configured ontology definition')
-  }
   const reservedIds = new Set(definition.structural_graph.entities.map(entity => entity.entity_id))
-  const returnedReservedId = fragment.entities.find(entity => reservedIds.has(entity.entity_id))
-  if (returnedReservedId) throw new Error(`agent cannot replace structural entity ${returnedReservedId.entity_id}`)
+  const entityIds = new Set(reservedIds)
+  const relationIds = new Set(definition.structural_graph.relations.map(relation => relation.relation_id))
+  for (const fragment of fragments) {
+    if (
+      fragment.ontology_id !== definition.ontology_id
+      || fragment.ontology_version !== definition.version
+      || fragment.ontology_digest !== digest
+    ) {
+      throw new Error('ontology fragment does not match the configured ontology definition')
+    }
+    for (const entity of fragment.entities) {
+      if (reservedIds.has(entity.entity_id)) {
+        throw new Error(`ontology fragment cannot replace structural entity ${entity.entity_id}`)
+      }
+      if (entityIds.has(entity.entity_id)) throw new Error(`ontology fragments contain duplicate entity ${entity.entity_id}`)
+      entityIds.add(entity.entity_id)
+    }
+    for (const relation of fragment.relations) {
+      if (relationIds.has(relation.relation_id)) throw new Error(`ontology fragments contain duplicate relation ${relation.relation_id}`)
+      relationIds.add(relation.relation_id)
+    }
+  }
   return {
     ontology_id: definition.ontology_id,
     ontology_version: definition.version,
     ontology_digest: digest,
-    entities: [...definition.structural_graph.entities, ...fragment.entities],
-    relations: [...definition.structural_graph.relations, ...fragment.relations],
+    entities: [...definition.structural_graph.entities, ...fragments.flatMap(fragment => fragment.entities)],
+    relations: [...definition.structural_graph.relations, ...fragments.flatMap(fragment => fragment.relations)],
   }
 }
 

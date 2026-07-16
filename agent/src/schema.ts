@@ -23,22 +23,21 @@ export const claimSchema = z.object({
   allowed_amount_cents: z.number().int().nonnegative().nullable().optional(),
 }).strict()
 
-export const sourceBundleSchema = z.object({
-  case_id: nonEmptyString,
-  patient_id: nonEmptyString,
-  encounter_id: nonEmptyString,
-  admitted_at: isoDateTime,
-  discharged_at: isoDateTime,
-  metadata: z.record(z.string(), z.unknown()).default({}),
-  documents: z.array(sourceDocumentSchema),
-  claim: claimSchema,
-}).strict().check(z.refine(bundle => new Date(bundle.admitted_at) <= new Date(bundle.discharged_at), {
-  message: 'admitted_at must not be after discharged_at',
-  path: ['admitted_at'],
-})).check(z.refine(bundle => new Set(bundle.documents.map(document => document.document_id)).size === bundle.documents.length, {
-  message: 'document_id values must be unique',
-  path: ['documents'],
-}))
+export const sourceLocatorSchema = z.object({
+  adapter_id: nonEmptyString,
+  adapter_version: nonEmptyString,
+  resource: nonEmptyString,
+  path: nonEmptyString,
+  sheet: nonEmptyString.optional(),
+  row_number: z.number().int().positive(),
+  source_record_id: nonEmptyString,
+  field_names: uniqueNonEmptyStringArray,
+}).strict().check(z.refine(locator => (
+  !locator.path.startsWith('/')
+  && !locator.path.startsWith('~')
+  && !locator.path.includes('\\')
+  && !locator.path.split('/').includes('..')
+), { message: 'path must be safe and relative', path: ['path'] }))
 
 export const evidenceSchema = z.object({
   evidence_id: nonEmptyString,
@@ -46,6 +45,7 @@ export const evidenceSchema = z.object({
   author_role: nonEmptyString,
   recorded_at: isoDateTime,
   text: nonEmptyString,
+  source_locator: sourceLocatorSchema.optional(),
 }).strict()
 
 export const conceptCodeSchema = z.object({
@@ -105,6 +105,35 @@ export const agentExtractionOutputSchema = z.object({
   assertions: z.array(assertionSchema),
 }).strict()
 
+export const ingestionProvenanceSchema = z.object({
+  framework: z.literal('deterministic-adapter'),
+  adapter_id: nonEmptyString,
+  adapter_version: nonEmptyString,
+  source_schema_fingerprint: z.string().regex(/^[0-9a-f]{64}$/),
+  input_manifest_digest: z.string().regex(/^[0-9a-f]{64}$/),
+  transformed_at: isoDateTime,
+  runtime_version: nonEmptyString,
+}).strict()
+
+export const sourceBundleSchema = z.object({
+  case_id: nonEmptyString,
+  patient_id: nonEmptyString,
+  encounter_id: nonEmptyString,
+  admitted_at: isoDateTime,
+  discharged_at: isoDateTime,
+  metadata: z.record(z.string(), z.unknown()).default({}),
+  documents: z.array(sourceDocumentSchema),
+  claim: claimSchema,
+  structured_extraction: agentExtractionOutputSchema.optional(),
+  ingestion_provenance: ingestionProvenanceSchema.optional(),
+}).strict().check(z.refine(bundle => new Date(bundle.admitted_at) <= new Date(bundle.discharged_at), {
+  message: 'admitted_at must not be after discharged_at',
+  path: ['admitted_at'],
+})).check(z.refine(bundle => new Set(bundle.documents.map(document => document.document_id)).size === bundle.documents.length, {
+  message: 'document_id values must be unique',
+  path: ['documents'],
+}))
+
 export function createAgentExtractionSchema(allowedExternalEntityIds: Iterable<string> = []) {
   const allowed = new Set(allowedExternalEntityIds)
   return agentExtractionOutputSchema.superRefine((value, context) => {
@@ -133,6 +162,7 @@ export const provenanceSchema = z.object({
   extracted_at: isoDateTime,
   schema_version: z.literal(SCHEMA_VERSION),
   extraction_policy: extractionPolicyRecordSchema,
+  ingestion: ingestionProvenanceSchema.optional(),
 }).strict()
 
 export const encounterCaseSchema = z.object({

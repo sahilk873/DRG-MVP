@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/schemas/bulk-profile-v1.json",
+  "title": "Bounded bulk input profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["profile_version", "schema_fingerprint", "input_manifest_digest", "artifact_count", "total_bytes", "artifacts"],
+  "properties": {
+    "profile_version": {"const": "1.0.0"},
+    "schema_fingerprint": {"$ref": "#/$defs/digest"},
+    "input_manifest_digest": {"$ref": "#/$defs/digest"},
+    "artifact_count": {"type": "integer", "minimum": 0},
+    "total_bytes": {"type": "integer", "minimum": 0},
+    "artifacts": {"type": "array", "items": {"$ref": "#/$defs/artifact"}}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nonEmptyString": {"type": "string", "minLength": 1},
+    "column": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "inferred_types", "missing_count", "distinct_count"],
+      "properties": {
+        "name": {"$ref": "#/$defs/nonEmptyString"},
+        "inferred_types": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/nonEmptyString"}},
+        "missing_count": {"type": "integer", "minimum": 0},
+        "distinct_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_id", "path", "format", "size_bytes", "profiled_rows", "truncated", "columns", "sample_rows"],
+      "properties": {
+        "artifact_id": {"$ref": "#/$defs/nonEmptyString"},
+        "path": {"$ref": "#/$defs/nonEmptyString"},
+        "format": {"$ref": "#/$defs/nonEmptyString"},
+        "sheet": {"$ref": "#/$defs/nonEmptyString"},
+        "size_bytes": {"type": "integer", "minimum": 0},
+        "profiled_rows": {"type": "integer", "minimum": 0},
+        "truncated": {"type": "boolean"},
+        "columns": {"type": "array", "items": {"$ref": "#/$defs/column"}},
+        "sample_rows": {"type": "array", "items": {"type": "object"}},
+        "error": {"$ref": "#/$defs/nonEmptyString"}
+      }
+    }
+  }
+}

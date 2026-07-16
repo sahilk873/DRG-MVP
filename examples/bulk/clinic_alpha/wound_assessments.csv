@@ -1,0 +1,2 @@
+encounter_id,assessment_id,wound_id,recorded_at,stage,site,poa
+ENC-ALPHA-001,ASSESS-ALPHA-001,WOUND-ALPHA-001,2026-06-01T14:00:00Z,IV,Sacrum,Y

@@ -1,0 +1,2 @@
+case_id,patient_id,encounter_id,admitted_at,discharged_at,facility
+CASE-ALPHA-001,PAT-ALPHA-001,ENC-ALPHA-001,2026-06-01T08:00:00Z,2026-06-05T16:00:00Z,Alpha Medical Center

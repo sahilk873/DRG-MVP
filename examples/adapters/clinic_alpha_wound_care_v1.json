@@ -1,0 +1,137 @@
+{
+  "adapter_id": "clinic-alpha-wound-care",
+  "version": "1.0.0",
+  "status": "approved-for-demo",
+  "source_schema_fingerprint": "d5adc5b6cfe073a48fc2305bbe1bd5a0b861de961c8d56c5d8c876238b89baf6",
+  "ontology": {
+    "ontology_id": "wound-care-encounter-ontology",
+    "version": "1.0.0-draft",
+    "digest": "eb2b6f6aa447825fa45012fd23a91fe0f572fe280cf776a239699d6230390779"
+  },
+  "resources": {
+    "encounters": {"path": "encounters.csv", "format": "csv"},
+    "notes": {"path": "notes.csv", "format": "csv"},
+    "claims": {"path": "claims.csv", "format": "csv"},
+    "diagnoses": {"path": "diagnoses.csv", "format": "csv"},
+    "charges": {"path": "charges.csv", "format": "csv"},
+    "wound_assessments": {"path": "wound_assessments.csv", "format": "csv"}
+  },
+  "encounter": {
+    "resource": "encounters",
+    "case_id": {"field": "case_id", "operations": [{"op": "trim"}]},
+    "patient_id": {"field": "patient_id", "operations": [{"op": "trim"}]},
+    "encounter_id": {"field": "encounter_id", "operations": [{"op": "trim"}]},
+    "admitted_at": {"field": "admitted_at", "operations": [{"op": "datetime"}]},
+    "discharged_at": {"field": "discharged_at", "operations": [{"op": "datetime"}]},
+    "metadata": {"facility": {"field": "facility", "operations": [{"op": "trim"}]}}
+  },
+  "documents": [
+    {
+      "resource": "notes",
+      "encounter_id": {"field": "encounter_id", "operations": [{"op": "trim"}]},
+      "document_id": {"field": "note_id", "operations": [{"op": "trim"}]},
+      "author_role": {"field": "author_role", "operations": [{"op": "trim"}, {"op": "lower"}]},
+      "recorded_at": {"field": "recorded_at", "operations": [{"op": "datetime"}]},
+      "text": {"field": "note_text", "operations": [{"op": "trim"}]}
+    }
+  ],
+  "claim": {
+    "resource": "claims",
+    "encounter_id": {"field": "encounter_id", "operations": [{"op": "trim"}]},
+    "drg": {"field": "submitted_drg", "operations": [{"op": "trim"}]},
+    "allowed_amount_cents": {"field": "allowed_amount_cents", "operations": [{"op": "integer"}]},
+    "diagnoses": {
+      "resource": "diagnoses",
+      "encounter_id": {"field": "encounter_id", "operations": [{"op": "trim"}]},
+      "value": {"field": "diagnosis_code", "operations": [{"op": "trim"}, {"op": "upper"}]}
+    },
+    "charges": {
+      "resource": "charges",
+      "encounter_id": {"field": "encounter_id", "operations": [{"op": "trim"}]},
+      "value": {"field": "charge_code", "operations": [{"op": "trim"}, {"op": "upper"}]}
+    }
+  },
+  "structured_projections": [
+    {
+      "projection_id": "wound-assessment-v1",
+      "resource": "wound_assessments",
+      "encounter_id": {"field": "encounter_id", "operations": [{"op": "trim"}]},
+      "source_record_id": {"field": "assessment_id", "operations": [{"op": "trim"}]},
+      "evidence": {
+        "evidence_id": {"template": "structured-evidence:{assessment_id}"},
+        "document_id": {"template": "structured-source:{assessment_id}"},
+        "author_role": {"constant": "source-system"},
+        "recorded_at": {"field": "recorded_at", "operations": [{"op": "datetime"}]},
+        "text": {"template": "WOUND_ID={wound_id}; STAGE={stage}; SITE={site}; POA={poa}"},
+        "field_names": ["wound_id", "stage", "site", "poa", "recorded_at"]
+      },
+      "entities": [
+        {
+          "entity_id": {"template": "wound:{wound_id}"},
+          "entity_type": "PressureInjury",
+          "label": {"template": "Pressure injury {wound_id}"},
+          "properties": {"present_on_admission": {"field": "poa", "operations": [{"op": "boolean"}]}}
+        },
+        {
+          "entity_id": {"template": "location:{site}"},
+          "entity_type": "AnatomicalLocation",
+          "label": {"field": "site", "operations": [{"op": "trim"}]},
+          "properties": {}
+        },
+        {
+          "entity_id": {"template": "stage:{stage}"},
+          "entity_type": "PressureInjuryStage",
+          "label": {"template": "Pressure injury stage {stage}"},
+          "properties": {"value": {"field": "stage", "operations": [{"op": "map", "values": {"I": "1", "II": "2", "III": "3", "IV": "4"}}]}}
+        }
+      ],
+      "relations": [
+        {
+          "relation_id": {"template": "relation:patient-wound:{wound_id}"},
+          "predicate": "hasWound",
+          "source_id": {"constant": "root:patient"},
+          "target_id": {"template": "wound:{wound_id}"},
+          "assertion_status": "present",
+          "documentation_status": "explicit",
+          "confidence": 1.0,
+          "cite_evidence": true
+        },
+        {
+          "relation_id": {"template": "relation:wound-location:{wound_id}"},
+          "predicate": "hasLocation",
+          "source_id": {"template": "wound:{wound_id}"},
+          "target_id": {"template": "location:{site}"},
+          "assertion_status": "present",
+          "documentation_status": "explicit",
+          "confidence": 1.0,
+          "cite_evidence": true
+        },
+        {
+          "relation_id": {"template": "relation:wound-stage:{wound_id}"},
+          "predicate": "hasStage",
+          "source_id": {"template": "wound:{wound_id}"},
+          "target_id": {"template": "stage:{stage}"},
+          "assertion_status": "present",
+          "documentation_status": "explicit",
+          "confidence": 1.0,
+          "cite_evidence": true
+        }
+      ],
+      "assertions": [
+        {
+          "assertion_id": {"template": "assertion:pressure-injury:{assessment_id}"},
+          "subject_id": {"template": "wound:{wound_id}"},
+          "concept": "pressure_injury",
+          "status": "present",
+          "documentation_status": "explicit",
+          "confidence": 1.0,
+          "attributes": {
+            "site": {"field": "site", "operations": [{"op": "map", "values": {"Sacrum": "sacral_region"}}]},
+            "stage": {"field": "stage", "operations": [{"op": "map", "values": {"I": 1, "II": 2, "III": 3, "IV": 4}}]},
+            "present_on_admission": {"field": "poa", "operations": [{"op": "boolean"}]}
+          }
+        }
+      ]
+    }
+  ]
+}

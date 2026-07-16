@@ -66,3 +66,55 @@ The five passes establish an extensible foundation, not a production authorizati
 ## Verification baseline
 
 At the end of this review, the required gate is `make verify`, followed by `npm run build` in `agent/` and a deterministic CLI demo. CI repeats Python tests, TypeScript tests, type checking, schema compilation and the Mastra production build.
+
+## Bulk-onboarding review cycle
+
+The provider-folder ingestion work was reviewed through the same five-pass method before publication.
+
+### Pass 1 — control plane versus data plane
+
+**Finding.** Letting an exploratory agent create and execute arbitrary transformations would make onboarding flexible but non-reproducible and would place filesystem and code-execution authority inside the model boundary.
+
+**Change.** Split onboarding into a Mastra control-plane designer and a model-free data-plane runtime. The agent receives only a bounded profile and can emit only a draft adapter DSL. The runtime accepts only approved adapters and has no generated-code path.
+
+**Result.** Agent reasoning helps with unfamiliar schemas without determining what code executes against the full export.
+
+### Pass 2 — discovery, drift and bounded data exposure
+
+**Finding.** File names and a handful of rows were insufficient for reproducible adapter compatibility, while sending entire files to the model would be costly and unsafe. Sample row counts alone did not bound very wide rows or very large cell values.
+
+**Change.** Added file/row/byte/column/sample budgets, safe CSV/JSON/JSONL/XLSX discovery, observed type and missingness profiles, a structural schema fingerprint and a separate exact-content manifest digest. Unsupported delivery files remain in the content manifest but do not invalidate the schema fingerprint. Workbook members are checked for traversal, duplication, encryption, expansion and compression-ratio limits before XML is read.
+
+**Result.** The agent sees enough bounded evidence to propose mappings; production execution can detect meaningful schema drift and audit the exact source bytes independently.
+
+### Pass 3 — canonical mapping and ontology lineage
+
+**Finding.** Mapping every clinic directly into the final patient graph would couple source schemas to ontology internals and could blur model evidence with deterministic structured facts.
+
+**Change.** Adapters first build the existing canonical source bundle, then optionally project structured rows into an ontology fragment. Every projected fact carries a row-addressable locator. Fragment classes, relations, value sets, evidence citations, assertion subjects and ontology digests are validated before the bundle crosses into Mastra. Model evidence is forbidden from creating deterministic locators, and both fragments are collision-checked before merge.
+
+**Result.** Narrative extraction and structured fields coexist in one patient graph without losing their distinct provenance or changing downstream rules.
+
+### Pass 4 — deterministic failure and transformation safety
+
+**Finding.** A general transformation language could recreate the same execution risk as generated code, and permissive joins or conversions could silently misattach clinical and financial records.
+
+**Change.** Limited transformations to explicit trim/case, numeric, boolean, timezone-aware datetime, split and finite-map operations; added bounded row filters and composite templates; rejected formatting expressions, traversal, symlinks, unlinked rows, missing claims, unknown fields, unmapped values, lossy integer conversions and duplicate/conflicting IDs.
+
+**Result.** Clinic variability is expressible through reviewed data, while ambiguous input causes a visible onboarding/run failure rather than a guessed claim mapping.
+
+### Pass 5 — extension seams and operational readiness
+
+**Finding.** A useful MVP could still become a dead end if new formats, mappings, ontology domains or scale requirements required changes throughout the pipeline.
+
+**Change.** Defined separate extension seams for readers, adapter versions, reviewed DSL operations, ontology definitions, rule packages and the grouper boundary. Added strict JSON/Zod/Python contracts, a deterministic CLI with atomic writes and an opaque output manifest, a realistic clinic fixture, an adapter-designer semantic validator with bounded repair feedback, and end-to-end tests from a structured source row to a revenue-integrity finding.
+
+**Result.** New clinics normally require a new adapter; new physical formats require a reader; new clinical semantics require a versioned ontology extension. The rule engine and encounter reconciler remain clinic-independent.
+
+### Remaining bulk-onboarding production work
+
+- replace the reference in-memory executor with a streaming or distributed backend behind the same contracts;
+- add Parquet, FHIR NDJSON, 837I/835 and governed database-export readers as required;
+- implement prospective adapter validation datasets, approval workflow, drift alerts and rollback;
+- store source locators in tenant-isolated object/audit storage rather than relying on local paths;
+- add terminology normalization and licensed grouper integrations without placing code or payment decisions in the model boundary.

@@ -6,16 +6,16 @@ An evidence-grounded reference implementation for reconstructing an inpatient en
 
 ## Architecture
 
-Clinical records benefit from semantic extraction. Claim grouping, rule evaluation, payment simulation and audit records must remain reproducible. The agent therefore produces **schema-constrained evidence and hypotheses, never executable rules or authoritative financial fields**.
+Clinical records benefit from semantic extraction. Claim grouping, rule evaluation, payment simulation and audit records must remain reproducible. The agent therefore produces **schema-constrained evidence and hypotheses, never executable rules or authoritative financial fields**. Variable provider exports are handled by an adapter factory: Mastra proposes a draft declarative mapping from a bounded profile, while an approved deterministic runtime processes the full dataset.
 
 ```mermaid
 flowchart TD
-    A["Source documents"] --> B["Mastra extraction agent"]
-    B --> C["Ontology, grounding and schema gate"]
-    H["Immutable claim data"] --> C
-    C --> D["Versioned rule engine"]
-    D --> E["Licensed grouper boundary"]
-    E --> F["Focused review packet"]
+    A["Provider bulk export"] --> B["Approved deterministic adapter"]
+    B --> C["Source bundle and structured fragment"]
+    C --> D["Mastra note extraction"]
+    D --> E["Ontology and evidence gate"]
+    E --> F["Rules and grouper boundary"]
+    F --> G["Focused review packet"]
 ```
 
 The case model separates what happened clinically, what was explicitly documented, what was coded and charged, what was submitted and paid, and what evidence supports or contradicts a proposed change.
@@ -23,6 +23,10 @@ The case model separates what happened clinically, what was explicitly documente
 ## Current capabilities
 
 - Canonical source-bundle and encounter-case JSON Schemas
+- Bounded CSV, JSON, JSONL and XLSX bulk profiling with schema-drift and content-manifest fingerprints
+- Versioned declarative adapters with row filters, composite keys, safe transforms and structured ontology projections
+- Provider-agnostic Mastra adapter designer with bounded repair feedback and no code-generation path
+- Deterministic row-level provenance linking structured facts to source files, records and fields
 - Data-driven ontology definitions with inheritance and relation domain/range validation
 - Cross-runtime semantic ontology digests that reject unversioned definition drift
 - Patient-specific graphs linking assertions to typed subjects and exact evidence
@@ -72,7 +76,22 @@ make demo
 
 The deterministic demo creates a review finding, supporting evidence, a proposed code change, demo regrouping and payment delta. It never modifies or submits a claim.
 
-The v0.4 release uses encounter-case schema `2.0.0`. Earlier case payloads intentionally fail closed until they add a versioned, fingerprinted `ontology` graph and bind every assertion through `subject_id`. Revenue rule packages must declare their compatible ontology ID, version, digest and typed subject scope.
+The v0.4 release uses encounter-case schema `2.0.0`. Earlier case payloads intentionally fail closed until they add a versioned, fingerprinted `ontology` graph and bind every assertion through `subject_id`. Revenue rule packages and bulk adapters must declare their compatible ontology ID, version and digest.
+
+## Run the bulk-ingestion demo
+
+```bash
+revenue-integrity-ingest profile examples/bulk/clinic_alpha \
+  --output output/clinic-alpha.profile.json
+
+revenue-integrity-ingest run \
+  examples/bulk/clinic_alpha \
+  examples/adapters/clinic_alpha_wound_care_v1.json \
+  --output-directory output/source-bundles \
+  --report output/clinic-alpha.run.json
+```
+
+The full provider folder is processed by deterministic readers and transforms. Only the bounded profile is suitable for the adapter-designer agent; narrative document text is sent separately to the evidence-extraction agent. Claims, charges, existing DRGs and payment fields remain outside model generation.
 
 ## Run the Mastra extraction layer
 
@@ -110,7 +129,7 @@ New specialties are added as versioned ontology definitions and compatible rule 
 
 Before real use, the project still requires licensed terminology and grouping components, FHIR/HL7 and claim adapters, institution-approved rules, representative positive and negative validation data, model/retrieval evaluations, a reviewer application and the security controls in [SECURITY.md](SECURITY.md).
 
-See [docs/ONTOLOGY.md](docs/ONTOLOGY.md) for the domain-extension contract, [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for trust-boundary decisions and [CONTRIBUTING.md](CONTRIBUTING.md) for change requirements.
+See [docs/ADAPTER_FACTORY.md](docs/ADAPTER_FACTORY.md) for bulk onboarding and extension contracts, [docs/ONTOLOGY.md](docs/ONTOLOGY.md) for the domain-extension contract, [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for trust-boundary decisions and [CONTRIBUTING.md](CONTRIBUTING.md) for change requirements.
 
 The supplied raw wound-care workbook is preserved at [knowledge/sources/wound_care_clinical_rules_raw.xlsx](knowledge/sources/wound_care_clinical_rules_raw.xlsx), governed by [knowledge/wound_care_source_manifest.json](knowledge/wound_care_source_manifest.json), and intentionally non-executable. See [docs/ITERATIVE_REVIEW.md](docs/ITERATIVE_REVIEW.md) for the completed five-pass design review and remaining production roadmap.
 

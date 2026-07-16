@@ -26,6 +26,24 @@
         }
       }
     },
-    "claim": {"$ref": "https://example.org/schemas/claim-v1.json"}
+    "claim": {"$ref": "https://example.org/schemas/claim-v1.json"},
+    "structured_extraction": {"$ref": "https://example.org/schemas/extraction-fragment-v1.json"},
+    "ingestion_provenance": {"$ref": "#/$defs/ingestionProvenance"}
+  },
+  "$defs": {
+    "ingestionProvenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["framework", "adapter_id", "adapter_version", "source_schema_fingerprint", "input_manifest_digest", "transformed_at", "runtime_version"],
+      "properties": {
+        "framework": {"const": "deterministic-adapter"},
+        "adapter_id": {"type": "string", "minLength": 1},
+        "adapter_version": {"type": "string", "minLength": 1},
+        "source_schema_fingerprint": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "input_manifest_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "transformed_at": {"type": "string", "format": "date-time"},
+        "runtime_version": {"type": "string", "minLength": 1}
+      }
+    }
   }
 }

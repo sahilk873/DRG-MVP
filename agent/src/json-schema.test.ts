@@ -10,12 +10,14 @@ const fixtures = [
   ['../schemas/encounter_case.schema.json', '../examples/case_pressure_injury.json'],
   ['../schemas/ontology_definition.schema.json', '../src/revenue_integrity/data/wound_care_ontology_v1.json'],
   ['../schemas/rule_package.schema.json', '../rules/wound_care_v1.json'],
+  ['../schemas/adapter_definition.schema.json', '../examples/adapters/clinic_alpha_wound_care_v1.json'],
 ] as const
 
 test('published JSON Schemas compile and accept canonical fixtures', async () => {
   const ajv = new Ajv2020({ allErrors: true, strict: true })
   addFormats(ajv)
   ajv.addSchema(JSON.parse(await readFile('../schemas/claim.schema.json', 'utf8')))
+  ajv.addSchema(JSON.parse(await readFile('../schemas/extraction_fragment.schema.json', 'utf8')))
   for (const [schemaPath, fixturePath] of fixtures) {
     const schema = JSON.parse(await readFile(schemaPath, 'utf8'))
     const fixture = JSON.parse(await readFile(fixturePath, 'utf8'))
@@ -25,6 +27,15 @@ test('published JSON Schemas compile and accept canonical fixtures', async () =>
       true,
       `${fixturePath} does not satisfy ${schemaPath}: ${ajv.errorsText(validate.errors)}`,
     )
+  }
+})
+
+test('profile and extraction fragment JSON Schemas compile strictly', async () => {
+  const ajv = new Ajv2020({ allErrors: true, strict: true })
+  addFormats(ajv)
+  for (const schemaPath of ['../schemas/bulk_profile.schema.json', '../schemas/extraction_fragment.schema.json']) {
+    const schema = JSON.parse(await readFile(schemaPath, 'utf8'))
+    assert.doesNotThrow(() => ajv.compile(schema))
   }
 })
 

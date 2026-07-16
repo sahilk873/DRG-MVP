@@ -14,6 +14,7 @@ dependencies = []
 
 [project.scripts]
 revenue-integrity = "revenue_integrity.cli:main"
+revenue-integrity-ingest = "revenue_integrity.ingestion.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

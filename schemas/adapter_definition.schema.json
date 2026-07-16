@@ -1,0 +1,195 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/schemas/adapter-definition-v1.json",
+  "title": "Deterministic bulk adapter definition",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["adapter_id", "version", "status", "source_schema_fingerprint", "ontology", "resources", "encounter", "documents", "claim", "structured_projections"],
+  "properties": {
+    "adapter_id": {"$ref": "#/$defs/nonEmptyString"},
+    "version": {"$ref": "#/$defs/nonEmptyString"},
+    "status": {"enum": ["draft", "approved-for-demo", "approved"]},
+    "source_schema_fingerprint": {"$ref": "#/$defs/digest"},
+    "ontology": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ontology_id", "version", "digest"],
+      "properties": {
+        "ontology_id": {"$ref": "#/$defs/nonEmptyString"},
+        "version": {"$ref": "#/$defs/nonEmptyString"},
+        "digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "resources": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {"$ref": "#/$defs/resource"}
+    },
+    "encounter": {"$ref": "#/$defs/encounterBinding"},
+    "documents": {"type": "array", "items": {"$ref": "#/$defs/documentBinding"}},
+    "claim": {"$ref": "#/$defs/claimBinding"},
+    "structured_projections": {"type": "array", "items": {"$ref": "#/$defs/structuredProjection"}}
+  },
+  "$defs": {
+    "nonEmptyString": {"type": "string", "minLength": 1},
+    "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "expression": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false, "required": ["field"],
+          "properties": {"field": {"$ref": "#/$defs/nonEmptyString"}, "operations": {"$ref": "#/$defs/operations"}}
+        },
+        {
+          "type": "object", "additionalProperties": false, "required": ["constant"],
+          "properties": {"constant": {}, "operations": {"$ref": "#/$defs/operations"}}
+        },
+        {
+          "type": "object", "additionalProperties": false, "required": ["template"],
+          "properties": {"template": {"$ref": "#/$defs/nonEmptyString"}, "operations": {"$ref": "#/$defs/operations"}}
+        }
+      ]
+    },
+    "operations": {"type": "array", "items": {"$ref": "#/$defs/operation"}},
+    "rowConditions": {"type": "array", "items": {"$ref": "#/$defs/rowCondition"}},
+    "rowCondition": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false, "required": ["field", "op"],
+          "properties": {"field": {"$ref": "#/$defs/nonEmptyString"}, "op": {"enum": ["present", "not_present"]}}
+        },
+        {
+          "type": "object", "additionalProperties": false, "required": ["field", "op", "value"],
+          "properties": {"field": {"$ref": "#/$defs/nonEmptyString"}, "op": {"enum": ["eq", "not_eq"]}, "value": {}}
+        },
+        {
+          "type": "object", "additionalProperties": false, "required": ["field", "op", "value"],
+          "properties": {"field": {"$ref": "#/$defs/nonEmptyString"}, "op": {"enum": ["in", "not_in"]}, "value": {"type": "array", "minItems": 1}}
+        }
+      ]
+    },
+    "operation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["op"],
+      "properties": {
+        "op": {"enum": ["trim", "lower", "upper", "integer", "number", "boolean", "datetime", "split", "map"]},
+        "delimiter": {"$ref": "#/$defs/nonEmptyString"},
+        "format": {"$ref": "#/$defs/nonEmptyString"},
+        "timezone": {"$ref": "#/$defs/nonEmptyString"},
+        "values": {"type": "object", "minProperties": 1}
+      },
+      "allOf": [
+        {"if": {"properties": {"op": {"const": "split"}}, "required": ["op"]}, "then": {"properties": {"delimiter": {}}, "required": ["delimiter"]}},
+        {"if": {"properties": {"op": {"const": "map"}}, "required": ["op"]}, "then": {"properties": {"values": {}}, "required": ["values"]}}
+      ]
+    },
+    "expressionMap": {"type": "object", "additionalProperties": {"$ref": "#/$defs/expression"}},
+    "resource": {
+      "type": "object", "additionalProperties": false, "required": ["path", "format"],
+      "properties": {
+        "path": {"$ref": "#/$defs/nonEmptyString"},
+        "format": {"enum": ["csv", "json", "jsonl", "xlsx"]},
+        "sheet": {"$ref": "#/$defs/nonEmptyString"}
+      },
+      "allOf": [{"if": {"properties": {"format": {"const": "xlsx"}}, "required": ["format"]}, "then": {"properties": {"sheet": {}}, "required": ["sheet"]}}]
+    },
+    "collectionBinding": {
+      "type": "object", "additionalProperties": false, "required": ["resource", "encounter_id", "value"],
+      "properties": {"resource": {"$ref": "#/$defs/nonEmptyString"}, "encounter_id": {"$ref": "#/$defs/expression"}, "value": {"$ref": "#/$defs/expression"}, "where": {"$ref": "#/$defs/rowConditions"}}
+    },
+    "encounterBinding": {
+      "type": "object", "additionalProperties": false,
+      "required": ["resource", "case_id", "patient_id", "encounter_id", "admitted_at", "discharged_at"],
+      "properties": {
+        "resource": {"$ref": "#/$defs/nonEmptyString"},
+        "case_id": {"$ref": "#/$defs/expression"},
+        "patient_id": {"$ref": "#/$defs/expression"},
+        "encounter_id": {"$ref": "#/$defs/expression"},
+        "admitted_at": {"$ref": "#/$defs/expression"},
+        "discharged_at": {"$ref": "#/$defs/expression"},
+        "metadata": {"$ref": "#/$defs/expressionMap"},
+        "where": {"$ref": "#/$defs/rowConditions"}
+      }
+    },
+    "documentBinding": {
+      "type": "object", "additionalProperties": false,
+      "required": ["resource", "encounter_id", "document_id", "author_role", "recorded_at", "text"],
+      "properties": {
+        "resource": {"$ref": "#/$defs/nonEmptyString"},
+        "encounter_id": {"$ref": "#/$defs/expression"},
+        "document_id": {"$ref": "#/$defs/expression"},
+        "author_role": {"$ref": "#/$defs/expression"},
+        "recorded_at": {"$ref": "#/$defs/expression"},
+        "text": {"$ref": "#/$defs/expression"},
+        "where": {"$ref": "#/$defs/rowConditions"}
+      }
+    },
+    "claimBinding": {
+      "type": "object", "additionalProperties": false, "required": ["resource", "encounter_id"],
+      "properties": {
+        "resource": {"$ref": "#/$defs/nonEmptyString"},
+        "encounter_id": {"$ref": "#/$defs/expression"},
+        "drg": {"$ref": "#/$defs/expression"},
+        "allowed_amount_cents": {"$ref": "#/$defs/expression"},
+        "diagnoses": {"$ref": "#/$defs/collectionBinding"},
+        "procedures": {"$ref": "#/$defs/collectionBinding"},
+        "charges": {"$ref": "#/$defs/collectionBinding"},
+        "where": {"$ref": "#/$defs/rowConditions"}
+      }
+    },
+    "evidenceProjection": {
+      "type": "object", "additionalProperties": false,
+      "required": ["evidence_id", "document_id", "author_role", "recorded_at", "text", "field_names"],
+      "properties": {
+        "evidence_id": {"$ref": "#/$defs/expression"},
+        "document_id": {"$ref": "#/$defs/expression"},
+        "author_role": {"$ref": "#/$defs/expression"},
+        "recorded_at": {"$ref": "#/$defs/expression"},
+        "text": {"$ref": "#/$defs/expression"},
+        "field_names": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/nonEmptyString"}}
+      }
+    },
+    "entityProjection": {
+      "type": "object", "additionalProperties": false, "required": ["entity_id", "entity_type", "label", "properties"],
+      "properties": {
+        "entity_id": {"$ref": "#/$defs/expression"}, "entity_type": {"$ref": "#/$defs/nonEmptyString"},
+        "label": {"$ref": "#/$defs/expression"}, "properties": {"$ref": "#/$defs/expressionMap"}
+      }
+    },
+    "relationProjection": {
+      "type": "object", "additionalProperties": false,
+      "required": ["relation_id", "predicate", "source_id", "target_id", "assertion_status", "documentation_status", "confidence", "cite_evidence"],
+      "properties": {
+        "relation_id": {"$ref": "#/$defs/expression"}, "predicate": {"$ref": "#/$defs/nonEmptyString"},
+        "source_id": {"$ref": "#/$defs/expression"}, "target_id": {"$ref": "#/$defs/expression"},
+        "assertion_status": {"enum": ["present", "absent", "uncertain", "historical"]},
+        "documentation_status": {"enum": ["explicit", "inferred", "conflicted", "absent"]},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1}, "cite_evidence": {"type": "boolean"}
+      }
+    },
+    "assertionProjection": {
+      "type": "object", "additionalProperties": false,
+      "required": ["assertion_id", "subject_id", "concept", "status", "documentation_status", "confidence", "attributes"],
+      "properties": {
+        "assertion_id": {"$ref": "#/$defs/expression"}, "subject_id": {"$ref": "#/$defs/expression"},
+        "concept": {"$ref": "#/$defs/nonEmptyString"},
+        "status": {"enum": ["present", "absent", "uncertain", "historical"]},
+        "documentation_status": {"enum": ["explicit", "inferred", "conflicted", "absent"]},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1}, "attributes": {"$ref": "#/$defs/expressionMap"}
+      }
+    },
+    "structuredProjection": {
+      "type": "object", "additionalProperties": false,
+      "required": ["projection_id", "resource", "encounter_id", "source_record_id", "evidence", "entities", "relations", "assertions"],
+      "properties": {
+        "projection_id": {"$ref": "#/$defs/nonEmptyString"}, "resource": {"$ref": "#/$defs/nonEmptyString"},
+        "encounter_id": {"$ref": "#/$defs/expression"}, "source_record_id": {"$ref": "#/$defs/expression"},
+        "evidence": {"$ref": "#/$defs/evidenceProjection"},
+        "entities": {"type": "array", "items": {"$ref": "#/$defs/entityProjection"}},
+        "relations": {"type": "array", "items": {"$ref": "#/$defs/relationProjection"}},
+        "assertions": {"type": "array", "items": {"$ref": "#/$defs/assertionProjection"}},
+        "where": {"$ref": "#/$defs/rowConditions"}
+      }
+    }
+  }
+}

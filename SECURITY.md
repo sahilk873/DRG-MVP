@@ -20,3 +20,14 @@ Before handling regulated data, complete a formal threat model and security revi
 
 The demo grouper and sample clinical rules are explicitly non-production artifacts.
 
+## Bulk onboarding boundary
+
+- Mount provider input read-only and write outputs to a separate location.
+- Reject symbolic links, traversal, unsafe or over-expanded workbook archives, unknown resources and configured file/row/byte budget violations.
+- Run profiling and adapter execution without outbound network access.
+- Send only policy-bounded, deidentified profiles to the adapter-design model; never give it shell or filesystem tools.
+- Treat filenames, headers, worksheet names, cell values and document contents as untrusted data.
+- Require explicit human promotion from `draft` to an approved adapter state.
+- Pin adapter and ontology versions and fail on schema or semantic-digest drift.
+- Store source objects, profiles, adapters, run manifests and review decisions in tenant-isolated audit storage.
+- Replace the reference in-memory readers with hardened streaming services before processing production-scale exports.

@@ -54,6 +54,7 @@ Rules you must follow:
 - Every assertion must name the ontology entity it describes through subject_id.
 - Do not create claim, diagnosis-code, procedure-code, charge, grouping-result, rule, alert, or recommended-action entities.
 - Evidence text must be an exact, minimal, contiguous excerpt from the identified source document.
+- Never return source_locator; it is reserved for deterministic adapters.
 - Copy document_id, author_role, and recorded_at exactly from that document.
 - Every assertion must cite at least one supporting evidence_id.
 - Preserve negation, uncertainty, temporality, experiencer, author role, and recorded time.
@@ -105,7 +106,27 @@ export async function extractEncounterCase(
   ).parse(response.object)
   validateExtractionLimits(extraction, extractionPolicy)
   validateGrounding(sourceBundle, extraction)
-  const ontology = mergeWithStructuralGraph(ontologyDefinition, extraction.ontology)
+  const structuredExtraction = sourceBundle.structured_extraction === undefined
+    ? undefined
+    : createAgentExtractionSchema(
+      ontologyDefinition.structural_graph.entities.map(entity => entity.entity_id),
+    ).parse(sourceBundle.structured_extraction)
+  if (structuredExtraction) validateStructuredLineage(sourceBundle, structuredExtraction)
+  const combinedExtraction = {
+    evidence: [...(structuredExtraction?.evidence ?? []), ...extraction.evidence],
+    ontology: {
+      ...extraction.ontology,
+      entities: [...(structuredExtraction?.ontology.entities ?? []), ...extraction.ontology.entities],
+      relations: [...(structuredExtraction?.ontology.relations ?? []), ...extraction.ontology.relations],
+    },
+    assertions: [...(structuredExtraction?.assertions ?? []), ...extraction.assertions],
+  }
+  validateExtractionLimits(combinedExtraction, extractionPolicy)
+  const ontology = mergeWithStructuralGraph(
+    ontologyDefinition,
+    ...(structuredExtraction ? [structuredExtraction.ontology] : []),
+    extraction.ontology,
+  )
 
   const encounterCase = encounterCaseSchema.parse({
     schema_version: SCHEMA_VERSION,
@@ -115,9 +136,9 @@ export async function extractEncounterCase(
     admitted_at: sourceBundle.admitted_at,
     discharged_at: sourceBundle.discharged_at,
     metadata: sourceBundle.metadata,
-    evidence: extraction.evidence,
+    evidence: combinedExtraction.evidence,
     ontology,
-    assertions: extraction.assertions,
+    assertions: combinedExtraction.assertions,
     claim: sourceBundle.claim,
     provenance: {
       framework: 'mastra',
@@ -126,6 +147,7 @@ export async function extractEncounterCase(
       extracted_at: (options.now ?? (() => new Date()))().toISOString(),
       schema_version: SCHEMA_VERSION,
       extraction_policy: policyAuditRecord(extractionPolicy),
+      ingestion: sourceBundle.ingestion_provenance,
     },
   })
   validateOntologyGraph(
@@ -136,9 +158,26 @@ export async function extractEncounterCase(
   return encounterCase
 }
 
+export function validateStructuredLineage(sourceBundle: SourceBundle, extraction: AgentExtraction): void {
+  const ingestion = sourceBundle.ingestion_provenance
+  if (ingestion === undefined) throw new Error('structured extraction requires ingestion provenance')
+  for (const evidence of extraction.evidence) {
+    const locator = evidence.source_locator
+    if (locator === undefined) {
+      throw new Error(`structured evidence ${evidence.evidence_id} requires a deterministic source locator`)
+    }
+    if (locator.adapter_id !== ingestion.adapter_id || locator.adapter_version !== ingestion.adapter_version) {
+      throw new Error(`structured evidence ${evidence.evidence_id} does not match ingestion adapter provenance`)
+    }
+  }
+}
+
 export function validateGrounding(sourceBundle: SourceBundle, extraction: AgentExtraction): void {
   const documents = new Map(sourceBundle.documents.map(document => [document.document_id, document]))
   for (const evidence of extraction.evidence) {
+    if (evidence.source_locator !== undefined) {
+      throw new Error(`model evidence ${evidence.evidence_id} cannot provide a deterministic source locator`)
+    }
     const source = documents.get(evidence.document_id)
     if (!source) {
       throw new Error(`evidence ${evidence.evidence_id} references unknown document ${evidence.document_id}`)

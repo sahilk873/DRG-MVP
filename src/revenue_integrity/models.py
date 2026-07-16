@@ -69,12 +69,14 @@ class ExtractionProvenance:
     extracted_at: str
     schema_version: str
     extraction_policy: Mapping[str, int]
+    ingestion: Mapping[str, Any] | None = None
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> "ExtractionProvenance":
         fields = ("framework", "model_id", "agent_id", "extracted_at", "schema_version")
         required = fields + ("extraction_policy",)
-        _validate_keys(data, required=required, allowed=required, object_name="provenance")
+        allowed = required + ("ingestion",)
+        _validate_keys(data, required=required, allowed=allowed, object_name="provenance")
         _parse_iso_datetime(str(data["extracted_at"]), "provenance.extracted_at")
         policy = _mapping(data["extraction_policy"], "provenance.extraction_policy")
         _validate_keys(
@@ -89,9 +91,32 @@ class ExtractionProvenance:
             if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
                 raise ValueError(f"provenance.extraction_policy.{name} must be a positive integer")
             parsed_policy[name] = value
+        ingestion = data.get("ingestion")
+        if ingestion is not None:
+            ingestion = _mapping(ingestion, "provenance.ingestion")
+            ingestion_fields = (
+                "framework", "adapter_id", "adapter_version", "source_schema_fingerprint",
+                "input_manifest_digest", "transformed_at", "runtime_version",
+            )
+            _validate_keys(
+                ingestion,
+                required=ingestion_fields,
+                allowed=ingestion_fields,
+                object_name="provenance.ingestion",
+            )
+            if ingestion["framework"] != "deterministic-adapter":
+                raise ValueError("provenance.ingestion.framework must be 'deterministic-adapter'")
+            for name in ("source_schema_fingerprint", "input_manifest_digest"):
+                value = _nonempty_string(ingestion[name], f"provenance.ingestion.{name}")
+                if len(value) != 64 or any(character not in "0123456789abcdef" for character in value):
+                    raise ValueError(f"provenance.ingestion.{name} must be a lowercase SHA-256 digest")
+            _parse_iso_datetime(str(ingestion["transformed_at"]), "provenance.ingestion.transformed_at")
+            for name in ("adapter_id", "adapter_version", "runtime_version"):
+                _nonempty_string(ingestion[name], f"provenance.ingestion.{name}")
         provenance = cls(
             **{name: _nonempty_string(data[name], f"provenance.{name}") for name in fields},
             extraction_policy=parsed_policy,
+            ingestion=dict(ingestion) if ingestion is not None else None,
         )
         if provenance.framework != "mastra":
             raise ValueError("provenance.framework must be 'mastra'")
@@ -105,19 +130,47 @@ class Evidence:
     author_role: str
     recorded_at: str
     text: str
+    source_locator: Mapping[str, Any] | None = None
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> "Evidence":
         fields = ("evidence_id", "document_id", "author_role", "recorded_at", "text")
-        _validate_keys(data, required=fields, allowed=fields, object_name="evidence")
+        _validate_keys(data, required=fields, allowed=fields + ("source_locator",), object_name="evidence")
         recorded_at = _nonempty_string(data["recorded_at"], "evidence.recorded_at")
         _parse_iso_datetime(recorded_at, "evidence.recorded_at")
+        source_locator = data.get("source_locator")
+        if source_locator is not None:
+            source_locator = _mapping(source_locator, "evidence.source_locator")
+            locator_fields = (
+                "adapter_id", "adapter_version", "resource", "path", "row_number",
+                "source_record_id", "field_names",
+            )
+            _validate_keys(
+                source_locator,
+                required=locator_fields,
+                allowed=locator_fields + ("sheet",),
+                object_name="evidence.source_locator",
+            )
+            for name in ("adapter_id", "adapter_version", "resource", "path", "source_record_id"):
+                _nonempty_string(source_locator[name], f"evidence.source_locator.{name}")
+            locator_path = str(source_locator["path"])
+            if locator_path.startswith(("/", "~")) or ".." in locator_path.split("/") or "\\" in locator_path:
+                raise ValueError("evidence.source_locator.path must be a safe relative path")
+            row_number = source_locator["row_number"]
+            if isinstance(row_number, bool) or not isinstance(row_number, int) or row_number <= 0:
+                raise ValueError("evidence.source_locator.row_number must be a positive integer")
+            locator_fields = _unique_strings(source_locator["field_names"], "evidence.source_locator.field_names")
+            if not locator_fields:
+                raise ValueError("evidence.source_locator.field_names must not be empty")
+            if "sheet" in source_locator:
+                _nonempty_string(source_locator["sheet"], "evidence.source_locator.sheet")
         return cls(
             evidence_id=_nonempty_string(data["evidence_id"], "evidence.evidence_id"),
             document_id=_nonempty_string(data["document_id"], "evidence.document_id"),
             author_role=_nonempty_string(data["author_role"], "evidence.author_role"),
             recorded_at=recorded_at,
             text=_nonempty_string(data["text"], "evidence.text"),
+            source_locator=dict(source_locator) if source_locator is not None else None,
         )
 
 
@@ -269,6 +322,18 @@ class EncounterCase:
         if len(evidence_ids) != len(set(evidence_ids)):
             raise ValueError("evidence_id values must be unique")
         known = set(evidence_ids)
+        ingestion = self.provenance.ingestion
+        for evidence in self.evidence:
+            locator = evidence.source_locator
+            if locator is None:
+                continue
+            if ingestion is None:
+                raise ValueError(f"evidence {evidence.evidence_id} has a source locator without ingestion provenance")
+            if (
+                locator["adapter_id"] != ingestion["adapter_id"]
+                or locator["adapter_version"] != ingestion["adapter_version"]
+            ):
+                raise ValueError(f"evidence {evidence.evidence_id} source locator does not match ingestion provenance")
         assertion_ids: set[str] = set()
         ontology_entity_ids = {entity.entity_id for entity in self.ontology.entities}
         for assertion in self.assertions:
