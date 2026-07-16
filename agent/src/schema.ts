@@ -1,9 +1,12 @@
 import { z } from 'zod'
 
-export const SCHEMA_VERSION = '1.0.0'
+export const SCHEMA_VERSION = '2.0.0'
 
 const nonEmptyString = z.string().trim().min(1)
 const isoDateTime = z.iso.datetime({ offset: true })
+const uniqueNonEmptyStringArray = z.array(nonEmptyString).min(1).check(
+  z.refine(items => new Set(items).size === items.length, 'must not contain duplicates'),
+)
 
 export const sourceDocumentSchema = z.object({
   document_id: nonEmptyString,
@@ -45,8 +48,42 @@ export const evidenceSchema = z.object({
   text: nonEmptyString,
 }).strict()
 
+export const conceptCodeSchema = z.object({
+  system: nonEmptyString,
+  code: nonEmptyString,
+  display: nonEmptyString,
+}).strict()
+
+export const ontologyEntitySchema = z.object({
+  entity_id: nonEmptyString,
+  entity_type: nonEmptyString,
+  label: nonEmptyString,
+  concept: conceptCodeSchema.optional(),
+  properties: z.record(z.string(), z.unknown()),
+}).strict()
+
+export const ontologyRelationSchema = z.object({
+  relation_id: nonEmptyString,
+  predicate: nonEmptyString,
+  source_id: nonEmptyString,
+  target_id: nonEmptyString,
+  assertion_status: z.enum(['present', 'absent', 'uncertain', 'historical']),
+  documentation_status: z.enum(['explicit', 'inferred', 'conflicted', 'absent']),
+  confidence: z.number().min(0).max(1),
+  evidence_ids: z.array(nonEmptyString),
+  contradicting_evidence_ids: z.array(nonEmptyString).default([]),
+}).strict()
+
+export const ontologyGraphSchema = z.object({
+  ontology_id: nonEmptyString,
+  ontology_version: nonEmptyString,
+  entities: z.array(ontologyEntitySchema),
+  relations: z.array(ontologyRelationSchema),
+}).strict()
+
 export const assertionSchema = z.object({
   assertion_id: nonEmptyString,
+  subject_id: nonEmptyString,
   concept: nonEmptyString,
   status: z.enum(['present', 'absent', 'uncertain', 'historical']),
   documentation_status: z.enum(['explicit', 'inferred', 'conflicted', 'absent']),
@@ -58,10 +95,13 @@ export const assertionSchema = z.object({
 
 export const agentExtractionOutputSchema = z.object({
   evidence: z.array(evidenceSchema),
+  ontology: ontologyGraphSchema,
   assertions: z.array(assertionSchema),
 }).strict()
 
-export const agentExtractionSchema = agentExtractionOutputSchema.superRefine(validateLineage)
+export const agentExtractionSchema = agentExtractionOutputSchema.superRefine((value, context) => {
+  validateLineage(value, context, new Set(['root:patient', 'root:encounter', 'root:claim']))
+})
 
 export const provenanceSchema = z.object({
   framework: z.literal('mastra'),
@@ -80,30 +120,108 @@ export const encounterCaseSchema = z.object({
   discharged_at: isoDateTime,
   metadata: z.record(z.string(), z.unknown()).default({}),
   evidence: z.array(evidenceSchema),
+  ontology: ontologyGraphSchema,
   assertions: z.array(assertionSchema),
   claim: claimSchema,
   provenance: provenanceSchema,
-}).strict().superRefine(validateLineage)
+}).strict().superRefine((value, context) => validateLineage(value, context))
+
+export const ontologyDefinitionSchema = z.object({
+  ontology_id: nonEmptyString,
+  version: nonEmptyString,
+  status: z.enum(['draft', 'clinical-review-required', 'approved']),
+  purpose: nonEmptyString.optional(),
+  sources: z.array(z.record(z.string(), z.unknown())).optional(),
+  classes: z.array(z.object({
+    class_id: nonEmptyString,
+    label: nonEmptyString,
+    parent: nonEmptyString.optional(),
+    abstract: z.boolean().optional(),
+    value_set: nonEmptyString.optional(),
+  }).passthrough()).min(1),
+  relations: z.array(z.object({
+    relation_id: nonEmptyString,
+    domain: uniqueNonEmptyStringArray,
+    range: uniqueNonEmptyStringArray,
+    requires_evidence: z.boolean(),
+  }).passthrough()),
+  value_sets: z.record(z.string(), uniqueNonEmptyStringArray).optional(),
+}).passthrough()
 
 export type SourceBundle = z.infer<typeof sourceBundleSchema>
 export type AgentExtraction = z.infer<typeof agentExtractionSchema>
 export type EncounterCase = z.infer<typeof encounterCaseSchema>
+export type OntologyDefinition = z.infer<typeof ontologyDefinitionSchema>
+export type OntologyGraph = z.infer<typeof ontologyGraphSchema>
 
 function validateLineage(
-  value: { evidence: z.infer<typeof evidenceSchema>[]; assertions: z.infer<typeof assertionSchema>[] },
+  value: {
+    evidence: z.infer<typeof evidenceSchema>[]
+    ontology: z.infer<typeof ontologyGraphSchema>
+    assertions: z.infer<typeof assertionSchema>[]
+  },
   context: z.RefinementCtx,
+  allowedExternalEntityIds: ReadonlySet<string> = new Set(),
 ): void {
   const evidenceIds = new Set(value.evidence.map(item => item.evidence_id))
   const assertionIds = new Set<string>()
+  const entityIds = new Set<string>()
+  const relationIds = new Set<string>()
 
   if (evidenceIds.size !== value.evidence.length) {
     context.addIssue({ code: 'custom', path: ['evidence'], message: 'evidence_id values must be unique' })
+  }
+  for (const [index, entity] of value.ontology.entities.entries()) {
+    if (entityIds.has(entity.entity_id)) {
+      context.addIssue({ code: 'custom', path: ['ontology', 'entities', index, 'entity_id'], message: 'entity_id values must be unique' })
+    }
+    entityIds.add(entity.entity_id)
+  }
+  for (const [index, relation] of value.ontology.relations.entries()) {
+    if (relationIds.has(relation.relation_id)) {
+      context.addIssue({ code: 'custom', path: ['ontology', 'relations', index, 'relation_id'], message: 'relation_id values must be unique' })
+    }
+    relationIds.add(relation.relation_id)
+    if (new Set(relation.evidence_ids).size !== relation.evidence_ids.length) {
+      context.addIssue({ code: 'custom', path: ['ontology', 'relations', index, 'evidence_ids'], message: 'must not contain duplicates' })
+    }
+    if (new Set(relation.contradicting_evidence_ids).size !== relation.contradicting_evidence_ids.length) {
+      context.addIssue({ code: 'custom', path: ['ontology', 'relations', index, 'contradicting_evidence_ids'], message: 'must not contain duplicates' })
+    }
+    for (const [field, entityId] of [['source_id', relation.source_id], ['target_id', relation.target_id]] as const) {
+      if (!entityIds.has(entityId) && !allowedExternalEntityIds.has(entityId)) {
+        context.addIssue({ code: 'custom', path: ['ontology', 'relations', index, field], message: `unknown entity reference: ${entityId}` })
+      }
+    }
+    for (const evidenceId of relation.evidence_ids) {
+      if (!evidenceIds.has(evidenceId)) {
+        context.addIssue({ code: 'custom', path: ['ontology', 'relations', index, 'evidence_ids'], message: `unknown evidence reference: ${evidenceId}` })
+      }
+    }
+    const supporting = new Set(relation.evidence_ids)
+    for (const evidenceId of relation.contradicting_evidence_ids) {
+      if (!evidenceIds.has(evidenceId)) {
+        context.addIssue({ code: 'custom', path: ['ontology', 'relations', index, 'contradicting_evidence_ids'], message: `unknown evidence reference: ${evidenceId}` })
+      }
+      if (supporting.has(evidenceId)) {
+        context.addIssue({ code: 'custom', path: ['ontology', 'relations', index], message: `evidence cannot both support and contradict a relation: ${evidenceId}` })
+      }
+    }
   }
   for (const [index, assertion] of value.assertions.entries()) {
     if (assertionIds.has(assertion.assertion_id)) {
       context.addIssue({ code: 'custom', path: ['assertions', index, 'assertion_id'], message: 'assertion_id values must be unique' })
     }
     assertionIds.add(assertion.assertion_id)
+    if (new Set(assertion.evidence_ids).size !== assertion.evidence_ids.length) {
+      context.addIssue({ code: 'custom', path: ['assertions', index, 'evidence_ids'], message: 'must not contain duplicates' })
+    }
+    if (new Set(assertion.contradicting_evidence_ids).size !== assertion.contradicting_evidence_ids.length) {
+      context.addIssue({ code: 'custom', path: ['assertions', index, 'contradicting_evidence_ids'], message: 'must not contain duplicates' })
+    }
+    if (!entityIds.has(assertion.subject_id) && !allowedExternalEntityIds.has(assertion.subject_id)) {
+      context.addIssue({ code: 'custom', path: ['assertions', index, 'subject_id'], message: `unknown ontology subject: ${assertion.subject_id}` })
+    }
     const supporting = new Set(assertion.evidence_ids)
     for (const evidenceId of [...assertion.evidence_ids, ...assertion.contradicting_evidence_ids]) {
       if (!evidenceIds.has(evidenceId)) {
@@ -117,4 +235,3 @@ function validateLineage(
     }
   }
 }
-

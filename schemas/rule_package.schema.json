@@ -1,13 +1,23 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.org/schemas/revenue-integrity-rule-package-v1.json",
+  "$id": "https://example.org/schemas/revenue-integrity-rule-package-v2.json",
   "title": "Revenue Integrity Rule Package",
   "type": "object",
   "additionalProperties": false,
-  "required": ["package_id", "version", "status", "effective_from", "rules"],
+  "required": ["package_id", "version", "rule_domain", "ontology", "status", "effective_from", "rules"],
   "properties": {
     "package_id": {"type": "string", "minLength": 1},
     "version": {"type": "string", "minLength": 1},
+    "rule_domain": {"const": "revenue_integrity"},
+    "ontology": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ontology_id", "version"],
+      "properties": {
+        "ontology_id": {"type": "string", "minLength": 1},
+        "version": {"type": "string", "minLength": 1}
+      }
+    },
     "status": {"enum": ["approved", "approved-for-demo", "clinical-review-required"]},
     "effective_from": {"type": "string", "format": "date"},
     "rules": {

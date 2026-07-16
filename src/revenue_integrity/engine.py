@@ -8,10 +8,11 @@ from typing import Any, Mapping
 
 from .grouper import Grouper, GroupingResult
 from .models import Assertion, Claim, Disposition, EncounterCase, Finding
+from .ontology import OntologyEntity
 from .rules import Condition, ProposedChange, RulePackage
 
 
-ENGINE_VERSION = "0.2.0"
+ENGINE_VERSION = "0.3.0"
 
 
 class RuleEngine:
@@ -34,10 +35,20 @@ class RuleEngine:
             raise ValueError(f"rule package status {self.rule_package.status!r} is not executable")
 
     def evaluate(self, case: EncounterCase) -> list[Finding]:
+        if (
+            case.ontology.ontology_id != self.rule_package.ontology.ontology_id
+            or case.ontology.ontology_version != self.rule_package.ontology.version
+        ):
+            raise ValueError("rule package and encounter case use incompatible ontology definitions")
         baseline = self.grouper.group(case, case.claim)
         findings = self._baseline_findings(case, baseline)
+        entities = {entity.entity_id: entity for entity in case.ontology.entities}
         for rule in self.rule_package.rules:
-            matches = [assertion for assertion in case.assertions if self._matches_assertion(assertion, rule.when)]
+            matches = [
+                assertion
+                for assertion in case.assertions
+                if self._matches_assertion(assertion, entities[assertion.subject_id], rule.when)
+            ]
             if not matches or not self._case_conditions(case, rule.case_conditions):
                 continue
 
@@ -127,13 +138,30 @@ class RuleEngine:
         )]
 
     @staticmethod
-    def _matches_assertion(assertion: Assertion, condition: Condition) -> bool:
+    def _matches_assertion(
+        assertion: Assertion,
+        subject: OntologyEntity,
+        condition: Condition,
+    ) -> bool:
         payload = {
+            "assertion_id": assertion.assertion_id,
+            "subject_id": assertion.subject_id,
             "concept": assertion.concept,
             "status": assertion.status.value,
             "documentation_status": assertion.documentation_status.value,
             "confidence": assertion.confidence,
             "attributes": assertion.attributes,
+            "subject": {
+                "entity_id": subject.entity_id,
+                "entity_type": subject.entity_type,
+                "label": subject.label,
+                "concept": None if subject.concept is None else {
+                    "system": subject.concept.system,
+                    "code": subject.concept.code,
+                    "display": subject.concept.display,
+                },
+                "properties": subject.properties,
+            },
         }
         return evaluate_condition(payload, condition)
 

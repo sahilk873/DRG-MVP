@@ -66,6 +66,24 @@ class RuleEngineTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "not executable"):
             RuleEngine(rules, DeterministicDemoGrouper())
 
+    def test_incompatible_rule_ontology_is_rejected(self):
+        rules = load("rules/wound_care_v1.json")
+        rules["ontology"]["version"] = "different-version"
+        case = EncounterCase.from_dict(load("examples/case_pressure_injury.json"))
+        with self.assertRaisesRegex(ValueError, "incompatible ontology"):
+            RuleEngine(rules, DeterministicDemoGrouper()).evaluate(case)
+
+    def test_rules_can_target_generic_ontology_subject_fields(self):
+        rules = load("rules/wound_care_v1.json")
+        rules["rules"][0]["when"]["all"].append({
+            "field": "subject.entity_type",
+            "op": "eq",
+            "value": "PressureInjury",
+        })
+        case = EncounterCase.from_dict(load("examples/case_pressure_injury.json"))
+        findings = RuleEngine(rules, DeterministicDemoGrouper()).evaluate(case)
+        self.assertTrue(any(item.rule_id == "WC-PI-OMITTED-001" for item in findings))
+
     def test_finding_retains_contradicting_evidence(self):
         payload = load("examples/case_pressure_injury.json")
         payload["evidence"].append({

@@ -1,0 +1,63 @@
+{
+  "manifest_version": "1.0.0",
+  "source_id": "wound-care-clinical-rules-workbook",
+  "source_file": "Wound Care Clinical Rules Raw file(1).xlsx",
+  "sha256": "0477f8c56c76a540fcb13ae32b44bfd39c7cc011a7f380089f5bf6aebf86ba27",
+  "classification": "clinical_decision_support_source",
+  "execution_status": "not_executable",
+  "review_status": "clinical-review-required",
+  "inventory": {
+    "candidate_clinical_rules": 46,
+    "unique_condition_fields": 55,
+    "core_relationships": 19,
+    "source_ranges": {
+      "rules": "Sheet1!A1:A106",
+      "relationships": "Core Relationships!A1:D22"
+    }
+  },
+  "candidate_rule_categories": [
+    "infection",
+    "pressure_injury",
+    "diabetic_foot_ulcer",
+    "venous_ulcer",
+    "arterial_ulcer",
+    "tissue_and_debridement",
+    "periwound_and_moisture",
+    "tunneling_and_undermining",
+    "deterioration_and_escalation"
+  ],
+  "core_relationships": [
+    "hasWound",
+    "hasAssessment",
+    "hasFinding",
+    "hasRiskFactor",
+    "hasLocation",
+    "hasEtiology",
+    "hasStage",
+    "hasExudateType",
+    "hasExudateAmount",
+    "hasPeriwoundFinding",
+    "hasHealingTrend",
+    "comparedWith",
+    "triggersAlert",
+    "recommendsAction",
+    "requiresAuthorizationBy",
+    "hasUrgency",
+    "contraindicatedBy",
+    "supportedBy",
+    "overrides"
+  ],
+  "governance": {
+    "coding_authority": false,
+    "claim_mutation_authority": false,
+    "clinical_action_authority": false,
+    "requirements_before_execution": [
+      "clinical owner approval",
+      "terminology and threshold normalization",
+      "contraindication and authorization modeling",
+      "effective-date and version assignment",
+      "positive, negative, boundary, and conflict validation cases",
+      "separate runtime from revenue-integrity rules"
+    ]
+  }
+}

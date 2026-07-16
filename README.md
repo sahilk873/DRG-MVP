@@ -11,7 +11,7 @@ Clinical records benefit from semantic extraction. Claim grouping, rule evaluati
 ```mermaid
 flowchart TD
     A["Source documents"] --> B["Mastra extraction agent"]
-    B --> C["Grounding and schema gate"]
+    B --> C["Ontology, grounding and schema gate"]
     H["Immutable claim data"] --> C
     C --> D["Versioned rule engine"]
     D --> E["Licensed grouper boundary"]
@@ -23,6 +23,8 @@ The case model separates what happened clinically, what was explicitly documente
 ## Current capabilities
 
 - Canonical source-bundle and encounter-case JSON Schemas
+- Data-driven ontology definitions with inheritance and relation domain/range validation
+- Patient-specific graphs linking assertions to typed subjects and exact evidence
 - Mastra model routing through a configurable `provider/model` ID
 - Claims, charges, DRGs and payment fields excluded from model generation
 - Exact-excerpt grounding against immutable source documents
@@ -39,6 +41,7 @@ The case model separates what happened clinically, what was explicitly documente
 ```text
 agent/          Provider-agnostic Mastra extraction service
 schemas/        Source and encounter interoperability contracts
+knowledge/      Source manifests and non-executable governance records
 rules/          Versioned declarative rule packages
 examples/       Deidentified synthetic fixtures
 src/            Deterministic models, rules, grouper boundary and audit code
@@ -65,6 +68,8 @@ make demo
 
 The deterministic demo creates a review finding, supporting evidence, a proposed code change, demo regrouping and payment delta. It never modifies or submits a claim.
 
+The v0.3 release uses encounter-case schema `2.0.0`. Earlier case payloads intentionally fail closed until they add a versioned `ontology` graph and bind every assertion through `subject_id`. Revenue rule packages must also declare their compatible ontology ID and version.
+
 ## Run the Mastra extraction layer
 
 ```bash
@@ -74,34 +79,35 @@ cp .env.example .env
 # Select any Mastra-supported provider/model and set that provider's API key.
 MODEL_ID=anthropic/<model> npm run extract -- \
   ../examples/source_bundle_pressure_injury.json \
-  ../output/encounter-case.json
+  ../output/encounter-case.json \
+  ../src/revenue_integrity/data/wound_care_ontology_v1.json
 ```
 
 The application does not import a provider SDK. Changing `MODEL_ID` changes the extraction model without changing the ontology or deterministic engine.
 
 ## Trust boundary
 
-The agent receives encounter timing and source documents, but not the claim, charges, existing DRG or payment. It returns only evidence excerpts and clinical assertions. The orchestrator then:
+The agent receives encounter timing, an ontology contract and source documents, but not the claim, charges, existing DRG or payment. It returns evidence excerpts, a patient-specific ontology fragment and materialized clinical assertions. The orchestrator then:
 
 1. validates the source bundle;
 2. verifies every excerpt is an exact source substring;
 3. verifies the document ID, author role and timestamp are unchanged;
-4. validates evidence lineage and contradictions;
-5. attaches model and schema provenance outside the model;
-6. merges immutable encounter and claim fields;
-7. passes the completed case through an independent Python validator.
+4. validates entity types, relation domain/range, evidence requirements, lineage and contradictions;
+5. attaches structural patient, encounter and claim nodes outside the model;
+6. attaches model and schema provenance outside the model;
+7. merges immutable encounter and claim fields;
+8. passes the completed case through an independent Python validator.
 
 Invalid confidence values, unknown fields, duplicate IDs, naive timestamps, dangling citations, overlapping supporting/contradicting evidence and schema-version mismatches all fail closed. Any proposed claim change requires human review in this version.
 
 ## Extension path
 
-Additional Mastra agents can handle retrieval, terminology normalization, conflict detection, coding/CDI hypothesis generation, charge reconciliation, compliance criticism and reviewer-packet drafting. Each agent must use an explicit contract. Agent consensus is not authoritative evidence.
+New specialties are added as versioned ontology definitions and compatible rule packages rather than engine branches. Custom definitions can be injected into the same Python and TypeScript validators. Additional Mastra agents can handle retrieval, terminology normalization, conflict detection, coding/CDI hypothesis generation, charge reconciliation, compliance criticism and reviewer-packet drafting. Each agent must use an explicit contract. Agent consensus is not authoritative evidence.
 
 Before real use, the project still requires licensed terminology and grouping components, FHIR/HL7 and claim adapters, institution-approved rules, representative positive and negative validation data, model/retrieval evaluations, a reviewer application and the security controls in [SECURITY.md](SECURITY.md).
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for design decisions and [CONTRIBUTING.md](CONTRIBUTING.md) for change requirements.
+See [docs/ONTOLOGY.md](docs/ONTOLOGY.md) for the domain-extension contract, [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for trust-boundary decisions and [CONTRIBUTING.md](CONTRIBUTING.md) for change requirements.
 
 ## License
 
 Apache-2.0. Clinical rules, licensed terminologies, customer data and payer contracts must be distributed separately under their applicable terms.
-

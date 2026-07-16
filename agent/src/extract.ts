@@ -4,13 +4,16 @@ import { dirname, basename, join } from 'node:path'
 import { extractEncounterCase } from './agents/encounter-extractor.ts'
 
 async function main(): Promise<void> {
-  const [, , inputPath, outputPath] = process.argv
+  const [, , inputPath, outputPath, ontologyPath] = process.argv
   if (!inputPath || !outputPath) {
-    throw new Error('Usage: npm run extract -- <source-bundle.json> <encounter-case.json>')
+    throw new Error('Usage: npm run extract -- <source-bundle.json> <encounter-case.json> [ontology-definition.json]')
   }
 
   const sourceBundle = JSON.parse(await readFile(inputPath, 'utf8'))
-  const encounterCase = await extractEncounterCase(sourceBundle)
+  const ontologyDefinition = ontologyPath
+    ? JSON.parse(await readFile(ontologyPath, 'utf8'))
+    : undefined
+  const encounterCase = await extractEncounterCase(sourceBundle, { ontologyDefinition })
   await atomicWrite(outputPath, `${JSON.stringify(encounterCase, null, 2)}\n`)
   console.log(`Validated encounter case written to ${outputPath}`)
 }

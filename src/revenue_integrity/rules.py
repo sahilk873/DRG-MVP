@@ -144,9 +144,27 @@ class Rule:
 
 
 @dataclass(frozen=True, slots=True)
+class OntologyBinding:
+    ontology_id: str
+    version: str
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> "OntologyBinding":
+        if not isinstance(data, Mapping) or set(data) != {"ontology_id", "version"}:
+            raise ValueError("rule package ontology requires exactly ontology_id and version")
+        ontology_id = data["ontology_id"]
+        version = data["version"]
+        if not isinstance(ontology_id, str) or not ontology_id or not isinstance(version, str) or not version:
+            raise ValueError("rule package ontology values must be non-empty strings")
+        return cls(ontology_id, version)
+
+
+@dataclass(frozen=True, slots=True)
 class RulePackage:
     package_id: str
     version: str
+    rule_domain: str
+    ontology: OntologyBinding
     status: str
     effective_from: str
     rules: tuple[Rule, ...]
@@ -155,12 +173,16 @@ class RulePackage:
     def from_dict(cls, data: Mapping[str, Any]) -> "RulePackage":
         if not isinstance(data, Mapping):
             raise ValueError("rule package must be an object")
-        required = {"package_id", "version", "status", "effective_from", "rules"}
+        required = {
+            "package_id", "version", "rule_domain", "ontology", "status", "effective_from", "rules"
+        }
         if set(data) != required:
             raise ValueError(f"rule package requires exactly: {sorted(required)}")
-        for key in ("package_id", "version", "status", "effective_from"):
+        for key in ("package_id", "version", "rule_domain", "status", "effective_from"):
             if not isinstance(data[key], str) or not data[key]:
                 raise ValueError(f"rule package {key} must be a non-empty string")
+        if data["rule_domain"] != "revenue_integrity":
+            raise ValueError("this rule-package contract only permits the revenue_integrity domain")
         if data["status"] not in {"approved", "approved-for-demo", "clinical-review-required"}:
             raise ValueError("rule package status is invalid")
         if not isinstance(data["rules"], list):
@@ -173,4 +195,12 @@ class RulePackage:
             date.fromisoformat(data["effective_from"])
         except ValueError as exc:
             raise ValueError("rule package effective_from must be an ISO date") from exc
-        return cls(data["package_id"], data["version"], data["status"], data["effective_from"], rules)
+        return cls(
+            package_id=data["package_id"],
+            version=data["version"],
+            rule_domain=data["rule_domain"],
+            ontology=OntologyBinding.from_dict(data["ontology"]),
+            status=data["status"],
+            effective_from=data["effective_from"],
+            rules=rules,
+        )
