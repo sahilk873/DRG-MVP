@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Protocol
 
 from .models import EncounterCase
+from .ontology import OntologyDefinition
 
 
 class ExtractionAgent(Protocol):
@@ -11,7 +12,10 @@ class ExtractionAgent(Protocol):
     def extract(self, source_bundle: dict[str, Any]) -> dict[str, Any]: ...
 
 
-def accept_agent_output(payload: dict[str, Any]) -> EncounterCase:
+def accept_agent_output(
+    payload: dict[str, Any],
+    *,
+    ontology_definition: OntologyDefinition | None = None,
+) -> EncounterCase:
     """Trust boundary: reject malformed, ungrounded, or dangling agent assertions."""
-    return EncounterCase.from_dict(payload)
-
+    return EncounterCase.from_dict(payload, ontology_definition=ontology_definition)

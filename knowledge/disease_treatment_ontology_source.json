@@ -1,0 +1,14 @@
+{
+  "manifest_version": "1.0.0",
+  "source_id": "khoo-2011-disease-treatment-ontology",
+  "source_file": "Developing_an_Ontology_for_Encoding_Disease_Treatment.pdf",
+  "sha256": "2b21deb7e84be08a1a77e4c3df4aa0f93f05c9f030a41036c983b26b4aa7f77f",
+  "contributions": [
+    "separate ontology classes and patient-specific instances",
+    "model disease, treatment, condition, effect, and evidence",
+    "represent quantity, units, time, and modality explicitly",
+    "reuse external medical terminologies through mappings",
+    "evaluate coverage iteratively with training and held-out corpora"
+  ],
+  "adaptation": "The repository adapts a literature-oriented model to patient encounters by attaching exact source evidence, documentation status, temporality, extraction confidence, claim artifacts, and versioned governance."
+}

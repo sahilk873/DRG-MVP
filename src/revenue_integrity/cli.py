@@ -12,6 +12,7 @@ from .audit import audit_record
 from .engine import RuleEngine
 from .grouper import DeterministicDemoGrouper
 from .models import EncounterCase
+from .ontology import load_ontology_definition
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -20,6 +21,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("case", type=Path, help="Encounter-case JSON file")
     parser.add_argument("rules", type=Path, help="Rule-package JSON file")
+    parser.add_argument(
+        "--ontology-definition",
+        type=Path,
+        help="Custom ontology-definition JSON; packaged definitions are used by default",
+    )
     parser.add_argument("--output", type=Path, help="Write the audit record atomically to this path")
     parser.add_argument(
         "--allow-unapproved-rules",
@@ -39,7 +45,12 @@ def main(argv: list[str] | None = None) -> int:
     try:
         case_payload = _read_json_object(args.case)
         rules_payload = _read_json_object(args.rules)
-        case = EncounterCase.from_dict(case_payload)
+        ontology_definition = (
+            load_ontology_definition(args.ontology_definition)
+            if args.ontology_definition
+            else None
+        )
+        case = EncounterCase.from_dict(case_payload, ontology_definition=ontology_definition)
         findings = RuleEngine(
             rules_payload,
             DeterministicDemoGrouper(),
@@ -87,4 +98,3 @@ def _atomic_write(path: Path, content: str) -> None:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

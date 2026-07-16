@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "2.0.0",
   "case_id": "CASE-DEMO-001",
   "patient_id": "PATIENT-DEIDENTIFIED-001",
   "encounter_id": "ENC-DEMO-001",
@@ -15,9 +15,40 @@
       "text": "Stage 4 pressure injury of the sacral region with exposed muscle. Present on admission."
     }
   ],
+  "ontology": {
+    "ontology_id": "wound-care-encounter-ontology",
+    "ontology_version": "1.0.0-draft",
+    "entities": [
+      {"entity_id": "root:patient", "entity_type": "Patient", "label": "Patient", "properties": {}},
+      {"entity_id": "root:encounter", "entity_type": "Encounter", "label": "Encounter", "properties": {}},
+      {"entity_id": "root:claim", "entity_type": "Claim", "label": "Submitted claim", "properties": {}},
+      {
+        "entity_id": "wound:1",
+        "entity_type": "PressureInjury",
+        "label": "Sacral pressure injury",
+        "concept": {"system": "urn:kunal:wound-care", "code": "pressure-injury", "display": "Pressure injury"},
+        "properties": {"present_on_admission": true}
+      },
+      {"entity_id": "assessment:1", "entity_type": "WoundAssessment", "label": "Admission wound assessment", "properties": {}},
+      {"entity_id": "location:sacral", "entity_type": "AnatomicalLocation", "label": "Sacral region", "properties": {}},
+      {"entity_id": "stage:4", "entity_type": "PressureInjuryStage", "label": "Stage 4", "properties": {"value": "4"}},
+      {"entity_id": "finding:exposed-muscle", "entity_type": "ClinicalFinding", "label": "Exposed muscle", "properties": {}}
+    ],
+    "relations": [
+      {"relation_id": "rel:patient-encounter", "predicate": "hasEncounter", "source_id": "root:patient", "target_id": "root:encounter", "assertion_status": "present", "documentation_status": "explicit", "confidence": 1.0, "evidence_ids": []},
+      {"relation_id": "rel:encounter-claim", "predicate": "hasClaim", "source_id": "root:encounter", "target_id": "root:claim", "assertion_status": "present", "documentation_status": "explicit", "confidence": 1.0, "evidence_ids": []},
+      {"relation_id": "rel:patient-wound", "predicate": "hasWound", "source_id": "root:patient", "target_id": "wound:1", "assertion_status": "present", "documentation_status": "explicit", "confidence": 0.98, "evidence_ids": ["EV-001"]},
+      {"relation_id": "rel:wound-encounter", "predicate": "associatedWithEncounter", "source_id": "wound:1", "target_id": "root:encounter", "assertion_status": "present", "documentation_status": "explicit", "confidence": 1.0, "evidence_ids": []},
+      {"relation_id": "rel:wound-assessment", "predicate": "hasAssessment", "source_id": "wound:1", "target_id": "assessment:1", "assertion_status": "present", "documentation_status": "explicit", "confidence": 0.98, "evidence_ids": ["EV-001"]},
+      {"relation_id": "rel:wound-location", "predicate": "hasLocation", "source_id": "wound:1", "target_id": "location:sacral", "assertion_status": "present", "documentation_status": "explicit", "confidence": 0.98, "evidence_ids": ["EV-001"]},
+      {"relation_id": "rel:wound-stage", "predicate": "hasStage", "source_id": "wound:1", "target_id": "stage:4", "assertion_status": "present", "documentation_status": "explicit", "confidence": 0.98, "evidence_ids": ["EV-001"]},
+      {"relation_id": "rel:assessment-finding", "predicate": "hasFinding", "source_id": "assessment:1", "target_id": "finding:exposed-muscle", "assertion_status": "present", "documentation_status": "explicit", "confidence": 0.98, "evidence_ids": ["EV-001"]}
+    ]
+  },
   "assertions": [
     {
       "assertion_id": "AS-001",
+      "subject_id": "wound:1",
       "concept": "pressure_injury",
       "status": "present",
       "documentation_status": "explicit",
@@ -39,7 +70,6 @@
     "model_id": "synthetic/test-fixture",
     "agent_id": "encounter-evidence-extractor",
     "extracted_at": "2026-06-06T16:00:00Z",
-    "schema_version": "1.0.0"
+    "schema_version": "2.0.0"
   }
 }
-

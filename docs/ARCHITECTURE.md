@@ -6,6 +6,7 @@
 |---|---|---:|---:|
 | Source ingestion | FHIR, HL7, document and claim adapters | No | No |
 | Semantic extraction | Mastra agents; documents only | Yes | No |
+| Ontology validation | Versioned class/relation definitions | No | No |
 | Evidence validation | Zod plus Python domain validation | No | No |
 | Reconciliation | Versioned declarative rules | No | Candidate only |
 | Grouping and pricing | Licensed grouper/pricer adapter | No | Simulation |
@@ -22,6 +23,7 @@ No language-model output can directly execute code, recreate or change a claim, 
 
 Every clinical assertion contains:
 
+- a subject ID linking it to a typed ontology entity;
 - normalized concept and attributes;
 - present, absent, uncertain or historical status;
 - explicit, inferred, conflicted or absent documentation status;
@@ -30,6 +32,8 @@ Every clinical assertion contains:
 - contradicting evidence IDs.
 
 Evidence records preserve the source document, author role, time and minimal exact excerpt. The current boundary verifies each excerpt is a literal substring and source metadata is unchanged. In production, evidence IDs should point to access-controlled source objects rather than duplicating unrestricted PHI.
+
+Ontology relations carry the same assertion status, documentation status, confidence and evidence references. The definition validator enforces concrete classes, inheritance-aware relation domains and ranges, evidence requirements, unique IDs, and exact ontology-version compatibility. Revenue rule packages declare the ontology version against which they were reviewed.
 
 ## Human review policy
 

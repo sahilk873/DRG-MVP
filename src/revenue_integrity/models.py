@@ -5,7 +5,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any, Mapping
 
-SUPPORTED_SCHEMA_VERSION = "1.0.0"
+SUPPORTED_SCHEMA_VERSION = "2.0.0"
 
 
 class AssertionStatus(StrEnum):
@@ -76,6 +76,7 @@ class Evidence:
 @dataclass(frozen=True, slots=True)
 class Assertion:
     assertion_id: str
+    subject_id: str
     concept: str
     status: AssertionStatus
     documentation_status: DocumentationStatus
@@ -86,7 +87,10 @@ class Assertion:
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> "Assertion":
-        required = ("assertion_id", "concept", "status", "documentation_status", "confidence", "attributes", "evidence_ids")
+        required = (
+            "assertion_id", "subject_id", "concept", "status", "documentation_status",
+            "confidence", "attributes", "evidence_ids",
+        )
         allowed = required + ("contradicting_evidence_ids",)
         _validate_keys(data, required=required, allowed=allowed, object_name="assertion")
         confidence = _number(data["confidence"], "assertion.confidence")
@@ -97,6 +101,7 @@ class Assertion:
             raise ValueError("assertion.attributes must be an object")
         return cls(
             assertion_id=_nonempty_string(data["assertion_id"], "assertion.assertion_id"),
+            subject_id=_nonempty_string(data["subject_id"], "assertion.subject_id"),
             concept=_nonempty_string(data["concept"], "assertion.concept"),
             status=AssertionStatus(data["status"]),
             documentation_status=DocumentationStatus(data["documentation_status"]),
@@ -146,16 +151,22 @@ class EncounterCase:
     admitted_at: str
     discharged_at: str
     evidence: tuple[Evidence, ...]
+    ontology: "OntologyGraph"
     assertions: tuple[Assertion, ...]
     claim: Claim
     provenance: ExtractionProvenance
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
     @classmethod
-    def from_dict(cls, data: Mapping[str, Any]) -> "EncounterCase":
+    def from_dict(
+        cls,
+        data: Mapping[str, Any],
+        *,
+        ontology_definition: "OntologyDefinition | None" = None,
+    ) -> "EncounterCase":
         required = (
             "schema_version", "case_id", "patient_id", "encounter_id", "admitted_at", "discharged_at",
-            "evidence", "assertions", "claim", "provenance",
+            "evidence", "ontology", "assertions", "claim", "provenance",
         )
         allowed = required + ("metadata",)
         _validate_keys(data, required=required, allowed=allowed, object_name="case")
@@ -168,6 +179,9 @@ class EncounterCase:
         metadata = data.get("metadata", {})
         if not isinstance(metadata, Mapping):
             raise ValueError("case.metadata must be an object")
+        from .ontology import OntologyGraph, load_builtin_ontology
+
+        ontology = OntologyGraph.from_dict(_mapping(data["ontology"], "case.ontology"))
         case = cls(
             schema_version=_nonempty_string(data["schema_version"], "case.schema_version"),
             case_id=_nonempty_string(data["case_id"], "case.case_id"),
@@ -179,6 +193,7 @@ class EncounterCase:
                 Evidence.from_dict(_mapping(item, "case.evidence item"))
                 for item in _list(data["evidence"], "case.evidence")
             ),
+            ontology=ontology,
             assertions=tuple(
                 Assertion.from_dict(_mapping(item, "case.assertions item"))
                 for item in _list(data["assertions"], "case.assertions")
@@ -192,6 +207,11 @@ class EncounterCase:
         if case.provenance.schema_version != case.schema_version:
             raise ValueError("case and provenance schema versions must match")
         case.validate_lineage()
+        definition = ontology_definition or load_builtin_ontology(
+            case.ontology.ontology_id,
+            case.ontology.ontology_version,
+        )
+        definition.validate_graph(case.ontology, {item.evidence_id for item in case.evidence})
         return case
 
     def validate_lineage(self) -> None:
@@ -200,10 +220,15 @@ class EncounterCase:
             raise ValueError("evidence_id values must be unique")
         known = set(evidence_ids)
         assertion_ids: set[str] = set()
+        ontology_entity_ids = {entity.entity_id for entity in self.ontology.entities}
         for assertion in self.assertions:
             if assertion.assertion_id in assertion_ids:
                 raise ValueError("assertion_id values must be unique")
             assertion_ids.add(assertion.assertion_id)
+            if assertion.subject_id not in ontology_entity_ids:
+                raise ValueError(
+                    f"assertion {assertion.assertion_id} references unknown ontology subject {assertion.subject_id}"
+                )
             referenced = set(assertion.evidence_ids + assertion.contradicting_evidence_ids)
             if not assertion.evidence_ids:
                 raise ValueError(f"assertion {assertion.assertion_id} must cite supporting evidence")

@@ -1,0 +1,121 @@
+import json
+from pathlib import Path
+import unittest
+
+from revenue_integrity.models import EncounterCase
+from revenue_integrity.ontology import OntologyDefinition, load_builtin_ontology
+
+
+ROOT = Path(__file__).parents[1]
+
+
+def fixture():
+    return json.loads((ROOT / "examples/case_pressure_injury.json").read_text())
+
+
+class OntologyValidationTests(unittest.TestCase):
+    def test_builtin_definition_accepts_subclass_relations(self):
+        definition = load_builtin_ontology("wound-care-encounter-ontology", "1.0.0-draft")
+        case = EncounterCase.from_dict(fixture(), ontology_definition=definition)
+        self.assertTrue(definition.is_a("PressureInjury", "Wound"))
+        self.assertEqual(case.ontology.entities[3].entity_type, "PressureInjury")
+
+    def test_abstract_class_cannot_be_instantiated(self):
+        payload = fixture()
+        payload["ontology"]["entities"][3]["entity_type"] = "ClinicalEntity"
+        with self.assertRaisesRegex(ValueError, "abstract class"):
+            EncounterCase.from_dict(payload)
+
+    def test_relation_domain_violation_is_rejected(self):
+        payload = fixture()
+        relation = next(item for item in payload["ontology"]["relations"] if item["predicate"] == "hasStage")
+        relation["source_id"] = "root:patient"
+        with self.assertRaisesRegex(ValueError, "invalid source type"):
+            EncounterCase.from_dict(payload)
+
+    def test_entity_value_sets_are_enforced(self):
+        payload = fixture()
+        stage = next(item for item in payload["ontology"]["entities"] if item["entity_type"] == "PressureInjuryStage")
+        stage["properties"]["value"] = "9"
+        with self.assertRaisesRegex(ValueError, "not in value set"):
+            EncounterCase.from_dict(payload)
+
+    def test_evidence_required_by_relation_definition(self):
+        payload = fixture()
+        relation = next(item for item in payload["ontology"]["relations"] if item["predicate"] == "hasStage")
+        relation["evidence_ids"] = []
+        with self.assertRaisesRegex(ValueError, "requires evidence"):
+            EncounterCase.from_dict(payload)
+
+    def test_relation_evidence_cannot_support_and_contradict(self):
+        payload = fixture()
+        relation = next(item for item in payload["ontology"]["relations"] if item["predicate"] == "hasStage")
+        relation["contradicting_evidence_ids"] = ["EV-001"]
+        with self.assertRaisesRegex(ValueError, "both supporting and contradicting"):
+            EncounterCase.from_dict(payload)
+
+    def test_custom_definition_can_be_injected_without_engine_changes(self):
+        definition = OntologyDefinition.from_dict({
+            "ontology_id": "general-observation-ontology",
+            "version": "1",
+            "status": "draft",
+            "classes": [
+                {"class_id": "Entity", "label": "Entity", "abstract": True},
+                {"class_id": "Patient", "label": "Patient", "parent": "Entity"},
+                {"class_id": "Encounter", "label": "Encounter", "parent": "Entity"},
+                {"class_id": "Claim", "label": "Claim", "parent": "Entity"},
+                {"class_id": "Observation", "label": "Observation", "parent": "Entity"},
+            ],
+            "relations": [
+                {"relation_id": "hasEncounter", "domain": ["Patient"], "range": ["Encounter"], "requires_evidence": False},
+                {"relation_id": "hasClaim", "domain": ["Encounter"], "range": ["Claim"], "requires_evidence": False},
+                {"relation_id": "hasObservation", "domain": ["Encounter"], "range": ["Observation"], "requires_evidence": True},
+            ],
+        })
+        payload = fixture()
+        payload["ontology"] = {
+            "ontology_id": "general-observation-ontology",
+            "ontology_version": "1",
+            "entities": [
+                {"entity_id": "root:patient", "entity_type": "Patient", "label": "Patient", "properties": {}},
+                {"entity_id": "root:encounter", "entity_type": "Encounter", "label": "Encounter", "properties": {}},
+                {"entity_id": "root:claim", "entity_type": "Claim", "label": "Claim", "properties": {}},
+                {"entity_id": "observation:1", "entity_type": "Observation", "label": "Observation", "properties": {}},
+            ],
+            "relations": [
+                {"relation_id": "rel:patient-encounter", "predicate": "hasEncounter", "source_id": "root:patient", "target_id": "root:encounter", "assertion_status": "present", "documentation_status": "explicit", "confidence": 1, "evidence_ids": []},
+                {"relation_id": "rel:encounter-claim", "predicate": "hasClaim", "source_id": "root:encounter", "target_id": "root:claim", "assertion_status": "present", "documentation_status": "explicit", "confidence": 1, "evidence_ids": []},
+                {"relation_id": "rel:encounter-observation", "predicate": "hasObservation", "source_id": "root:encounter", "target_id": "observation:1", "assertion_status": "present", "documentation_status": "explicit", "confidence": 0.98, "evidence_ids": ["EV-001"]},
+            ],
+        }
+        payload["assertions"][0]["subject_id"] = "observation:1"
+        case = EncounterCase.from_dict(payload, ontology_definition=definition)
+        self.assertEqual(case.ontology.ontology_id, "general-observation-ontology")
+
+    def test_class_hierarchy_cycle_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "cycle"):
+            OntologyDefinition.from_dict({
+                "ontology_id": "cyclic",
+                "version": "1",
+                "status": "draft",
+                "classes": [
+                    {"class_id": "A", "label": "A", "parent": "B"},
+                    {"class_id": "B", "label": "B", "parent": "A"},
+                ],
+                "relations": [],
+            })
+
+    def test_definition_boolean_fields_fail_closed(self):
+        with self.assertRaisesRegex(ValueError, "must be a boolean"):
+            OntologyDefinition.from_dict({
+                "ontology_id": "invalid",
+                "version": "1",
+                "status": "draft",
+                "classes": [{"class_id": "Entity", "label": "Entity"}],
+                "relations": [{
+                    "relation_id": "relatedTo",
+                    "domain": ["Entity"],
+                    "range": ["Entity"],
+                    "requires_evidence": "false",
+                }],
+            })

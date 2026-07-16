@@ -15,7 +15,7 @@ def fixture():
 class EncounterCaseValidationTests(unittest.TestCase):
     def test_valid_fixture_parses(self):
         case = EncounterCase.from_dict(fixture())
-        self.assertEqual(case.schema_version, "1.0.0")
+        self.assertEqual(case.schema_version, "2.0.0")
 
     def test_unknown_fields_fail_closed(self):
         payload = fixture()
@@ -47,3 +47,8 @@ class EncounterCaseValidationTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "duplicates"):
             EncounterCase.from_dict(payload)
 
+    def test_assertion_subject_must_exist_in_ontology(self):
+        payload = fixture()
+        payload["assertions"][0]["subject_id"] = "missing:entity"
+        with self.assertRaisesRegex(ValueError, "unknown ontology subject"):
+            EncounterCase.from_dict(payload)

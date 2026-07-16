@@ -18,7 +18,8 @@ Run `make demo` to inspect the deterministic review packet. No model credential 
 - Keep agent output schema-constrained and evidence-grounded.
 - Do not allow generated code to enter the rule-execution path.
 - Add positive, negative, contradictory and malformed-input tests for rule changes.
+- Version ontology definitions and test class inheritance, relation domains/ranges and evidence requirements.
+- Keep clinical decision-support sources and rules separate from revenue-integrity packages.
 - Update schema versions for breaking contract changes.
 - Treat changes to rules, code mappings, grouping, pricing or review policy as governed changes requiring domain approval.
 - Preserve deterministic IDs, integer-cent monetary calculations and complete version provenance.
-
