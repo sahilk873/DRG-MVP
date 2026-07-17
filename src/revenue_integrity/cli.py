@@ -50,6 +50,8 @@ def build_parser() -> argparse.ArgumentParser:
         default="development",
         help="Label review-packet data without changing evaluation behavior",
     )
+    parser.add_argument("--tenant-id", help="Required tenant scope for review-packet output")
+    parser.add_argument("--workspace-id", help="Required workspace scope for review-packet output")
     return parser
 
 
@@ -71,12 +73,18 @@ def main(argv: list[str] | None = None) -> int:
             ontology_definition=ontology_definition,
         ).evaluate(case)
         if args.format == "review-packet":
+            if not args.tenant_id or not args.workspace_id:
+                raise ValueError("--tenant-id and --workspace-id are required for review-packet output")
+            if args.environment == "production":
+                raise ValueError("the CLI demo grouper is not approved for production")
             result = build_review_packet(
                 case=case,
                 case_payload=case_payload,
                 rule_package=rules_payload,
                 findings=findings,
                 environment=args.environment,
+                tenant_id=args.tenant_id,
+                workspace_id=args.workspace_id,
             )
         else:
             result = audit_record(

@@ -52,6 +52,13 @@ test('review packet schema accepts the engine-generated demo handoff', async () 
   assert.equal(fixture.controls.human_review_required, true)
 })
 
+test('review decision schema compiles', async () => {
+  const ajv = new Ajv2020({ allErrors: true, strict: true })
+  addFormats(ajv)
+  const schema = JSON.parse(await readFile('../schemas/review_decision.schema.json', 'utf8'))
+  assert.doesNotThrow(() => ajv.compile(schema))
+})
+
 test('encounter schema rejects an ontology digest with the wrong shape', async () => {
   const ajv = new Ajv2020({ allErrors: true, strict: true })
   addFormats(ajv)

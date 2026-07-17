@@ -1,14 +1,15 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.org/schemas/review-packet-v1.json",
+  "$id": "https://example.org/schemas/review-packet-v2.json",
   "title": "Revenue Integrity Human Review Packet",
   "type": "object",
   "additionalProperties": false,
-  "required": ["review_packet_schema_version", "packet_id", "environment", "case", "evidence", "ontology", "assertions", "findings", "controls", "provenance"],
+  "required": ["review_packet_schema_version", "packet_id", "environment", "tenant", "case", "evidence", "ontology", "assertions", "findings", "controls", "provenance"],
   "properties": {
-    "review_packet_schema_version": {"const": "1.0.0"},
+    "review_packet_schema_version": {"const": "2.0.0"},
     "packet_id": {"type": "string", "pattern": "^packet-[0-9a-f]{20}$"},
     "environment": {"enum": ["development", "synthetic", "validation", "production"]},
+    "tenant": {"$ref": "#/$defs/tenant"},
     "case": {"$ref": "#/$defs/caseSummary"},
     "evidence": {"type": "array", "items": {"$ref": "https://example.org/schemas/encounter-case-v2.json#/$defs/evidence"}},
     "ontology": {"$ref": "https://example.org/schemas/encounter-case-v2.json#/$defs/ontologyGraph"},
@@ -21,6 +22,14 @@
     "nonEmptyString": {"type": "string", "minLength": 1},
     "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "uniqueStringArray": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/nonEmptyString"}},
+    "tenant": {
+      "type": "object", "additionalProperties": false,
+      "required": ["tenant_id", "workspace_id"],
+      "properties": {
+        "tenant_id": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9._-]+$"},
+        "workspace_id": {"type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[A-Za-z0-9._-]+$"}
+      }
+    },
     "caseSummary": {
       "type": "object",
       "additionalProperties": false,

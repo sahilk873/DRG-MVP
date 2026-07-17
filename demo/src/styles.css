@@ -163,6 +163,9 @@ h1, h2, h3, strong { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacS
 .decision-banner span { flex: 1; }
 .decision-banner button { color: inherit; background: transparent; border: 0; font-weight: 700; cursor: pointer; }
 .decision-banner--dismissed { color: #7c5831; background: #f5eddd; border-color: #e8d9ba; }
+.decision-reasons { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: -10px 0 18px; padding: 12px; border: 1px solid #d8d5cc; background: #fff; box-shadow: 0 8px 24px rgba(33, 40, 37, .08); }
+.decision-reasons strong { margin-right: auto; font-size: 12px; }
+.decision-reasons button { padding: 7px 10px; border: 1px solid #d8d5cc; background: #f8f7f3; color: #29332f; font: inherit; cursor: pointer; }
 .case-summary-grid { display: grid; grid-template-columns: .7fr 1.22fr 1fr; gap: 16px; }
 .patient-summary, .finding-summary, .impact-summary { padding: 19px; background: rgba(255,255,255,.7); border: 1px solid var(--border); }
 .patient-identity { display: flex; align-items: center; gap: 10px; margin: 14px 0 17px; }

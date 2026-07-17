@@ -30,6 +30,8 @@ def build_fixture() -> str:
         rule_package=rules,
         findings=findings,
         environment="synthetic",
+        tenant_id="tenant-demo-alpha",
+        workspace_id="workspace-revenue-integrity",
         clock=lambda: datetime(2026, 7, 17, 12, tzinfo=UTC),
     )
     return json.dumps(packet, indent=2, ensure_ascii=False) + "\n"

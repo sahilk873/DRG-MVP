@@ -11,6 +11,7 @@ from .ontology import (
 )
 from .rules import RulePackage
 from .review_packet import REVIEW_PACKET_SCHEMA_VERSION, build_review_packet
+from .workflow import ReviewAction, ReviewerIdentity, ReviewerRole, ReviewWorkflowService
 
 __all__ = [
     "EncounterCase",
@@ -26,4 +27,8 @@ __all__ = [
     "load_ontology_definition",
     "REVIEW_PACKET_SCHEMA_VERSION",
     "build_review_packet",
+    "ReviewAction",
+    "ReviewerIdentity",
+    "ReviewerRole",
+    "ReviewWorkflowService",
 ]

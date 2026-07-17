@@ -1,5 +1,5 @@
 import { Check } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { GuidedTour } from './components/GuidedTour'
 import { Shell } from './components/Shell'
@@ -9,12 +9,21 @@ import { Ingestion } from './views/Ingestion'
 import { Overview } from './views/Overview'
 import { ReviewQueue } from './views/ReviewQueue'
 import type { ViewId } from './types'
+import { primaryReviewPacket } from './data'
+import { BrowserDemoWorkflowGateway, type ReviewerIdentity } from './workflow'
 
 export default function App() {
   const [view, setView] = useState<ViewId>('overview')
   const [tourOpen, setTourOpen] = useState(false)
   const [tourStep, setTourStep] = useState(0)
   const [toast, setToast] = useState('')
+  const workflowGateway = useMemo(() => new BrowserDemoWorkflowGateway(window.localStorage), [])
+  const reviewer = useMemo<ReviewerIdentity>(() => ({
+    actor_id: 'demo-coder-001',
+    tenant_id: primaryReviewPacket.tenant.tenant_id,
+    workspace_id: primaryReviewPacket.tenant.workspace_id,
+    roles: ['coder'],
+  }), [])
 
   const notify = useCallback((message: string) => setToast(message), [])
 
@@ -39,7 +48,7 @@ export default function App() {
     <Shell activeView={view} onNavigate={navigate} onStartTour={startTour}>
       {view === 'overview' && <Overview onNavigate={navigate} onStartTour={startTour} notify={notify} />}
       {view === 'queue' && <ReviewQueue onNavigate={navigate} notify={notify} />}
-      {view === 'case' && <CaseReview onNavigate={navigate} notify={notify} />}
+      {view === 'case' && <CaseReview onNavigate={navigate} notify={notify} workflowGateway={workflowGateway} reviewer={reviewer} />}
       {view === 'ingestion' && <Ingestion notify={notify} />}
       {view === 'governance' && <Governance />}
       {tourOpen && <GuidedTour step={tourStep} onClose={() => setTourOpen(false)} onStepChange={setTourStep} onNavigate={navigate} />}

@@ -29,13 +29,16 @@ class ReviewPacketTests(unittest.TestCase):
             case_payload=self.case_payload,
             rule_package=self.rules,
             findings=self.findings,
+            tenant_id="tenant-demo-alpha",
+            workspace_id="workspace-revenue-integrity",
             environment="synthetic",
             clock=lambda: datetime(2026, 7, 17, 12, tzinfo=UTC),
         )
 
     def test_packet_is_a_self_contained_human_review_handoff(self):
         packet = self.packet()
-        self.assertEqual(packet["review_packet_schema_version"], "1.0.0")
+        self.assertEqual(packet["review_packet_schema_version"], "2.0.0")
+        self.assertEqual(packet["tenant"]["tenant_id"], "tenant-demo-alpha")
         self.assertEqual(packet["environment"], "synthetic")
         self.assertEqual(packet["case"]["encounter_id"], self.case.encounter_id)
         self.assertEqual(packet["evidence"][0]["evidence_id"], "EV-001")
@@ -47,6 +50,15 @@ class ReviewPacketTests(unittest.TestCase):
     def test_packet_is_reproducible_with_a_fixed_clock(self):
         self.assertEqual(self.packet(), self.packet())
 
+    def test_packet_identity_is_tenant_scoped(self):
+        other = build_review_packet(
+            case=self.case, case_payload=self.case_payload, rule_package=self.rules,
+            findings=self.findings, tenant_id="tenant-other",
+            workspace_id="workspace-revenue-integrity", environment="synthetic",
+            clock=lambda: datetime(2026, 7, 17, 12, tzinfo=UTC),
+        )
+        self.assertNotEqual(other["packet_id"], self.packet()["packet_id"])
+
     def test_packet_rejects_invalid_environment_and_mismatched_payload(self):
         with self.assertRaisesRegex(ValueError, "unsupported review-packet environment"):
             build_review_packet(
@@ -55,6 +67,8 @@ class ReviewPacketTests(unittest.TestCase):
                 rule_package=self.rules,
                 findings=self.findings,
                 environment="customer-demo",
+                tenant_id="tenant-demo-alpha",
+                workspace_id="workspace-revenue-integrity",
             )
         changed = dict(self.case_payload)
         changed["case_id"] = "different-case"
@@ -64,4 +78,6 @@ class ReviewPacketTests(unittest.TestCase):
                 case_payload=changed,
                 rule_package=self.rules,
                 findings=self.findings,
+                tenant_id="tenant-demo-alpha",
+                workspace_id="workspace-revenue-integrity",
             )

@@ -98,11 +98,14 @@ Generate the same versioned handoff consumed by the pitch application:
 
 ```bash
 revenue-integrity examples/case_pressure_injury.json rules/wound_care_v1.json \
+  --tenant-id tenant-demo-alpha --workspace-id workspace-revenue-integrity \
   --format review-packet --environment synthetic \
   --output output/review-packet.json
 ```
 
-The v0.5 release uses encounter-case schema `2.0.0` and review-packet schema `1.0.0`. Earlier case payloads intentionally fail closed until they add a versioned, fingerprinted `ontology` graph and bind every assertion through `subject_id`. Revenue rule packages and bulk adapters must declare their compatible ontology ID, version and digest.
+The v0.6 release uses encounter-case schema `2.0.0`, tenant-scoped review-packet schema `2.0.0`, and review-decision schema `1.0.0`. Earlier payloads intentionally fail closed until they satisfy these trust boundaries. Revenue rule packages and bulk adapters must declare their compatible ontology ID, version and digest.
+
+Reviewer actions now pass through a role-aware workflow service and a tenant-scoped, hash-linked SQLite reference repository. The pitch UI injects a browser-only implementation of the same gateway; production injects its authenticated API. See [the governed review workflow](docs/REVIEW_WORKFLOW.md) and [production integration boundaries](docs/PRODUCTION_INTEGRATIONS.md).
 
 ## Run the bulk-ingestion demo
 

@@ -9,7 +9,7 @@ from .audit import audit_record
 from .models import EncounterCase, Finding
 
 
-REVIEW_PACKET_SCHEMA_VERSION = "1.0.0"
+REVIEW_PACKET_SCHEMA_VERSION = "2.0.0"
 REVIEW_PACKET_ENVIRONMENTS = frozenset({"development", "synthetic", "validation", "production"})
 
 
@@ -19,6 +19,8 @@ def build_review_packet(
     case_payload: Mapping[str, Any],
     rule_package: Mapping[str, Any],
     findings: Sequence[Finding],
+    tenant_id: str,
+    workspace_id: str,
     environment: str = "development",
     clock: Callable[[], datetime] | None = None,
     previous_record_hash: str | None = None,
@@ -31,6 +33,8 @@ def build_review_packet(
     """
     if environment not in REVIEW_PACKET_ENVIRONMENTS:
         raise ValueError(f"unsupported review-packet environment: {environment!r}")
+    tenant_id = _identifier(tenant_id, "tenant_id")
+    workspace_id = _identifier(workspace_id, "workspace_id")
     _verify_case_payload(case, case_payload)
 
     finding_payloads = [finding.to_dict() for finding in findings]
@@ -43,7 +47,7 @@ def build_review_packet(
     )
     packet_digest = hashlib.sha256(
         json.dumps(
-            {"case_id": case.case_id, "record_hash": audit["record_hash"]},
+            {"tenant_id": tenant_id, "workspace_id": workspace_id, "case_id": case.case_id, "record_hash": audit["record_hash"]},
             sort_keys=True,
             separators=(",", ":"),
         ).encode("utf-8")
@@ -53,6 +57,7 @@ def build_review_packet(
         "review_packet_schema_version": REVIEW_PACKET_SCHEMA_VERSION,
         "packet_id": f"packet-{packet_digest}",
         "environment": environment,
+        "tenant": {"tenant_id": tenant_id, "workspace_id": workspace_id},
         "case": {
             "schema_version": case.schema_version,
             "case_id": case.case_id,
@@ -107,3 +112,11 @@ def _verify_case_payload(case: EncounterCase, payload: Mapping[str, Any]) -> Non
     for name in ("claim", "evidence", "ontology", "assertions"):
         if name not in payload:
             raise ValueError(f"review-packet case payload missing {name}")
+
+
+def _identifier(value: str, name: str) -> str:
+    if not isinstance(value, str) or not value.strip() or len(value) > 128:
+        raise ValueError(f"{name} must be a non-empty string of at most 128 characters")
+    if any(character not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_." for character in value):
+        raise ValueError(f"{name} contains unsupported characters")
+    return value

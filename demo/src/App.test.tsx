@@ -1,14 +1,17 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 
 import App from './App'
 import { primaryReviewPacket } from './data'
 import { parseReviewPacket } from './review-packet'
 
 describe('pitch demo', () => {
+  beforeEach(() => window.localStorage.clear())
+
   it('loads the engine-generated packet with human review controls intact', () => {
-    expect(primaryReviewPacket.review_packet_schema_version).toBe('1.0.0')
+    expect(primaryReviewPacket.review_packet_schema_version).toBe('2.0.0')
+    expect(primaryReviewPacket.tenant.tenant_id).toBe('tenant-demo-alpha')
     expect(primaryReviewPacket.controls.claim_mutation_allowed).toBe(false)
     expect(primaryReviewPacket.controls.human_review_required).toBe(true)
     expect(primaryReviewPacket.findings[0]?.estimated_impact_cents).toBe(842000)
@@ -48,5 +51,7 @@ describe('pitch demo', () => {
     expect(screen.getByText('$18,420')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /route to coding review/i }))
     expect(screen.getByText(/assigned to coding review/i)).toBeInTheDocument()
+    await user.click(screen.getByRole('tab', { name: /audit trail/i }))
+    expect(screen.getAllByText(/qualified coding review required/i)).not.toHaveLength(0)
   })
 })

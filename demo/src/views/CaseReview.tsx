@@ -16,30 +16,60 @@ import {
   UserRoundCheck,
   X,
 } from 'lucide-react'
-import { useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 
 import { opportunities, primaryReviewPacket } from '../data'
 import type { ReviewPacket } from '../review-packet'
 import type { ViewId } from '../types'
+import type { ReviewerIdentity, ReviewWorkflowGateway, ReviewDecision } from '../workflow'
 
 interface CaseReviewProps {
   onNavigate: (view: ViewId) => void
   notify: (message: string) => void
+  workflowGateway: ReviewWorkflowGateway
+  reviewer: ReviewerIdentity
 }
 
 type CaseTab = 'evidence' | 'graph' | 'claim' | 'audit'
 
-export function CaseReview({ onNavigate, notify }: CaseReviewProps) {
+export function CaseReview({ onNavigate, notify, workflowGateway, reviewer }: CaseReviewProps) {
   const opportunity = opportunities[0]
   const packet = primaryReviewPacket
   const finding = packet.findings[0]
   if (!opportunity || !finding) throw new Error('The demo case requires an engine-generated finding')
   const [tab, setTab] = useState<CaseTab>('evidence')
-  const [decision, setDecision] = useState<'open' | 'routed' | 'dismissed'>('open')
+  const [decisions, setDecisions] = useState<ReviewDecision[]>([])
+  const [dismissOpen, setDismissOpen] = useState(false)
+  const latestDecision = decisions.at(-1)
+  const decision = latestDecision?.action === 'dismiss_with_reason' ? 'dismissed' : latestDecision ? 'routed' : 'open'
 
-  const route = () => {
-    setDecision('routed')
-    notify('Opportunity routed to coding review · audit entry created')
+  useEffect(() => {
+    let active = true
+    workflowGateway.list(packet, reviewer)
+      .then(stored => { if (active) setDecisions(stored) })
+      .catch(error => notify(error instanceof Error ? error.message : 'Unable to load review decisions'))
+    return () => { active = false }
+  }, [workflowGateway, reviewer, packet, notify])
+
+  const route = async () => {
+    try {
+      const created = await workflowGateway.submit(packet, reviewer, finding.finding_id, 'route_to_coding', 'Qualified coding review required before any claim-affecting action')
+      setDecisions(current => [...current, created])
+      notify('Opportunity routed to coding review · governed decision recorded')
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Unable to record review decision')
+    }
+  }
+
+  const dismiss = async (reason: string) => {
+    try {
+      const created = await workflowGateway.submit(packet, reviewer, finding.finding_id, 'dismiss_with_reason', reason)
+      setDecisions(current => [...current, created])
+      setDismissOpen(false)
+      notify('Opportunity dismissed · governed decision recorded')
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Unable to record review decision')
+    }
   }
 
   return (
@@ -56,10 +86,7 @@ export function CaseReview({ onNavigate, notify }: CaseReviewProps) {
           <p>{opportunity.encounterId} · {opportunity.facility} · Discharged {formatDate(packet.case.discharged_at)}</p>
         </div>
         <div className="case-header__actions">
-          <button className="button button--quiet" onClick={() => {
-            setDecision('dismissed')
-            notify('Opportunity dismissed · reason required before final save')
-          }} type="button"><X size={16} /> Dismiss</button>
+          <button className="button button--quiet" onClick={() => setDismissOpen(true)} type="button"><X size={16} /> Dismiss</button>
           <button className="button button--primary" onClick={route} disabled={decision === 'routed'} type="button">
             <UserRoundCheck size={17} /> {decision === 'routed' ? 'Routed to coding' : 'Route to coding review'}
           </button>
@@ -70,9 +97,17 @@ export function CaseReview({ onNavigate, notify }: CaseReviewProps) {
         <div className={`decision-banner decision-banner--${decision}`}>
           {decision === 'routed' ? <Check size={17} /> : <Info size={17} />}
           <span>{decision === 'routed' ? 'This opportunity is now assigned to Coding Review.' : 'Dismissal started. Select a governed reason to complete the decision.'}</span>
-          <button onClick={() => setDecision('open')} type="button">Undo</button>
+          <span>{latestDecision ? ` ${latestDecision.actor_id} · ${latestDecision.reason}` : ''}</span>
         </div>
       )}
+
+      {dismissOpen && <div className="decision-reasons" role="dialog" aria-label="Dismissal reason">
+        <strong>Select a governed dismissal reason</strong>
+        <button type="button" onClick={() => dismiss('Documentation does not support the proposed change')}>Documentation does not support change</button>
+        <button type="button" onClick={() => dismiss('Duplicate opportunity')}>Duplicate opportunity</button>
+        <button type="button" onClick={() => dismiss('Already corrected in the source workflow')}>Already corrected</button>
+        <button type="button" onClick={() => setDismissOpen(false)}>Cancel</button>
+      </div>}
 
       <section className="case-summary-grid">
         <div className="patient-summary">
@@ -134,7 +169,7 @@ export function CaseReview({ onNavigate, notify }: CaseReviewProps) {
           {tab === 'evidence' && <EvidenceTab packet={packet} />}
           {tab === 'graph' && <GraphTab packet={packet} />}
           {tab === 'claim' && <ClaimTab packet={packet} />}
-          {tab === 'audit' && <AuditTab packet={packet} />}
+          {tab === 'audit' && <AuditTab packet={packet} decisions={decisions} />}
         </div>
       </section>
     </>
@@ -257,10 +292,11 @@ function ClaimLine({ code, label, added = false }: { code: string; label: string
   return <div className={added ? 'claim-line claim-line--added' : 'claim-line'}><code>{code}</code><span>{label}</span>{added && <b>Proposed</b>}</div>
 }
 
-function AuditTab({ packet }: { packet: ReviewPacket }) {
+function AuditTab({ packet, decisions }: { packet: ReviewPacket; decisions: ReviewDecision[] }) {
   const finding = packet.findings[0]
   if (!finding) return null
   const events = [
+    ...decisions.map(decision => [formatTime(decision.decided_at), decision.actor_id, `${decision.action.replaceAll('_', ' ')} · ${decision.reason}`]),
     ['12:00', 'Rule engine', `${finding.rule_id} materialized from validated assertion.`],
     ['12:00', 'Grouper boundary', `${finding.grouper_version} completed baseline and candidate simulation.`],
     ['11:59', 'Ontology validator', `${packet.ontology.entities.length} entities, ${packet.ontology.relations.length} relations, and evidence lineage accepted.`],
@@ -283,6 +319,10 @@ function formatDate(value: string) {
 
 function formatDateTime(value: string) {
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' }).format(new Date(value))
+}
+
+function formatTime(value: string) {
+  return new Intl.DateTimeFormat('en-US', { hour: '2-digit', minute: '2-digit' }).format(new Date(value))
 }
 
 function formatCurrency(cents: number) {

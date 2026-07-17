@@ -4,15 +4,15 @@ The review packet is the stable boundary between encounter evaluation and any re
 
 ## Contract contents
 
-`schemas/review_packet.schema.json` defines version `1.0.0` with:
+`schemas/review_packet.schema.json` defines version `2.0.0` with:
 
-- encounter identity and the immutable claim snapshot used for evaluation;
+- tenant/workspace scope, encounter identity, and the immutable claim snapshot used for evaluation;
 - the evidence, assertions, and patient-specific ontology graph seen by the rules;
 - deterministic findings with rule, grouper, DRG, impact, and evidence lineage;
 - explicit controls forbidding claim mutation and enumerating reviewer actions;
 - hashes for the case, rule package, and audit record plus all executable component versions.
 
-The packet is a reviewer input, not an outbound claim transaction. A separate decision service must authenticate the reviewer, enforce tenant and role policy, record a reason, and append the decision to immutable audit storage. The reference UI only models those interactions locally.
+The packet is a reviewer input, not an outbound claim transaction. The governed decision service enforces tenant and role policy, requires a reason, and appends the decision to a hash-linked repository. Deployment authentication and the production database remain infrastructure responsibilities. The reference UI implements the same gateway contract locally for synthetic demonstrations.
 
 ## Generate a packet
 
@@ -20,6 +20,7 @@ The packet is a reviewer input, not an outbound claim transaction. A separate de
 revenue-integrity \
   examples/case_pressure_injury.json \
   rules/wound_care_v1.json \
+  --tenant-id tenant-demo-alpha --workspace-id workspace-revenue-integrity \
   --format review-packet \
   --environment synthetic \
   --output output/review-packet.json

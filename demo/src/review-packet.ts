@@ -43,9 +43,13 @@ const findingSchema = z.object({
 }).strict()
 
 export const reviewPacketSchema = z.object({
-  review_packet_schema_version: z.literal('1.0.0'),
+  review_packet_schema_version: z.literal('2.0.0'),
   packet_id: z.string().regex(/^packet-[0-9a-f]{20}$/),
   environment: z.enum(['development', 'synthetic', 'validation', 'production']),
+  tenant: z.object({
+    tenant_id: z.string().min(1).max(128).regex(/^[A-Za-z0-9._-]+$/),
+    workspace_id: z.string().min(1).max(128).regex(/^[A-Za-z0-9._-]+$/),
+  }).strict(),
   case: z.object({
     schema_version: z.literal('2.0.0'),
     case_id: nonEmpty,
