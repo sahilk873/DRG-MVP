@@ -13,17 +13,21 @@ import { useEffect, useState } from 'react'
 
 import { automationSummary, humanOpportunities } from '../data'
 import type { ViewId } from '../types'
+import type { ReviewDecision } from '../workflow'
 
 interface OverviewProps {
   onNavigate: (view: ViewId) => void
   onStartTour: () => void
   notify: (message: string) => void
+  decisions: ReviewDecision[]
 }
 
 const scanStages = ['Profiling source bundle', 'Reconstructing encounters', 'Validating evidence', 'Running governed rules']
 
-export function Overview({ onNavigate, onStartTour, notify }: OverviewProps) {
+export function Overview({ onNavigate, onStartTour, notify, decisions }: OverviewProps) {
   const [scanStage, setScanStage] = useState(-1)
+  const resolvedFindingIds = new Set(decisions.map(decision => decision.finding_id))
+  const pendingHumanOpportunities = humanOpportunities.filter(item => !resolvedFindingIds.has(item.id))
 
   useEffect(() => {
     if (scanStage < 0 || scanStage >= scanStages.length) return
@@ -32,8 +36,8 @@ export function Overview({ onNavigate, onStartTour, notify }: OverviewProps) {
   }, [scanStage])
 
   useEffect(() => {
-    if (scanStage === scanStages.length) notify(`Scan complete · ${automationSummary.human} of ${automationSummary.scanned} encounters need a person`)
-  }, [notify, scanStage])
+    if (scanStage === scanStages.length) notify(`Scan complete · ${pendingHumanOpportunities.length} of ${automationSummary.scanned} encounters still need a person`)
+  }, [notify, pendingHumanOpportunities.length, scanStage])
 
   const scanning = scanStage >= 0 && scanStage < scanStages.length
 
@@ -106,7 +110,7 @@ export function Overview({ onNavigate, onStartTour, notify }: OverviewProps) {
       </section>
 
       <section className="metric-strip" aria-label="Synthetic demonstration metrics">
-        <Metric icon={CircleDollarSign} label="Need a person" value={String(automationSummary.human)} change={`of ${automationSummary.scanned} encounters`} />
+        <Metric icon={CircleDollarSign} label="Need a person" value={String(pendingHumanOpportunities.length)} change={`of ${automationSummary.scanned} encounters remaining`} />
         <Metric icon={ShieldCheck} label="Evidence coverage" value="100%" change="no uncited candidates" />
         <Metric icon={Clock3} label="No-touch rate" value={`${automationSummary.noTouchRate}%`} change="clean or handled automatically" />
         <Metric icon={TrendingUp} label="Precision target" value=">95%" change="prospective validation gate" />
@@ -122,7 +126,7 @@ export function Overview({ onNavigate, onStartTour, notify }: OverviewProps) {
             <button className="text-button" onClick={() => onNavigate('queue')} type="button">View all <ArrowRight size={15} /></button>
           </div>
           <div className="compact-table">
-            {humanOpportunities.map(item => (
+            {pendingHumanOpportunities.map(item => (
               <button className="compact-row" key={item.id} onClick={() => onNavigate('case')} type="button">
                 <span className={`priority-line priority-line--${item.priority.toLowerCase()}`} />
                 <div className="compact-row__main">
@@ -137,6 +141,7 @@ export function Overview({ onNavigate, onStartTour, notify }: OverviewProps) {
                 <ArrowRight size={16} />
               </button>
             ))}
+            {!pendingHumanOpportunities.length && <div className="empty-state"><Check size={24} /><strong>Human queue cleared</strong><span>All synthetic exceptions have a governed decision.</span></div>}
           </div>
         </div>
 

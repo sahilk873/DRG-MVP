@@ -363,6 +363,7 @@ mark { color: inherit; background: #dcece5; }
 .disposition-chip--auto_routed { color: var(--teal); background: var(--teal-soft); }
 .disposition-chip--suppressed { color: var(--muted); background: #e9ebe7; }
 .disposition-chip--needs_enrichment { color: #705a94; background: #eee9f6; }
+.disposition-chip--completed { color: #315b45; background: #dfeee5; }
 .consolidation-badge { margin-top: 4px; color: var(--teal) !important; font-weight: 700; }
 .status-label--needs-docs { color: #8a6629; }
 .status-label--needs-docs i { background: #b9872f; }

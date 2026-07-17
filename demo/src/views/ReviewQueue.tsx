@@ -3,10 +3,13 @@ import { useMemo, useState } from 'react'
 
 import { humanOpportunities, opportunities } from '../data'
 import type { AutomationOutcome, ViewId } from '../types'
+import type { ReviewDecision } from '../workflow'
 
 interface ReviewQueueProps {
   onNavigate: (view: ViewId) => void
   notify: (message: string) => void
+  decisions: ReviewDecision[]
+  onReset: () => void
 }
 
 const filters: Array<{ label: string; value: 'all' | AutomationOutcome }> = [
@@ -16,15 +19,18 @@ const filters: Array<{ label: string; value: 'all' | AutomationOutcome }> = [
   { label: 'All', value: 'all' },
 ]
 
-export function ReviewQueue({ onNavigate, notify }: ReviewQueueProps) {
+export function ReviewQueue({ onNavigate, notify, decisions, onReset }: ReviewQueueProps) {
   const [filter, setFilter] = useState<(typeof filters)[number]['value']>('human_exception')
   const [query, setQuery] = useState('')
+  const resolvedFindingIds = useMemo(() => new Set(decisions.map(decision => decision.finding_id)), [decisions])
+  const pendingHumanCount = humanOpportunities.filter(item => !resolvedFindingIds.has(item.id)).length
 
   const visible = useMemo(() => opportunities.filter(item => {
-    const matchesFilter = filter === 'all' || item.automationOutcome === filter
+    const resolved = resolvedFindingIds.has(item.id)
+    const matchesFilter = filter === 'all' || (item.automationOutcome === filter && !(filter === 'human_exception' && resolved))
     const searchable = `${item.title} ${item.encounterId} ${item.serviceLine} ${item.type}`.toLowerCase()
     return matchesFilter && searchable.includes(query.toLowerCase())
-  }), [filter, query])
+  }), [filter, query, resolvedFindingIds])
 
   const exportQueue = () => {
     const header = ['opportunity_id', 'encounter_id', 'workflow', 'status', 'confidence', 'illustrative_impact']
@@ -44,10 +50,11 @@ export function ReviewQueue({ onNavigate, notify }: ReviewQueueProps) {
       <header className="page-header">
         <div>
           <span className="eyebrow">Residual exception layer</span>
-          <h1>{humanOpportunities.length} decisions need a person</h1>
+          <h1>{pendingHumanCount} decisions need a person</h1>
           <p>Everything else was cleared, consolidated, enriched, or routed automatically by deterministic policy.</p>
         </div>
         <div className="page-header__actions">
+          {decisions.length > 0 && <button className="button button--quiet" onClick={onReset} type="button">Reset demo</button>}
           <button className="button button--quiet" onClick={exportQueue} type="button"><Download size={16} /> Export queue</button>
           <button className="button button--dark" onClick={() => onNavigate('case')} type="button">Review top case <ArrowRight size={16} /></button>
         </div>
@@ -58,7 +65,7 @@ export function ReviewQueue({ onNavigate, notify }: ReviewQueueProps) {
           {filters.map(item => (
             <button className={filter === item.value ? 'filter-tab filter-tab--active' : 'filter-tab'} onClick={() => setFilter(item.value)} key={item.value} type="button">
               {item.label}
-              {item.value === 'human_exception' && <span>{humanOpportunities.length}</span>}
+              {item.value === 'human_exception' && <span>{pendingHumanCount}</span>}
             </button>
           ))}
         </div>
@@ -91,10 +98,10 @@ export function ReviewQueue({ onNavigate, notify }: ReviewQueueProps) {
                 {item.relatedFindingIds.length > 0 && <small className="consolidation-badge">{item.relatedFindingIds.length + 1} findings consolidated</small>}
               </div>
             </div>
-            <div><Disposition outcome={item.automationOutcome} tier={item.automationTier} /></div>
+            <div><Disposition outcome={item.automationOutcome} tier={item.automationTier} completed={resolvedFindingIds.has(item.id)} /></div>
             <div className="confidence-cell"><strong>{item.confidence}%</strong><span><i style={{ width: `${item.confidence}%` }} /></span></div>
             <div className="impact-cell"><strong>{item.impact == null ? 'Unavailable' : item.impact ? `$${item.impact.toLocaleString()}` : '—'}</strong><small>{item.currentDrg !== item.simulatedDrg ? `${item.currentDrg} → ${item.simulatedDrg}` : 'No DRG change'}</small></div>
-            <div className="age-cell">{item.estimatedReviewSeconds ? `~${item.estimatedReviewSeconds} sec` : 'No review'}</div>
+            <div className="age-cell">{resolvedFindingIds.has(item.id) ? 'Done' : item.estimatedReviewSeconds ? `~${item.estimatedReviewSeconds} sec` : 'No review'}</div>
             {item.packetBacked ? <button className="row-open" onClick={() => onNavigate('case')} type="button" aria-label={`Open ${item.title}`}><ArrowRight size={17} /></button> : <span className="row-arrow"><ArrowRight size={17} /></span>}
           </div>
         )) : (
@@ -106,10 +113,10 @@ export function ReviewQueue({ onNavigate, notify }: ReviewQueueProps) {
   )
 }
 
-function Disposition({ outcome, tier }: { outcome: AutomationOutcome; tier: string }) {
+function Disposition({ outcome, tier, completed }: { outcome: AutomationOutcome; tier: string; completed: boolean }) {
   const labels: Record<AutomationOutcome, string> = {
     human_exception: tier === 'quick_confirm' ? 'Quick confirmation' : 'Focused review',
     auto_routed: 'Auto-routed', suppressed: 'Suppressed', needs_enrichment: 'Enriching',
   }
-  return <span className={`disposition-chip disposition-chip--${outcome}`}>{labels[outcome]}</span>
+  return <span className={`disposition-chip disposition-chip--${completed ? 'completed' : outcome}`}>{completed ? 'Completed' : labels[outcome]}</span>
 }

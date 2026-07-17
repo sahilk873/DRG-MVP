@@ -13,12 +13,12 @@ import {
 import { useState, type ReactNode } from 'react'
 
 import type { ViewId } from '../types'
-import { humanOpportunities } from '../data'
 
 interface ShellProps {
   activeView: ViewId
   onNavigate: (view: ViewId) => void
   onStartTour: () => void
+  reviewCount: number
   children: ReactNode
 }
 
@@ -30,7 +30,7 @@ const navItems: Array<{ id: ViewId; label: string; icon: typeof Activity }> = [
   { id: 'governance', label: 'Governance', icon: ShieldCheck },
 ]
 
-export function Shell({ activeView, onNavigate, onStartTour, children }: ShellProps) {
+export function Shell({ activeView, onNavigate, onStartTour, reviewCount, children }: ShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const navigate = (view: ViewId) => {
@@ -63,7 +63,7 @@ export function Shell({ activeView, onNavigate, onStartTour, children }: ShellPr
             >
               <Icon size={18} strokeWidth={1.8} />
               <span>{label}</span>
-              {id === 'queue' && <b className="nav-count">{humanOpportunities.length}</b>}
+              {id === 'queue' && <b className="nav-count">{reviewCount}</b>}
             </button>
           ))}
         </nav>

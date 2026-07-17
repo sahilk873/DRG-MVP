@@ -9,14 +9,15 @@ import { Ingestion } from './views/Ingestion'
 import { Overview } from './views/Overview'
 import { ReviewQueue } from './views/ReviewQueue'
 import type { ViewId } from './types'
-import { primaryAutomationPlan, primaryReviewPacket } from './data'
-import { BrowserDemoWorkflowGateway, type ReviewerIdentity } from './workflow'
+import { humanOpportunities, primaryAutomationPlan, primaryReviewPacket } from './data'
+import { BrowserDemoWorkflowGateway, type ReviewDecision, type ReviewerIdentity } from './workflow'
 
 export default function App() {
   const [view, setView] = useState<ViewId>('overview')
   const [tourOpen, setTourOpen] = useState(false)
   const [tourStep, setTourStep] = useState(0)
   const [toast, setToast] = useState('')
+  const [decisions, setDecisions] = useState<ReviewDecision[]>([])
   const workflowGateway = useMemo(() => new BrowserDemoWorkflowGateway(window.localStorage), [])
   const reviewer = useMemo<ReviewerIdentity>(() => ({
     actor_id: 'demo-coder-001',
@@ -26,6 +27,14 @@ export default function App() {
   }), [])
 
   const notify = useCallback((message: string) => setToast(message), [])
+
+  useEffect(() => {
+    let active = true
+    workflowGateway.list(primaryReviewPacket, reviewer)
+      .then(stored => { if (active) setDecisions(stored) })
+      .catch(error => notify(error instanceof Error ? error.message : 'Unable to load review decisions'))
+    return () => { active = false }
+  }, [workflowGateway, reviewer, notify])
 
   useEffect(() => {
     if (!toast) return
@@ -44,11 +53,28 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  const recordDecision = useCallback((created: ReviewDecision) => {
+    setDecisions(current => current.some(item => item.decision_id === created.decision_id) ? current : [...current, created])
+  }, [])
+
+  const resetDemoWorkflow = useCallback(async () => {
+    try {
+      await workflowGateway.reset(primaryReviewPacket, reviewer)
+      setDecisions([])
+      notify('Synthetic review workflow reset')
+    } catch (error) {
+      notify(error instanceof Error ? error.message : 'Unable to reset the demo workflow')
+    }
+  }, [workflowGateway, reviewer, notify])
+
+  const resolvedFindingIds = new Set(decisions.map(decision => decision.finding_id))
+  const pendingReviewCount = humanOpportunities.filter(item => !resolvedFindingIds.has(item.id)).length
+
   return (
-    <Shell activeView={view} onNavigate={navigate} onStartTour={startTour}>
-      {view === 'overview' && <Overview onNavigate={navigate} onStartTour={startTour} notify={notify} />}
-      {view === 'queue' && <ReviewQueue onNavigate={navigate} notify={notify} />}
-      {view === 'case' && <CaseReview onNavigate={navigate} notify={notify} workflowGateway={workflowGateway} reviewer={reviewer} automationPlan={primaryAutomationPlan} />}
+    <Shell activeView={view} onNavigate={navigate} onStartTour={startTour} reviewCount={pendingReviewCount}>
+      {view === 'overview' && <Overview onNavigate={navigate} onStartTour={startTour} notify={notify} decisions={decisions} />}
+      {view === 'queue' && <ReviewQueue onNavigate={navigate} notify={notify} decisions={decisions} onReset={resetDemoWorkflow} />}
+      {view === 'case' && <CaseReview onNavigate={navigate} notify={notify} workflowGateway={workflowGateway} reviewer={reviewer} automationPlan={primaryAutomationPlan} decisions={decisions} onDecisionRecorded={recordDecision} />}
       {view === 'ingestion' && <Ingestion notify={notify} />}
       {view === 'governance' && <Governance />}
       {tourOpen && <GuidedTour step={tourStep} onClose={() => setTourOpen(false)} onStepChange={setTourStep} onNavigate={navigate} />}

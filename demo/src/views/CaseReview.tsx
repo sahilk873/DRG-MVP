@@ -16,7 +16,7 @@ import {
   UserRoundCheck,
   X,
 } from 'lucide-react'
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
+import { useState, type CSSProperties, type ReactNode } from 'react'
 
 import { opportunities, primaryReviewPacket } from '../data'
 import type { ReviewPacket } from '../review-packet'
@@ -30,11 +30,13 @@ interface CaseReviewProps {
   workflowGateway: ReviewWorkflowGateway
   reviewer: ReviewerIdentity
   automationPlan: AutomationPlan
+  decisions: ReviewDecision[]
+  onDecisionRecorded: (decision: ReviewDecision) => void
 }
 
 type CaseTab = 'evidence' | 'graph' | 'claim' | 'audit'
 
-export function CaseReview({ onNavigate, notify, workflowGateway, reviewer, automationPlan }: CaseReviewProps) {
+export function CaseReview({ onNavigate, notify, workflowGateway, reviewer, automationPlan, decisions, onDecisionRecorded }: CaseReviewProps) {
   const opportunity = opportunities[0]
   const packet = primaryReviewPacket
   const finding = packet.findings[0]
@@ -42,20 +44,11 @@ export function CaseReview({ onNavigate, notify, workflowGateway, reviewer, auto
   const automation = automationPlan.findings.find(item => item.finding_id === finding.finding_id)
   if (!automation) throw new Error('The demo case requires a deterministic automation decision')
   const [tab, setTab] = useState<CaseTab>('evidence')
-  const [decisions, setDecisions] = useState<ReviewDecision[]>([])
   const [dismissOpen, setDismissOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const latestDecision = decisions.find(item => item.finding_id === finding.finding_id)
   const decision = latestDecision?.action === 'dismiss_with_reason' ? 'dismissed' : latestDecision ? 'routed' : 'open'
   const recommendedAction = automation.recommended_action
-
-  useEffect(() => {
-    let active = true
-    workflowGateway.list(packet, reviewer)
-      .then(stored => { if (active) setDecisions(stored) })
-      .catch(error => notify(error instanceof Error ? error.message : 'Unable to load review decisions'))
-    return () => { active = false }
-  }, [workflowGateway, reviewer, packet, notify])
 
   const route = async () => {
     if (!recommendedAction) {
@@ -70,7 +63,7 @@ export function CaseReview({ onNavigate, notify, workflowGateway, reviewer, auto
         'Evidence and POA confirmed; send recommendation to the governed coding workflow',
         `${packet.packet_id}:${finding.finding_id}:${recommendedAction.replaceAll('_', '-')}`,
       )
-      setDecisions(current => current.some(item => item.decision_id === created.decision_id) ? current : [...current, created])
+      onDecisionRecorded(created)
       notify(`Opportunity routed to ${automation.queue} review · governed decision recorded`)
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Unable to record review decision')
@@ -86,7 +79,7 @@ export function CaseReview({ onNavigate, notify, workflowGateway, reviewer, auto
         packet, automationPlan, reviewer, finding.finding_id, 'dismiss_with_reason', reasonCode, reason,
         `${packet.packet_id}:${finding.finding_id}:dismiss:${reason.toLowerCase().replaceAll(' ', '-')}`,
       )
-      setDecisions(current => current.some(item => item.decision_id === created.decision_id) ? current : [...current, created])
+      onDecisionRecorded(created)
       setDismissOpen(false)
       notify('Opportunity dismissed · governed decision recorded')
     } catch (error) {

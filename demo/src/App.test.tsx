@@ -53,5 +53,28 @@ describe('pitch demo', () => {
     expect(screen.getByText(/recommendation sent to the governed coding workflow/i)).toBeInTheDocument()
     await user.click(screen.getByRole('tab', { name: /audit trail/i }))
     expect(screen.getAllByText(/evidence and poa confirmed/i)).not.toHaveLength(0)
+
+    await user.click(within(screen.getByRole('navigation', { name: /product navigation/i })).getByRole('button', { name: /review queue/i }))
+    expect(screen.getByRole('heading', { name: /2 decisions need a person/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /open stage 4 sacral pressure injury absent from claim/i })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /all/i }))
+    expect(screen.getByText('Completed')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /reset demo/i }))
+    expect(screen.getByRole('heading', { name: /3 decisions need a person/i })).toBeInTheDocument()
+  })
+
+  it('restores governed decisions from browser persistence across remounts', async () => {
+    const user = userEvent.setup()
+    const first = render(<App />)
+
+    await user.click(within(screen.getByRole('navigation', { name: /product navigation/i })).getByRole('button', { name: /review queue/i }))
+    await user.click(screen.getByRole('button', { name: /review top case/i }))
+    await user.click(screen.getByRole('button', { name: /confirm & send to coding/i }))
+    first.unmount()
+
+    render(<App />)
+    await user.click(within(screen.getByRole('navigation', { name: /product navigation/i })).getByRole('button', { name: /review queue/i }))
+    expect(await screen.findByRole('heading', { name: /2 decisions need a person/i })).toBeInTheDocument()
   })
 })

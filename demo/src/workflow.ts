@@ -107,6 +107,12 @@ export class BrowserDemoWorkflowGateway implements ReviewWorkflowGateway {
     }
   }
 
+  /** Presenter-only reset for the synthetic browser demo. Not part of the production gateway contract. */
+  async reset(packet: ReviewPacket, actor: ReviewerIdentity): Promise<void> {
+    this.authorizeScope(packet, actor)
+    this.storage.removeItem(this.key(packet))
+  }
+
   private authorize(packet: ReviewPacket, actor: ReviewerIdentity, action: ReviewAction) {
     this.authorizeScope(packet, actor)
     if (!packet.controls.permitted_actions.includes(action)) throw new Error('Action is not permitted by the review packet')
