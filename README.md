@@ -48,6 +48,7 @@ The case model separates what happened clinically, what was explicitly documente
 
 ```text
 agent/          Provider-agnostic Mastra extraction service
+demo/           Interactive React pitch and reviewer workflow
 schemas/        Source and encounter interoperability contracts
 knowledge/      Source manifests and non-executable governance records
 rules/          Versioned declarative rule packages
@@ -73,6 +74,18 @@ cd ..
 make verify
 make demo
 ```
+
+## Run the interactive pitch demo
+
+The `demo/` application turns the architecture into a three-minute product story: adaptive provider onboarding, evidence-linked encounter reconstruction, deterministic claim comparison, and focused human review.
+
+```bash
+cd demo
+npm ci
+npm run dev
+```
+
+Choose **Start guided demo** for the five-step narrative, or explore the command center, review queue, encounter graph, onboarding, and governance views directly. All cases, facilities, metrics, DRGs, and payment amounts shown in this interface are synthetic or illustrative. See [demo/README.md](demo/README.md) for the pitch script and demo boundaries.
 
 The deterministic demo creates a review finding, supporting evidence, a proposed code change, demo regrouping and payment delta. It never modifies or submits a claim.
 
