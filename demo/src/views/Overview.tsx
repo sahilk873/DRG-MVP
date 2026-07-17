@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
-import { opportunities } from '../data'
+import { automationSummary, humanOpportunities } from '../data'
 import type { ViewId } from '../types'
 
 interface OverviewProps {
@@ -32,7 +32,7 @@ export function Overview({ onNavigate, onStartTour, notify }: OverviewProps) {
   }, [scanStage])
 
   useEffect(() => {
-    if (scanStage === scanStages.length) notify(`Scan complete · ${opportunities.length} review candidates identified`)
+    if (scanStage === scanStages.length) notify(`Scan complete · ${automationSummary.human} of ${automationSummary.scanned} encounters need a person`)
   }, [notify, scanStage])
 
   const scanning = scanStage >= 0 && scanStage < scanStages.length
@@ -44,7 +44,7 @@ export function Overview({ onNavigate, onStartTour, notify }: OverviewProps) {
           <span className="eyebrow">Clinical revenue intelligence</span>
           <h1>Find the truth between the chart and the claim.</h1>
           <p>
-            Encounter reconstructs each inpatient stay from notes, structured EHR data, claims, and charges—then routes only defensible discrepancies to your team.
+            Encounter reconstructs each inpatient stay, handles routine discrepancies automatically, and asks your team only the few questions that require qualified judgment.
           </p>
           <div className="hero-actions">
             <button className="button button--primary" onClick={() => onNavigate('queue')} type="button">
@@ -57,7 +57,7 @@ export function Overview({ onNavigate, onStartTour, notify }: OverviewProps) {
           <div className="trust-row">
             <span><Check size={14} /> Evidence linked</span>
             <span><Check size={14} /> Deterministic grouping</span>
-            <span><Check size={14} /> Human authorized</span>
+            <span><Check size={14} /> {automationSummary.noTouchRate}% no-touch</span>
           </div>
         </div>
 
@@ -106,9 +106,9 @@ export function Overview({ onNavigate, onStartTour, notify }: OverviewProps) {
       </section>
 
       <section className="metric-strip" aria-label="Synthetic demonstration metrics">
-        <Metric icon={CircleDollarSign} label="Reviewable impact" value="$14.1K" change="across 5 demo cases" />
+        <Metric icon={CircleDollarSign} label="Need a person" value={String(automationSummary.human)} change={`of ${automationSummary.scanned} encounters`} />
         <Metric icon={ShieldCheck} label="Evidence coverage" value="100%" change="no uncited candidates" />
-        <Metric icon={Clock3} label="Median review time" value="4m 18s" change="illustrative workflow" />
+        <Metric icon={Clock3} label="No-touch rate" value={`${automationSummary.noTouchRate}%`} change="clean or handled automatically" />
         <Metric icon={TrendingUp} label="Precision target" value=">95%" change="prospective validation gate" />
       </section>
 
@@ -122,7 +122,7 @@ export function Overview({ onNavigate, onStartTour, notify }: OverviewProps) {
             <button className="text-button" onClick={() => onNavigate('queue')} type="button">View all <ArrowRight size={15} /></button>
           </div>
           <div className="compact-table">
-            {opportunities.slice(0, 3).map(item => (
+            {humanOpportunities.map(item => (
               <button className="compact-row" key={item.id} onClick={() => onNavigate('case')} type="button">
                 <span className={`priority-line priority-line--${item.priority.toLowerCase()}`} />
                 <div className="compact-row__main">
@@ -131,7 +131,7 @@ export function Overview({ onNavigate, onStartTour, notify }: OverviewProps) {
                   <small>{item.encounterId} · {item.evidenceCount} evidence items</small>
                 </div>
                 <div className="compact-row__impact">
-                  <strong>{item.impact ? `$${item.impact.toLocaleString()}` : 'Query'}</strong>
+                  <strong>{item.impact == null ? 'Unavailable' : item.impact ? `$${item.impact.toLocaleString()}` : 'Query'}</strong>
                   <small>{item.confidence}% confidence</small>
                 </div>
                 <ArrowRight size={16} />

@@ -6,7 +6,7 @@ import unittest
 from revenue_integrity.engine import RuleEngine
 from revenue_integrity.grouper import DeterministicDemoGrouper
 from revenue_integrity.models import EncounterCase
-from revenue_integrity.review_packet import build_review_packet
+from revenue_integrity.review_packet import build_review_packet, verify_review_packet_hash
 
 
 ROOT = Path(__file__).parents[1]
@@ -37,7 +37,7 @@ class ReviewPacketTests(unittest.TestCase):
 
     def test_packet_is_a_self_contained_human_review_handoff(self):
         packet = self.packet()
-        self.assertEqual(packet["review_packet_schema_version"], "2.0.0")
+        self.assertEqual(packet["review_packet_schema_version"], "3.0.0")
         self.assertEqual(packet["tenant"]["tenant_id"], "tenant-demo-alpha")
         self.assertEqual(packet["environment"], "synthetic")
         self.assertEqual(packet["case"]["encounter_id"], self.case.encounter_id)
@@ -46,6 +46,21 @@ class ReviewPacketTests(unittest.TestCase):
         self.assertFalse(packet["controls"]["claim_mutation_allowed"])
         self.assertTrue(packet["controls"]["human_review_required"])
         self.assertIn("route_to_coding", packet["controls"]["permitted_actions"])
+        self.assertTrue(verify_review_packet_hash(packet))
+
+    def test_packet_hash_covers_scope_controls_and_findings(self):
+        packet = self.packet()
+        for path, value in (
+            (("tenant", "tenant_id"), "tenant-other"),
+            (("controls", "claim_mutation_allowed"), True),
+            (("findings", 0, "confidence"), 0.01),
+        ):
+            tampered = json.loads(json.dumps(packet))
+            target = tampered
+            for segment in path[:-1]:
+                target = target[segment]
+            target[path[-1]] = value
+            self.assertFalse(verify_review_packet_hash(tampered))
 
     def test_packet_is_reproducible_with_a_fixed_clock(self):
         self.assertEqual(self.packet(), self.packet())

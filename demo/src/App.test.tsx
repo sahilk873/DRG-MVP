@@ -10,7 +10,7 @@ describe('pitch demo', () => {
   beforeEach(() => window.localStorage.clear())
 
   it('loads the engine-generated packet with human review controls intact', () => {
-    expect(primaryReviewPacket.review_packet_schema_version).toBe('2.0.0')
+    expect(primaryReviewPacket.review_packet_schema_version).toBe('3.0.0')
     expect(primaryReviewPacket.tenant.tenant_id).toBe('tenant-demo-alpha')
     expect(primaryReviewPacket.controls.claim_mutation_allowed).toBe(false)
     expect(primaryReviewPacket.controls.human_review_required).toBe(true)
@@ -41,7 +41,7 @@ describe('pitch demo', () => {
     render(<App />)
 
     await user.click(within(screen.getByRole('navigation', { name: /product navigation/i })).getByRole('button', { name: /review queue/i }))
-    expect(screen.getByRole('heading', { name: 'Review queue' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /3 decisions need a person/i })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /review top case/i }))
     expect(screen.getByRole('heading', { name: /stage 4 sacral pressure injury absent from claim/i })).toBeInTheDocument()
     expect(screen.getByText('DEMO-290')).toBeInTheDocument()
@@ -49,9 +49,9 @@ describe('pitch demo', () => {
     await user.click(screen.getByRole('tab', { name: /claim comparison/i }))
     expect(screen.getByText('L89.154')).toBeInTheDocument()
     expect(screen.getByText('$18,420')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /route to coding review/i }))
-    expect(screen.getByText(/assigned to coding review/i)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /confirm & send to coding/i }))
+    expect(screen.getByText(/recommendation sent to the governed coding workflow/i)).toBeInTheDocument()
     await user.click(screen.getByRole('tab', { name: /audit trail/i }))
-    expect(screen.getAllByText(/qualified coding review required/i)).not.toHaveLength(0)
+    expect(screen.getAllByText(/evidence and poa confirmed/i)).not.toHaveLength(0)
   })
 })

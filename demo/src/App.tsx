@@ -9,7 +9,7 @@ import { Ingestion } from './views/Ingestion'
 import { Overview } from './views/Overview'
 import { ReviewQueue } from './views/ReviewQueue'
 import type { ViewId } from './types'
-import { primaryReviewPacket } from './data'
+import { primaryAutomationPlan, primaryReviewPacket } from './data'
 import { BrowserDemoWorkflowGateway, type ReviewerIdentity } from './workflow'
 
 export default function App() {
@@ -48,7 +48,7 @@ export default function App() {
     <Shell activeView={view} onNavigate={navigate} onStartTour={startTour}>
       {view === 'overview' && <Overview onNavigate={navigate} onStartTour={startTour} notify={notify} />}
       {view === 'queue' && <ReviewQueue onNavigate={navigate} notify={notify} />}
-      {view === 'case' && <CaseReview onNavigate={navigate} notify={notify} workflowGateway={workflowGateway} reviewer={reviewer} />}
+      {view === 'case' && <CaseReview onNavigate={navigate} notify={notify} workflowGateway={workflowGateway} reviewer={reviewer} automationPlan={primaryAutomationPlan} />}
       {view === 'ingestion' && <Ingestion notify={notify} />}
       {view === 'governance' && <Governance />}
       {tourOpen && <GuidedTour step={tourStep} onClose={() => setTourOpen(false)} onStepChange={setTourStep} onNavigate={navigate} />}

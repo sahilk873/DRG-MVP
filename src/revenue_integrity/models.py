@@ -42,6 +42,12 @@ class Disposition(StrEnum):
     NO_OPPORTUNITY = "no_opportunity"
 
 
+class ImpactStatus(StrEnum):
+    ESTIMATED = "estimated"
+    NOT_APPLICABLE = "not_applicable"
+    UNAVAILABLE = "unavailable"
+
+
 @dataclass(frozen=True, slots=True)
 class CaseValidationLimits:
     max_evidence_items: int = 2_000
@@ -372,8 +378,20 @@ class Finding:
     submitted_drg: str | None
     current_drg: str
     simulated_drg: str
-    estimated_impact_cents: int
+    estimated_impact_cents: int | None
+    impact_status: ImpactStatus
     grouper_version: str
+
+    def __post_init__(self) -> None:
+        if self.impact_status is ImpactStatus.ESTIMATED and self.estimated_impact_cents is None:
+            raise ValueError("estimated finding impact requires estimated_impact_cents")
+        if self.impact_status in {ImpactStatus.UNAVAILABLE, ImpactStatus.NOT_APPLICABLE} and self.estimated_impact_cents is not None:
+            raise ValueError("unavailable or not-applicable finding impact cannot carry an estimate")
+        if self.estimated_impact_cents is not None and (
+            isinstance(self.estimated_impact_cents, bool)
+            or not isinstance(self.estimated_impact_cents, int)
+        ):
+            raise ValueError("finding estimated_impact_cents must be an integer or null")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -395,6 +413,7 @@ class Finding:
             "current_drg": self.current_drg,
             "simulated_drg": self.simulated_drg,
             "estimated_impact_cents": self.estimated_impact_cents,
+            "impact_status": self.impact_status.value,
             "grouper_version": self.grouper_version,
         }
 

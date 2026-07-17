@@ -59,6 +59,17 @@ test('review decision schema compiles', async () => {
   assert.doesNotThrow(() => ajv.compile(schema))
 })
 
+test('automation plan schema accepts the deterministic demo plan', async () => {
+  const ajv = new Ajv2020({ allErrors: true, strict: true })
+  addFormats(ajv)
+  const schema = JSON.parse(await readFile('../schemas/automation_plan.schema.json', 'utf8'))
+  const fixture = JSON.parse(await readFile('../demo/src/fixtures/automation-plan.json', 'utf8'))
+  const validate = ajv.compile(schema)
+  assert.equal(validate(fixture), true, ajv.errorsText(validate.errors))
+  assert.equal(fixture.review_now_finding_ids.length, 1)
+  assert.equal(fixture.findings[0].tier, 'quick_confirm')
+})
+
 test('encounter schema rejects an ontology digest with the wrong shape', async () => {
   const ajv = new Ajv2020({ allErrors: true, strict: true })
   addFormats(ajv)

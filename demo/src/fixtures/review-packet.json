@@ -1,6 +1,6 @@
 {
-  "review_packet_schema_version": "2.0.0",
-  "packet_id": "packet-57fc64d0f9e62b858cc2",
+  "review_packet_schema_version": "3.0.0",
+  "packet_id": "packet-bda4081df44c0b455d21",
   "environment": "synthetic",
   "tenant": {
     "tenant_id": "tenant-demo-alpha",
@@ -244,6 +244,7 @@
       "current_drg": "DEMO-292",
       "simulated_drg": "DEMO-290",
       "estimated_impact_cents": 842000,
+      "impact_status": "estimated",
       "grouper_version": "demo-0.2-not-for-billing"
     }
   ],
@@ -260,15 +261,16 @@
   },
   "provenance": {
     "evaluated_at": "2026-07-17T12:00:00Z",
-    "engine_version": "0.6.0",
+    "engine_version": "0.7.0",
     "case_hash": "597606f4a7fe59c03670d0ba2270d388fd17ae77dacff43d7fdda289ac82c0e1",
     "rule_package_id": "wound-care-revenue-integrity",
     "rule_package_version": "2.0.0-demo",
     "rule_package_hash": "cf1daa386c80a22e7b9a606178fc3b3b0b784425ed95ad05e6160b11938cd4c7",
-    "record_hash": "e64d5230b53625385c35d4a2ecdfcd591bb16d67ff894b1200c30c1133a84d05",
+    "record_hash": "2efaf5eea3cc572fba88ff765f30d209848eee5d089cb3aaaa1c796b8b5d8f79",
     "previous_record_hash": null,
     "grouper_versions": [
       "demo-0.2-not-for-billing"
-    ]
+    ],
+    "packet_hash": "ead6ca273de9d35b9d484ca182835edf5eb067f661662bff0054ced715a0d19f"
   }
 }

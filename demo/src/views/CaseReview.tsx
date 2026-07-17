@@ -22,26 +22,32 @@ import { opportunities, primaryReviewPacket } from '../data'
 import type { ReviewPacket } from '../review-packet'
 import type { ViewId } from '../types'
 import type { ReviewerIdentity, ReviewWorkflowGateway, ReviewDecision } from '../workflow'
+import type { AutomationPlan } from '../automation-plan'
 
 interface CaseReviewProps {
   onNavigate: (view: ViewId) => void
   notify: (message: string) => void
   workflowGateway: ReviewWorkflowGateway
   reviewer: ReviewerIdentity
+  automationPlan: AutomationPlan
 }
 
 type CaseTab = 'evidence' | 'graph' | 'claim' | 'audit'
 
-export function CaseReview({ onNavigate, notify, workflowGateway, reviewer }: CaseReviewProps) {
+export function CaseReview({ onNavigate, notify, workflowGateway, reviewer, automationPlan }: CaseReviewProps) {
   const opportunity = opportunities[0]
   const packet = primaryReviewPacket
   const finding = packet.findings[0]
   if (!opportunity || !finding) throw new Error('The demo case requires an engine-generated finding')
+  const automation = automationPlan.findings.find(item => item.finding_id === finding.finding_id)
+  if (!automation) throw new Error('The demo case requires a deterministic automation decision')
   const [tab, setTab] = useState<CaseTab>('evidence')
   const [decisions, setDecisions] = useState<ReviewDecision[]>([])
   const [dismissOpen, setDismissOpen] = useState(false)
-  const latestDecision = decisions.at(-1)
+  const [submitting, setSubmitting] = useState(false)
+  const latestDecision = decisions.find(item => item.finding_id === finding.finding_id)
   const decision = latestDecision?.action === 'dismiss_with_reason' ? 'dismissed' : latestDecision ? 'routed' : 'open'
+  const recommendedAction = automation.recommended_action
 
   useEffect(() => {
     let active = true
@@ -52,23 +58,41 @@ export function CaseReview({ onNavigate, notify, workflowGateway, reviewer }: Ca
   }, [workflowGateway, reviewer, packet, notify])
 
   const route = async () => {
+    if (!recommendedAction) {
+      notify('This finding does not have a governed routing action')
+      return
+    }
+    setSubmitting(true)
     try {
-      const created = await workflowGateway.submit(packet, reviewer, finding.finding_id, 'route_to_coding', 'Qualified coding review required before any claim-affecting action')
-      setDecisions(current => [...current, created])
-      notify('Opportunity routed to coding review · governed decision recorded')
+      const created = await workflowGateway.submit(
+        packet, automationPlan, reviewer, finding.finding_id, recommendedAction,
+        'evidence_confirmed',
+        'Evidence and POA confirmed; send recommendation to the governed coding workflow',
+        `${packet.packet_id}:${finding.finding_id}:${recommendedAction.replaceAll('_', '-')}`,
+      )
+      setDecisions(current => current.some(item => item.decision_id === created.decision_id) ? current : [...current, created])
+      notify(`Opportunity routed to ${automation.queue} review · governed decision recorded`)
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Unable to record review decision')
+    } finally {
+      setSubmitting(false)
     }
   }
 
-  const dismiss = async (reason: string) => {
+  const dismiss = async (reasonCode: 'documentation_not_supported' | 'duplicate' | 'already_corrected', reason: string) => {
+    setSubmitting(true)
     try {
-      const created = await workflowGateway.submit(packet, reviewer, finding.finding_id, 'dismiss_with_reason', reason)
-      setDecisions(current => [...current, created])
+      const created = await workflowGateway.submit(
+        packet, automationPlan, reviewer, finding.finding_id, 'dismiss_with_reason', reasonCode, reason,
+        `${packet.packet_id}:${finding.finding_id}:dismiss:${reason.toLowerCase().replaceAll(' ', '-')}`,
+      )
+      setDecisions(current => current.some(item => item.decision_id === created.decision_id) ? current : [...current, created])
       setDismissOpen(false)
       notify('Opportunity dismissed · governed decision recorded')
     } catch (error) {
       notify(error instanceof Error ? error.message : 'Unable to record review decision')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -86,9 +110,9 @@ export function CaseReview({ onNavigate, notify, workflowGateway, reviewer }: Ca
           <p>{opportunity.encounterId} · {opportunity.facility} · Discharged {formatDate(packet.case.discharged_at)}</p>
         </div>
         <div className="case-header__actions">
-          <button className="button button--quiet" onClick={() => setDismissOpen(true)} type="button"><X size={16} /> Dismiss</button>
-          <button className="button button--primary" onClick={route} disabled={decision === 'routed'} type="button">
-            <UserRoundCheck size={17} /> {decision === 'routed' ? 'Routed to coding' : 'Route to coding review'}
+          <button className="button button--quiet" onClick={() => setDismissOpen(true)} disabled={decision !== 'open' || submitting} type="button"><X size={16} /> Dismiss</button>
+          <button className="button button--primary" onClick={route} disabled={decision !== 'open' || submitting} type="button">
+            <UserRoundCheck size={17} /> {submitting ? 'Recording…' : decision === 'routed' ? `Sent to ${automation.queue}` : `Confirm & send to ${automation.queue}`}
           </button>
         </div>
       </header>
@@ -96,16 +120,16 @@ export function CaseReview({ onNavigate, notify, workflowGateway, reviewer }: Ca
       {decision !== 'open' && (
         <div className={`decision-banner decision-banner--${decision}`}>
           {decision === 'routed' ? <Check size={17} /> : <Info size={17} />}
-          <span>{decision === 'routed' ? 'This opportunity is now assigned to Coding Review.' : 'Dismissal started. Select a governed reason to complete the decision.'}</span>
+          <span>{decision === 'routed' ? `Recommendation sent to the governed ${automation.queue} workflow.` : 'Opportunity dismissed with a governed reason.'}</span>
           <span>{latestDecision ? ` ${latestDecision.actor_id} · ${latestDecision.reason}` : ''}</span>
         </div>
       )}
 
-      {dismissOpen && <div className="decision-reasons" role="dialog" aria-label="Dismissal reason">
+      {dismissOpen && decision === 'open' && <div className="decision-reasons" role="dialog" aria-modal="true" aria-label="Dismissal reason">
         <strong>Select a governed dismissal reason</strong>
-        <button type="button" onClick={() => dismiss('Documentation does not support the proposed change')}>Documentation does not support change</button>
-        <button type="button" onClick={() => dismiss('Duplicate opportunity')}>Duplicate opportunity</button>
-        <button type="button" onClick={() => dismiss('Already corrected in the source workflow')}>Already corrected</button>
+        <button type="button" onClick={() => dismiss('documentation_not_supported', 'Documentation does not support the proposed change')}>Documentation does not support change</button>
+        <button type="button" onClick={() => dismiss('duplicate', 'Duplicate opportunity')}>Duplicate opportunity</button>
+        <button type="button" onClick={() => dismiss('already_corrected', 'Already corrected in the source workflow')}>Already corrected</button>
         <button type="button" onClick={() => setDismissOpen(false)}>Cancel</button>
       </div>}
 
@@ -128,8 +152,8 @@ export function CaseReview({ onNavigate, notify, workflowGateway, reviewer }: Ca
         <div className="finding-summary">
           <div className="finding-summary__top">
             <div>
-              <span className="panel-kicker">System finding</span>
-              <h2>Documentation supports a coding review</h2>
+              <span className="panel-kicker">Only decision needed · ~{automation.estimated_review_seconds} sec</span>
+              <h2>Does the cited documentation support this coding recommendation?</h2>
             </div>
             <div className="confidence-ring" style={{ '--confidence': `${opportunity.confidence}%` } as CSSProperties}>
               <strong>{opportunity.confidence}</strong><span>%</span>
@@ -144,6 +168,12 @@ export function CaseReview({ onNavigate, notify, workflowGateway, reviewer }: Ca
             <span><Check size={13} /> Diagnosis absent from claim</span>
             <span><ShieldCheck size={13} /> POA requires reviewer confirmation</span>
           </div>
+          <div className="recommended-action">
+            <span>Prepared action</span>
+            <strong>{String(automation.draft.title)}</strong>
+            <p>{String(automation.draft.body)}</p>
+            <small>Policy {automationPlan.policy.version} · deterministic quick confirmation · no claim mutation</small>
+          </div>
         </div>
 
         <div className="impact-summary">
@@ -153,7 +183,7 @@ export function CaseReview({ onNavigate, notify, workflowGateway, reviewer }: Ca
             <ArrowRight size={22} />
             <div><span>Candidate</span><strong>{finding.simulated_drg}</strong><small>Review hypothesis after proposed code</small></div>
           </div>
-          <div className="impact-amount"><CircleDollarSign size={19} /><span>Estimated net impact</span><strong>{formatSignedCurrency(finding.estimated_impact_cents)}</strong></div>
+          <div className="impact-amount"><CircleDollarSign size={19} /><span>Estimated net impact</span><strong>{finding.estimated_impact_cents == null ? 'Unavailable' : formatSignedCurrency(finding.estimated_impact_cents)}</strong></div>
           <small className="simulation-note">Synthetic illustration. Final result requires a licensed grouper, payer context, and coder approval.</small>
         </div>
       </section>
@@ -169,7 +199,7 @@ export function CaseReview({ onNavigate, notify, workflowGateway, reviewer }: Ca
           {tab === 'evidence' && <EvidenceTab packet={packet} />}
           {tab === 'graph' && <GraphTab packet={packet} />}
           {tab === 'claim' && <ClaimTab packet={packet} />}
-          {tab === 'audit' && <AuditTab packet={packet} decisions={decisions} />}
+          {tab === 'audit' && <AuditTab packet={packet} decisions={decisions} automationPlan={automationPlan} />}
         </div>
       </section>
     </>
@@ -264,7 +294,9 @@ function ClaimTab({ packet }: { packet: ReviewPacket }) {
   const finding = packet.findings[0]
   if (!finding) return null
   const currentPayment = packet.case.claim.allowed_amount_cents ?? 0
-  const candidatePayment = currentPayment + finding.estimated_impact_cents
+  const candidatePayment = finding.estimated_impact_cents == null
+    ? null
+    : currentPayment + finding.estimated_impact_cents
   const addedDiagnosis = proposedDiagnosis(finding)
   return (
     <div className="claim-layout">
@@ -280,7 +312,7 @@ function ClaimTab({ packet }: { packet: ReviewPacket }) {
           <div className="claim-column__header"><span>Review hypothesis</span><strong>{finding.simulated_drg}</strong></div>
           {packet.case.claim.diagnoses.map(code => <ClaimLine code={code} label={diagnosisLabel(code)} key={code} />)}
           <ClaimLine code={addedDiagnosis} label={diagnosisLabel(addedDiagnosis)} added />
-          <div className="claim-payment claim-payment--candidate"><span>Demo grouper payment</span><strong>{formatCurrency(candidatePayment)}</strong></div>
+          <div className="claim-payment claim-payment--candidate"><span>Demo grouper payment</span><strong>{candidatePayment == null ? 'Unavailable' : formatCurrency(candidatePayment)}</strong></div>
         </div>
       </div>
       <div className="claim-warning"><ShieldCheck size={17} /><div><strong>Simulation is not a coding decision.</strong><span>The proposed code remains a review hypothesis until a qualified coder confirms documentation, coding criteria, sequencing, and POA.</span></div></div>
@@ -292,7 +324,7 @@ function ClaimLine({ code, label, added = false }: { code: string; label: string
   return <div className={added ? 'claim-line claim-line--added' : 'claim-line'}><code>{code}</code><span>{label}</span>{added && <b>Proposed</b>}</div>
 }
 
-function AuditTab({ packet, decisions }: { packet: ReviewPacket; decisions: ReviewDecision[] }) {
+function AuditTab({ packet, decisions, automationPlan }: { packet: ReviewPacket; decisions: ReviewDecision[]; automationPlan: AutomationPlan }) {
   const finding = packet.findings[0]
   if (!finding) return null
   const events = [
@@ -302,6 +334,7 @@ function AuditTab({ packet, decisions }: { packet: ReviewPacket; decisions: Revi
     ['11:59', 'Ontology validator', `${packet.ontology.entities.length} entities, ${packet.ontology.relations.length} relations, and evidence lineage accepted.`],
     ['11:59', 'Mastra extraction', `${packet.evidence.length} narrative excerpt grounded to the source document.`],
     ['11:58', 'Review packet', `Contract ${packet.review_packet_schema_version} created · ${packet.provenance.record_hash.slice(0, 12)}…`],
+    ['11:58', 'Automation policy', `Exception policy ${automationPlan.policy.version} prepared the one-click reviewer action.`],
   ]
   return (
     <div className="audit-layout">

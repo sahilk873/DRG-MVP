@@ -12,6 +12,7 @@
 | Reconciliation | Versioned declarative rules | No | Candidate only |
 | Grouping and pricing | Licensed grouper/pricer adapter | No | Simulation |
 | Review-packet assembly | Versioned deterministic projection | No | Candidate only |
+| Exception automation | Versioned deterministic policy and routing outbox | No | Operational route only |
 | Compliance criticism | Mastra agent plus deterministic checks | Yes | No |
 | Final disposition | Threshold policy and focused reviewer | No | Institution-defined |
 
@@ -47,7 +48,7 @@ Human review is exception-based. The system should automatically clear encounter
 
 Initial production policy should require approval for every claim-affecting change. Straight-through processing can be considered later only for narrowly scoped actions supported by prospective validation and institutional governance.
 
-The deterministic engine emits a versioned review packet containing the exact evidence graph, immutable claim snapshot, findings, component versions and audit hashes used for evaluation. Reviewer applications consume this packet rather than reimplementing rule or payment logic. The contract explicitly sets `claim_mutation_allowed` to false; reviewer decisions and any later claim workflow require separate authenticated services and audit events. See [REVIEW_PACKET.md](REVIEW_PACKET.md).
+The deterministic engine emits a versioned review packet containing the exact evidence graph, immutable claim snapshot, findings, component versions and audit hashes used for evaluation. A separately hashed automation plan binds the exact packet and selects consolidation, enrichment, safe operational routing, or human exception review. Reviewer applications consume these contracts rather than reimplementing rule or payment logic. The packet explicitly sets `claim_mutation_allowed` to false; reviewer decisions and any later claim workflow require separate authenticated services and audit events. See [REVIEW_PACKET.md](REVIEW_PACKET.md) and [AUTOMATION.md](AUTOMATION.md).
 
 ## Planned Mastra workflow
 

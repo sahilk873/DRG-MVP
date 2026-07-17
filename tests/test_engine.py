@@ -1,11 +1,12 @@
 import json
+from dataclasses import replace
 from pathlib import Path
 import unittest
 
 from revenue_integrity.agents import accept_agent_output
 from revenue_integrity.engine import RuleEngine
 from revenue_integrity.grouper import DeterministicDemoGrouper, GroupingResult
-from revenue_integrity.models import Disposition, EncounterCase
+from revenue_integrity.models import Disposition, EncounterCase, ImpactStatus
 
 
 ROOT = Path(__file__).parents[1]
@@ -151,3 +152,27 @@ class RuleEngineTests(unittest.TestCase):
         self.assertEqual(mismatch.submitted_drg, "DEMO-WRONG")
         self.assertEqual(mismatch.current_drg, "DEMO-292")
         self.assertTrue(mismatch.requires_human_review)
+        self.assertIs(mismatch.impact_status, ImpactStatus.ESTIMATED)
+
+    def test_missing_allowed_amount_is_unknown_not_zero(self):
+        payload = load("examples/case_pressure_injury.json")
+        payload["claim"]["drg"] = "DEMO-WRONG"
+        payload["claim"]["allowed_amount_cents"] = None
+        mismatch = next(
+            item for item in RuleEngine(
+                load("rules/wound_care_v1.json"), DeterministicDemoGrouper()
+            ).evaluate(EncounterCase.from_dict(payload))
+            if item.rule_id == "SYSTEM-DRG-REPRODUCTION"
+        )
+        self.assertIsNone(mismatch.estimated_impact_cents)
+        self.assertIs(mismatch.impact_status, ImpactStatus.UNAVAILABLE)
+
+    def test_finding_rejects_inconsistent_impact_state(self):
+        case = EncounterCase.from_dict(load("examples/case_pressure_injury.json"))
+        finding = RuleEngine(
+            load("rules/wound_care_v1.json"), DeterministicDemoGrouper()
+        ).evaluate(case)[0]
+        with self.assertRaisesRegex(ValueError, "requires estimated_impact_cents"):
+            replace(finding, estimated_impact_cents=None)
+        with self.assertRaisesRegex(ValueError, "cannot carry an estimate"):
+            replace(finding, impact_status=ImpactStatus.UNAVAILABLE)

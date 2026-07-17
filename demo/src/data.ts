@@ -1,10 +1,18 @@
 import type { DemoStep, Opportunity } from './types'
 import reviewPacketFixture from './fixtures/review-packet.json'
+import automationPlanFixture from './fixtures/automation-plan.json'
 import { parseReviewPacket } from './review-packet'
+import { parseAutomationPlan } from './automation-plan'
 
 export const primaryReviewPacket = parseReviewPacket(reviewPacketFixture)
+export const primaryAutomationPlan = parseAutomationPlan(automationPlanFixture)
+if (
+  primaryAutomationPlan.packet.packet_id !== primaryReviewPacket.packet_id
+  || primaryAutomationPlan.packet.packet_hash !== primaryReviewPacket.provenance.packet_hash
+) throw new Error('The demo automation plan must reference the exact review packet')
 const primaryFinding = primaryReviewPacket.findings[0]
-if (!primaryFinding) throw new Error('The demo review packet must contain a finding')
+const primaryAutomation = primaryAutomationPlan.findings[0]
+if (!primaryFinding || !primaryAutomation) throw new Error('The demo artifacts must contain a finding')
 
 export const primaryOpportunity: Opportunity = {
   id: primaryFinding.finding_id,
@@ -19,10 +27,17 @@ export const primaryOpportunity: Opportunity = {
   confidence: Math.round(primaryFinding.confidence * 100),
   currentDrg: primaryFinding.current_drg,
   simulatedDrg: primaryFinding.simulated_drg,
-  impact: primaryFinding.estimated_impact_cents / 100,
+  impact: primaryFinding.estimated_impact_cents == null
+    ? null
+    : primaryFinding.estimated_impact_cents / 100,
   age: '12 min',
   evidenceCount: primaryReviewPacket.evidence.length,
   priority: 'High',
+  automationOutcome: 'human_exception',
+  automationTier: primaryAutomation.tier,
+  estimatedReviewSeconds: primaryAutomation.estimated_review_seconds,
+  relatedFindingIds: primaryAutomation.related_finding_ids,
+  packetBacked: true,
 }
 
 export const opportunities: Opportunity[] = [
@@ -44,6 +59,8 @@ export const opportunities: Opportunity[] = [
     age: '34 min',
     evidenceCount: 7,
     priority: 'High',
+    automationOutcome: 'human_exception', automationTier: 'escalated', estimatedReviewSeconds: 240,
+    relatedFindingIds: ['finding-query-source-2'], packetBacked: false,
   },
   {
     id: 'OPP-10476',
@@ -62,6 +79,8 @@ export const opportunities: Opportunity[] = [
     age: '1 hr',
     evidenceCount: 3,
     priority: 'Medium',
+    automationOutcome: 'auto_routed', automationTier: 'auto_routed', estimatedReviewSeconds: 0,
+    relatedFindingIds: [], packetBacked: false,
   },
   {
     id: 'OPP-10470',
@@ -80,6 +99,8 @@ export const opportunities: Opportunity[] = [
     age: '2 hr',
     evidenceCount: 5,
     priority: 'Medium',
+    automationOutcome: 'auto_routed', automationTier: 'auto_routed', estimatedReviewSeconds: 0,
+    relatedFindingIds: [], packetBacked: false,
   },
   {
     id: 'OPP-10461',
@@ -98,8 +119,29 @@ export const opportunities: Opportunity[] = [
     age: '4 hr',
     evidenceCount: 6,
     priority: 'High',
+    automationOutcome: 'human_exception', automationTier: 'escalated', estimatedReviewSeconds: 240,
+    relatedFindingIds: [], packetBacked: false,
+  },
+  {
+    id: 'OPP-10461-DUP', patientId: 'PAT-ALPHA-046', encounterId: 'ENC-ALPHA-046',
+    facility: 'North Pavilion', serviceLine: 'Wound care', type: 'Compliance',
+    title: 'Duplicate POA conflict consolidated into OPP-10461',
+    summary: 'The same semantic discrepancy was emitted by a second source rule and consolidated without double-counting impact.',
+    status: 'Cleared', confidence: 79, currentDrg: '592', simulatedDrg: '592', impact: 0,
+    age: '4 hr', evidenceCount: 2, priority: 'Low', automationOutcome: 'suppressed',
+    automationTier: 'suppressed', estimatedReviewSeconds: 0, relatedFindingIds: [], packetBacked: false,
   },
 ]
+
+export const humanOpportunities = opportunities.filter(item => item.automationOutcome === 'human_exception')
+export const automationSummary = {
+  scanned: 183,
+  clean: 174,
+  autoRouted: 4,
+  suppressed: 2,
+  human: 3,
+  noTouchRate: 98.4,
+} as const
 
 export const tourSteps: DemoStep[] = [
   {
@@ -132,9 +174,9 @@ export const tourSteps: DemoStep[] = [
   },
   {
     eyebrow: '05 · Review',
-    title: 'Route only the few decisions that need a human.',
-    body: 'Coders and CDI specialists receive a compact evidence packet, rationale, contradictions, and proposed next step. Nothing changes a claim automatically.',
-    proof: 'Human authorization remains the final control',
-    view: 'queue',
+    title: 'Ask a person one narrow question, then learn from the outcome.',
+    body: 'The system suppresses duplicates, routes routine work, drafts the next action, and leaves only the unresolved coding or compliance judgment for a qualified reviewer.',
+    proof: '3 of 183 synthetic encounters need a person',
+    view: 'case',
   },
 ]

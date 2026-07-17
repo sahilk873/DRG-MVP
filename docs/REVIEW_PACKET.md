@@ -4,13 +4,14 @@ The review packet is the stable boundary between encounter evaluation and any re
 
 ## Contract contents
 
-`schemas/review_packet.schema.json` defines version `2.0.0` with:
+`schemas/review_packet.schema.json` defines version `3.0.0` with:
 
 - tenant/workspace scope, encounter identity, and the immutable claim snapshot used for evaluation;
 - the evidence, assertions, and patient-specific ontology graph seen by the rules;
 - deterministic findings with rule, grouper, DRG, impact, and evidence lineage;
 - explicit controls forbidding claim mutation and enumerating reviewer actions;
-- hashes for the case, rule package, and audit record plus all executable component versions.
+- hashes for the case, rule package, and audit record plus all executable component versions;
+- a full-packet hash covering tenant scope, controls, findings, evidence, and provenance.
 
 The packet is a reviewer input, not an outbound claim transaction. The governed decision service enforces tenant and role policy, requires a reason, and appends the decision to a hash-linked repository. Deployment authentication and the production database remain infrastructure responsibilities. The reference UI implements the same gateway contract locally for synthetic demonstrations.
 
@@ -37,7 +38,7 @@ make demo-packet
 make demo-packet-check
 ```
 
-CI runs the check form. Any rule, ontology, evidence, grouper, or engine change that alters the deterministic result must deliberately regenerate and review `demo/src/fixtures/review-packet.json`. The browser validates the packet again with a fail-closed Zod boundary before rendering it.
+CI runs the check form. Any rule, ontology, evidence, grouper, engine, or automation-policy change that alters the deterministic result must deliberately regenerate and review both demo fixtures. The browser validates both contracts with fail-closed Zod boundaries before rendering them.
 
 ## Versioning rules
 

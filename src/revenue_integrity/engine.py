@@ -7,12 +7,12 @@ from collections.abc import Iterable
 from typing import Any, Mapping
 
 from .grouper import Grouper, GroupingResult
-from .models import Assertion, Claim, Disposition, EncounterCase, Finding
+from .models import Assertion, Claim, Disposition, EncounterCase, Finding, ImpactStatus
 from .ontology import OntologyDefinition, OntologyEntity, load_builtin_ontology
 from .rules import Condition, ProposedChange, RulePackage, RuleScope
 
 
-ENGINE_VERSION = "0.6.0"
+ENGINE_VERSION = "0.7.0"
 
 
 class RuleEngine:
@@ -114,6 +114,7 @@ class RuleEngine:
                 current_drg=baseline.drg,
                 simulated_drg=simulated.drg,
                 estimated_impact_cents=simulated.estimated_payment_cents - baseline.estimated_payment_cents,
+                impact_status=ImpactStatus.ESTIMATED,
                 grouper_version=baseline.grouper_version,
             ))
         return findings
@@ -133,7 +134,7 @@ class RuleEngine:
             json.dumps(material, sort_keys=True, separators=(",", ":")).encode()
         ).hexdigest()[:16]
         submitted_payment = case.claim.allowed_amount_cents
-        impact = 0 if submitted_payment is None else baseline.estimated_payment_cents - submitted_payment
+        impact = None if submitted_payment is None else baseline.estimated_payment_cents - submitted_payment
         return [Finding(
             finding_id=f"finding-{digest}",
             rule_id="SYSTEM-DRG-REPRODUCTION",
@@ -157,6 +158,9 @@ class RuleEngine:
             current_drg=baseline.drg,
             simulated_drg=baseline.drg,
             estimated_impact_cents=impact,
+            impact_status=(
+                ImpactStatus.UNAVAILABLE if submitted_payment is None else ImpactStatus.ESTIMATED
+            ),
             grouper_version=baseline.grouper_version,
         )]
 

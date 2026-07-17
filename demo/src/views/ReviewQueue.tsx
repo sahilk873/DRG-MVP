@@ -1,22 +1,27 @@
 import { ArrowRight, ChevronDown, Download, Filter, Search } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
-import { opportunities } from '../data'
-import type { OpportunityStatus, ViewId } from '../types'
+import { humanOpportunities, opportunities } from '../data'
+import type { AutomationOutcome, ViewId } from '../types'
 
 interface ReviewQueueProps {
   onNavigate: (view: ViewId) => void
   notify: (message: string) => void
 }
 
-const filters: Array<'All' | OpportunityStatus> = ['All', 'Ready for review', 'Needs documentation', 'In review', 'Cleared']
+const filters: Array<{ label: string; value: 'all' | AutomationOutcome }> = [
+  { label: 'Needs me', value: 'human_exception' },
+  { label: 'Auto-handled', value: 'auto_routed' },
+  { label: 'Suppressed', value: 'suppressed' },
+  { label: 'All', value: 'all' },
+]
 
 export function ReviewQueue({ onNavigate, notify }: ReviewQueueProps) {
-  const [filter, setFilter] = useState<(typeof filters)[number]>('All')
+  const [filter, setFilter] = useState<(typeof filters)[number]['value']>('human_exception')
   const [query, setQuery] = useState('')
 
   const visible = useMemo(() => opportunities.filter(item => {
-    const matchesFilter = filter === 'All' || item.status === filter
+    const matchesFilter = filter === 'all' || item.automationOutcome === filter
     const searchable = `${item.title} ${item.encounterId} ${item.serviceLine} ${item.type}`.toLowerCase()
     return matchesFilter && searchable.includes(query.toLowerCase())
   }), [filter, query])
@@ -38,9 +43,9 @@ export function ReviewQueue({ onNavigate, notify }: ReviewQueueProps) {
     <>
       <header className="page-header">
         <div>
-          <span className="eyebrow">Human decision layer</span>
-          <h1>Review queue</h1>
-          <p>Evidence-complete opportunities ranked by urgency, confidence, and financial materiality.</p>
+          <span className="eyebrow">Residual exception layer</span>
+          <h1>{humanOpportunities.length} decisions need a person</h1>
+          <p>Everything else was cleared, consolidated, enriched, or routed automatically by deterministic policy.</p>
         </div>
         <div className="page-header__actions">
           <button className="button button--quiet" onClick={exportQueue} type="button"><Download size={16} /> Export queue</button>
@@ -51,9 +56,9 @@ export function ReviewQueue({ onNavigate, notify }: ReviewQueueProps) {
       <section className="queue-toolbar">
         <div className="filter-tabs">
           {filters.map(item => (
-            <button className={filter === item ? 'filter-tab filter-tab--active' : 'filter-tab'} onClick={() => setFilter(item)} key={item} type="button">
-              {item}
-              {item === 'All' && <span>{opportunities.length}</span>}
+            <button className={filter === item.value ? 'filter-tab filter-tab--active' : 'filter-tab'} onClick={() => setFilter(item.value)} key={item.value} type="button">
+              {item.label}
+              {item.value === 'human_exception' && <span>{humanOpportunities.length}</span>}
             </button>
           ))}
         </div>
@@ -72,25 +77,26 @@ export function ReviewQueue({ onNavigate, notify }: ReviewQueueProps) {
           <span>Workflow</span>
           <span>Confidence</span>
           <span>Potential impact</span>
-          <span>Age</span>
+          <span>Human time</span>
           <span />
         </div>
         {visible.length ? visible.map(item => (
-          <button className="queue-row" key={item.id} onClick={() => onNavigate('case')} type="button">
+          <div className="queue-row" key={item.id}>
             <div className="queue-opportunity">
               <span className={`priority-dot priority-dot--${item.priority.toLowerCase()}`} />
               <div>
                 <span>{item.serviceLine} · {item.type}</span>
                 <strong>{item.title}</strong>
                 <small>{item.encounterId} · {item.facility}</small>
+                {item.relatedFindingIds.length > 0 && <small className="consolidation-badge">{item.relatedFindingIds.length + 1} findings consolidated</small>}
               </div>
             </div>
-            <div><Status value={item.status} /></div>
+            <div><Disposition outcome={item.automationOutcome} tier={item.automationTier} /></div>
             <div className="confidence-cell"><strong>{item.confidence}%</strong><span><i style={{ width: `${item.confidence}%` }} /></span></div>
-            <div className="impact-cell"><strong>{item.impact ? `$${item.impact.toLocaleString()}` : '—'}</strong><small>{item.currentDrg !== item.simulatedDrg ? `${item.currentDrg} → ${item.simulatedDrg}` : 'No DRG change'}</small></div>
-            <div className="age-cell">{item.age}</div>
-            <ArrowRight className="row-arrow" size={17} />
-          </button>
+            <div className="impact-cell"><strong>{item.impact == null ? 'Unavailable' : item.impact ? `$${item.impact.toLocaleString()}` : '—'}</strong><small>{item.currentDrg !== item.simulatedDrg ? `${item.currentDrg} → ${item.simulatedDrg}` : 'No DRG change'}</small></div>
+            <div className="age-cell">{item.estimatedReviewSeconds ? `~${item.estimatedReviewSeconds} sec` : 'No review'}</div>
+            {item.packetBacked ? <button className="row-open" onClick={() => onNavigate('case')} type="button" aria-label={`Open ${item.title}`}><ArrowRight size={17} /></button> : <span className="row-arrow"><ArrowRight size={17} /></span>}
+          </div>
         )) : (
           <div className="empty-state"><Search size={24} /><strong>No opportunities found</strong><span>Try changing the queue filter or search term.</span></div>
         )}
@@ -100,7 +106,10 @@ export function ReviewQueue({ onNavigate, notify }: ReviewQueueProps) {
   )
 }
 
-function Status({ value }: { value: OpportunityStatus }) {
-  const slug = value.toLowerCase().replaceAll(' ', '-').replace('documentation', 'docs')
-  return <span className={`status-label status-label--${slug}`}><i />{value}</span>
+function Disposition({ outcome, tier }: { outcome: AutomationOutcome; tier: string }) {
+  const labels: Record<AutomationOutcome, string> = {
+    human_exception: tier === 'quick_confirm' ? 'Quick confirmation' : 'Focused review',
+    auto_routed: 'Auto-routed', suppressed: 'Suppressed', needs_enrichment: 'Enriching',
+  }
+  return <span className={`disposition-chip disposition-chip--${outcome}`}>{labels[outcome]}</span>
 }

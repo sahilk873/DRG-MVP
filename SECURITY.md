@@ -20,7 +20,9 @@ Before handling regulated data, complete a formal threat model and security revi
 
 The demo grouper and sample clinical rules are explicitly non-production artifacts.
 
-Reviewer applications must validate the versioned review-packet contract, verify its record and component hashes against the audit store, and enforce `claim_mutation_allowed: false`. Displaying a proposed change never authorizes it. The reference workflow now enforces tenant scope and RBAC and persists hash-linked decisions; production must place it behind authenticated identity and a managed tenant-isolated database before any downstream workflow begins.
+Reviewer applications must validate the versioned review-packet and automation-plan contracts, verify the full packet, plan, policy, record, and component hashes against the audit store, and enforce `claim_mutation_allowed: false`. Displaying or routing a proposed change never authorizes it. The reference workflow enforces tenant scope, finding-specific actions, idempotency, and RBAC and persists hash-linked decisions; production must place it behind authenticated identity and a managed tenant-isolated database before any downstream workflow begins.
+
+Content hashes are not authentication: an attacker who can replace an artifact can recompute an unkeyed hash. Production services must load artifacts from authenticated immutable storage by digest or require an institution-managed signature/MAC before accepting a packet or plan.
 
 ## Bulk onboarding boundary
 

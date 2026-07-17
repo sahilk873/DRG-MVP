@@ -166,6 +166,10 @@ h1, h2, h3, strong { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacS
 .decision-reasons { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: -10px 0 18px; padding: 12px; border: 1px solid #d8d5cc; background: #fff; box-shadow: 0 8px 24px rgba(33, 40, 37, .08); }
 .decision-reasons strong { margin-right: auto; font-size: 12px; }
 .decision-reasons button { padding: 7px 10px; border: 1px solid #d8d5cc; background: #f8f7f3; color: #29332f; font: inherit; cursor: pointer; }
+.recommended-action { margin-top: 14px; padding: 13px 14px; border-left: 3px solid var(--teal); background: #eef5f2; }
+.recommended-action > span, .recommended-action small { display: block; color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: .08em; }
+.recommended-action strong { display: block; margin: 4px 0; font-size: 12px; }
+.recommended-action p { margin: 0 0 7px; font-size: 11px; line-height: 1.5; }
 .case-summary-grid { display: grid; grid-template-columns: .7fr 1.22fr 1fr; gap: 16px; }
 .patient-summary, .finding-summary, .impact-summary { padding: 19px; background: rgba(255,255,255,.7); border: 1px solid var(--border); }
 .patient-identity { display: flex; align-items: center; gap: 10px; margin: 14px 0 17px; }
@@ -338,7 +342,7 @@ mark { color: inherit; background: #dcece5; }
 .queue-table-card { overflow-x: auto; background: rgba(255,255,255,.74); border: 1px solid var(--border); }
 .queue-table-header, .queue-row { min-width: 910px; display: grid; grid-template-columns: minmax(330px, 1.5fr) 130px 105px 105px 60px 22px; align-items: center; gap: 10px; padding: 0 16px; }
 .queue-table-header { min-height: 38px; color: var(--muted); background: #eeefeb; font-size: 8px; font-weight: 700; text-transform: uppercase; }
-.queue-row { width: 100%; min-height: 76px; background: transparent; border: 0; border-top: 1px solid #e4e6e1; cursor: pointer; text-align: left; }
+.queue-row { width: 100%; min-height: 76px; background: transparent; border: 0; border-top: 1px solid #e4e6e1; text-align: left; }
 .queue-row:hover { background: #fafbf8; }
 .queue-opportunity { display: grid; grid-template-columns: 4px 1fr; gap: 12px; align-items: center; }
 .priority-dot { width: 3px; height: 38px; background: var(--gold); }
@@ -353,6 +357,13 @@ mark { color: inherit; background: #dcece5; }
 .confidence-cell i { display: block; height: 100%; background: var(--teal); }
 .age-cell { color: var(--muted); font-size: 9px; }
 .row-arrow { color: var(--muted); }
+.row-open { display: grid; width: 28px; height: 28px; place-items: center; color: var(--teal); background: var(--teal-soft); border: 0; cursor: pointer; }
+.disposition-chip { display: inline-flex; padding: 4px 7px; border-radius: 2px; font-size: 8px; font-weight: 700; }
+.disposition-chip--human_exception { color: #78511d; background: #f4e8d2; }
+.disposition-chip--auto_routed { color: var(--teal); background: var(--teal-soft); }
+.disposition-chip--suppressed { color: var(--muted); background: #e9ebe7; }
+.disposition-chip--needs_enrichment { color: #705a94; background: #eee9f6; }
+.consolidation-badge { margin-top: 4px; color: var(--teal) !important; font-weight: 700; }
 .status-label--needs-docs { color: #8a6629; }
 .status-label--needs-docs i { background: #b9872f; }
 .empty-state { display: grid; justify-items: center; gap: 7px; padding: 50px; color: var(--muted); text-align: center; font-size: 11px; }

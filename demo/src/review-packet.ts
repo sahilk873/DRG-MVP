@@ -38,12 +38,13 @@ const findingSchema = z.object({
   submitted_drg: nonEmpty.nullable(),
   current_drg: nonEmpty,
   simulated_drg: nonEmpty,
-  estimated_impact_cents: z.number().int(),
+  estimated_impact_cents: z.number().int().nullable(),
+  impact_status: z.enum(['estimated', 'not_applicable', 'unavailable']),
   grouper_version: nonEmpty,
 }).strict()
 
 export const reviewPacketSchema = z.object({
-  review_packet_schema_version: z.literal('2.0.0'),
+  review_packet_schema_version: z.literal('3.0.0'),
   packet_id: z.string().regex(/^packet-[0-9a-f]{20}$/),
   environment: z.enum(['development', 'synthetic', 'validation', 'production']),
   tenant: z.object({
@@ -115,6 +116,7 @@ export const reviewPacketSchema = z.object({
     rule_package_version: nonEmpty,
     rule_package_hash: z.string().regex(/^[0-9a-f]{64}$/),
     record_hash: z.string().regex(/^[0-9a-f]{64}$/),
+    packet_hash: z.string().regex(/^[0-9a-f]{64}$/),
     previous_record_hash: nonEmpty.nullable(),
     grouper_versions: z.array(nonEmpty),
   }).strict(),
@@ -122,10 +124,20 @@ export const reviewPacketSchema = z.object({
   const evidenceIds = new Set(packet.evidence.map(item => item.evidence_id))
   const assertionIds = new Set(packet.assertions.map(item => item.assertion_id))
   const subjectIds = new Set(packet.ontology.entities.map(item => item.entity_id))
+  const findingIds = packet.findings.map(item => item.finding_id)
+  if (new Set(findingIds).size !== findingIds.length) {
+    context.addIssue({ code: 'custom', message: 'packet finding IDs must be unique' })
+  }
   if (packet.findings.some(item => item.requires_human_review) && !packet.controls.human_review_required) {
     context.addIssue({ code: 'custom', message: 'packet controls must preserve finding-level human review' })
   }
   for (const finding of packet.findings) {
+    if (
+      (finding.impact_status === 'estimated' && finding.estimated_impact_cents == null)
+      || (finding.impact_status !== 'estimated' && finding.estimated_impact_cents != null)
+    ) {
+      context.addIssue({ code: 'custom', message: 'finding impact status and estimate are inconsistent' })
+    }
     if (finding.proposed_change && Object.keys(finding.proposed_change).length > 0 && !finding.requires_human_review) {
       context.addIssue({ code: 'custom', message: 'claim-affecting findings must require human review' })
     }

@@ -5,11 +5,11 @@ import json
 from datetime import datetime
 from typing import Any, Callable, Mapping, Sequence
 
-from .audit import audit_record
+from .audit import audit_record, canonical_hash
 from .models import EncounterCase, Finding
 
 
-REVIEW_PACKET_SCHEMA_VERSION = "2.0.0"
+REVIEW_PACKET_SCHEMA_VERSION = "3.0.0"
 REVIEW_PACKET_ENVIRONMENTS = frozenset({"development", "synthetic", "validation", "production"})
 
 
@@ -53,7 +53,7 @@ def build_review_packet(
         ).encode("utf-8")
     ).hexdigest()[:20]
 
-    return {
+    packet = {
         "review_packet_schema_version": REVIEW_PACKET_SCHEMA_VERSION,
         "packet_id": f"packet-{packet_digest}",
         "environment": environment,
@@ -95,6 +95,20 @@ def build_review_packet(
             "grouper_versions": sorted({item.grouper_version for item in findings}),
         },
     }
+    packet["provenance"]["packet_hash"] = canonical_hash(packet)
+    return packet
+
+
+def verify_review_packet_hash(packet: Mapping[str, Any]) -> bool:
+    provenance = packet.get("provenance")
+    if not isinstance(provenance, Mapping):
+        return False
+    claimed = provenance.get("packet_hash")
+    if not isinstance(claimed, str):
+        return False
+    copy = dict(packet)
+    copy["provenance"] = {key: value for key, value in provenance.items() if key != "packet_hash"}
+    return canonical_hash(copy) == claimed
 
 
 def _verify_case_payload(case: EncounterCase, payload: Mapping[str, Any]) -> None:

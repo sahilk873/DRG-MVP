@@ -13,7 +13,7 @@ import {
 import { useState, type ReactNode } from 'react'
 
 import type { ViewId } from '../types'
-import { opportunities } from '../data'
+import { humanOpportunities } from '../data'
 
 interface ShellProps {
   activeView: ViewId
@@ -63,7 +63,7 @@ export function Shell({ activeView, onNavigate, onStartTour, children }: ShellPr
             >
               <Icon size={18} strokeWidth={1.8} />
               <span>{label}</span>
-              {id === 'queue' && <b className="nav-count">{opportunities.length}</b>}
+              {id === 'queue' && <b className="nav-count">{humanOpportunities.length}</b>}
             </button>
           ))}
         </nav>

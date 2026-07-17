@@ -15,7 +15,10 @@ flowchart TD
     C --> D["Mastra note extraction"]
     D --> E["Ontology and evidence gate"]
     E --> F["Rules and grouper boundary"]
-    F --> G["Focused review packet"]
+    F --> G["Integrity-bound review packet"]
+    G --> H["Deterministic exception policy"]
+    H --> I["Auto-route, enrich, consolidate, or review"]
+    I --> J["Minimal governed human decision"]
 ```
 
 The case model separates what happened clinically, what was explicitly documented, what was coded and charged, what was submitted and paid, and what evidence supports or contradicts a proposed change.
@@ -41,6 +44,9 @@ The case model separates what happened clinically, what was explicitly documente
 - Integer-cent payment simulation
 - Deterministic finding IDs and hash-chained audit records
 - Versioned human-review packets connecting engine output to reviewer applications
+- Deterministic exception orchestration with duplicate consolidation and effort budgets
+- Idempotent automatic-routing outbox that cannot mutate claims
+- One-click, policy-bound reviewer actions with structured feedback labels
 - Atomic CLI output, CI, dependency monitoring and cross-language tests
 - Configurable input/output resource budgets at both trust boundaries
 - Governed source artifacts with checksum and authority enforcement
@@ -103,9 +109,9 @@ revenue-integrity examples/case_pressure_injury.json rules/wound_care_v1.json \
   --output output/review-packet.json
 ```
 
-The v0.6 release uses encounter-case schema `2.0.0`, tenant-scoped review-packet schema `2.0.0`, and review-decision schema `1.0.0`. Earlier payloads intentionally fail closed until they satisfy these trust boundaries. Revenue rule packages and bulk adapters must declare their compatible ontology ID, version and digest.
+The v0.7 release uses encounter-case schema `2.0.0`, tenant-scoped review-packet schema `3.0.0`, automation-plan schema `1.0.0`, and review-decision schema `2.0.0`. Earlier payloads intentionally fail closed until they satisfy these trust boundaries. Revenue rule packages and bulk adapters must declare their compatible ontology ID, version and digest.
 
-Reviewer actions now pass through a role-aware workflow service and a tenant-scoped, hash-linked SQLite reference repository. The pitch UI injects a browser-only implementation of the same gateway; production injects its authenticated API. See [the governed review workflow](docs/REVIEW_WORKFLOW.md) and [production integration boundaries](docs/PRODUCTION_INTEGRATIONS.md).
+Reviewer actions pass through a role-aware workflow service and a tenant-scoped, hash-linked SQLite reference repository. A separately hashed automation plan suppresses only exact duplicates/no-opportunities, requests enrichment for insufficient evidence, automatically queues bounded operational work, and reserves people for quick confirmations or true exceptions. See [exception automation](docs/AUTOMATION.md), [the governed review workflow](docs/REVIEW_WORKFLOW.md), and [production integration boundaries](docs/PRODUCTION_INTEGRATIONS.md).
 
 ## Run the bulk-ingestion demo
 

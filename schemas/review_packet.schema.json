@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.org/schemas/review-packet-v2.json",
+  "$id": "https://example.org/schemas/review-packet-v3.json",
   "title": "Revenue Integrity Human Review Packet",
   "type": "object",
   "additionalProperties": false,
   "required": ["review_packet_schema_version", "packet_id", "environment", "tenant", "case", "evidence", "ontology", "assertions", "findings", "controls", "provenance"],
   "properties": {
-    "review_packet_schema_version": {"const": "2.0.0"},
+    "review_packet_schema_version": {"const": "3.0.0"},
     "packet_id": {"type": "string", "pattern": "^packet-[0-9a-f]{20}$"},
     "environment": {"enum": ["development", "synthetic", "validation", "production"]},
     "tenant": {"$ref": "#/$defs/tenant"},
@@ -48,7 +48,7 @@
     "finding": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["finding_id", "rule_id", "rule_package_id", "rule_package_version", "title", "disposition", "confidence", "proposed_change", "subject_ids", "assertion_ids", "evidence_ids", "contradicting_evidence_ids", "rationale", "requires_human_review", "submitted_drg", "current_drg", "simulated_drg", "estimated_impact_cents", "grouper_version"],
+      "required": ["finding_id", "rule_id", "rule_package_id", "rule_package_version", "title", "disposition", "confidence", "proposed_change", "subject_ids", "assertion_ids", "evidence_ids", "contradicting_evidence_ids", "rationale", "requires_human_review", "submitted_drg", "current_drg", "simulated_drg", "estimated_impact_cents", "impact_status", "grouper_version"],
       "properties": {
         "finding_id": {"$ref": "#/$defs/nonEmptyString"},
         "rule_id": {"$ref": "#/$defs/nonEmptyString"},
@@ -67,9 +67,17 @@
         "submitted_drg": {"type": ["string", "null"], "minLength": 1},
         "current_drg": {"$ref": "#/$defs/nonEmptyString"},
         "simulated_drg": {"$ref": "#/$defs/nonEmptyString"},
-        "estimated_impact_cents": {"type": "integer"},
+        "estimated_impact_cents": {"type": ["integer", "null"]},
+        "impact_status": {"enum": ["estimated", "not_applicable", "unavailable"]},
         "grouper_version": {"$ref": "#/$defs/nonEmptyString"}
-      }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"impact_status": {"const": "estimated"}}, "required": ["impact_status"]},
+          "then": {"properties": {"estimated_impact_cents": {"type": "integer"}}},
+          "else": {"properties": {"estimated_impact_cents": {"type": "null"}}}
+        }
+      ]
     },
     "controls": {
       "type": "object",
@@ -88,7 +96,7 @@
     "provenance": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["evaluated_at", "engine_version", "case_hash", "rule_package_id", "rule_package_version", "rule_package_hash", "record_hash", "previous_record_hash", "grouper_versions"],
+      "required": ["evaluated_at", "engine_version", "case_hash", "rule_package_id", "rule_package_version", "rule_package_hash", "record_hash", "packet_hash", "previous_record_hash", "grouper_versions"],
       "properties": {
         "evaluated_at": {"type": "string", "format": "date-time"},
         "engine_version": {"$ref": "#/$defs/nonEmptyString"},
@@ -97,6 +105,7 @@
         "rule_package_version": {"$ref": "#/$defs/nonEmptyString"},
         "rule_package_hash": {"$ref": "#/$defs/digest"},
         "record_hash": {"$ref": "#/$defs/digest"},
+        "packet_hash": {"$ref": "#/$defs/digest"},
         "previous_record_hash": {"anyOf": [{"$ref": "#/$defs/nonEmptyString"}, {"type": "null"}]},
         "grouper_versions": {"$ref": "#/$defs/uniqueStringArray"}
       }
