@@ -1,24 +1,32 @@
 import type { DemoStep, Opportunity } from './types'
+import reviewPacketFixture from './fixtures/review-packet.json'
+import { parseReviewPacket } from './review-packet'
+
+export const primaryReviewPacket = parseReviewPacket(reviewPacketFixture)
+const primaryFinding = primaryReviewPacket.findings[0]
+if (!primaryFinding) throw new Error('The demo review packet must contain a finding')
+
+export const primaryOpportunity: Opportunity = {
+  id: primaryFinding.finding_id,
+  patientId: primaryReviewPacket.case.patient_id,
+  encounterId: primaryReviewPacket.case.encounter_id,
+  facility: 'Demo Hospital',
+  serviceLine: 'Wound care',
+  type: 'Coding',
+  title: primaryFinding.title,
+  summary: primaryFinding.rationale,
+  status: 'Ready for review',
+  confidence: Math.round(primaryFinding.confidence * 100),
+  currentDrg: primaryFinding.current_drg,
+  simulatedDrg: primaryFinding.simulated_drg,
+  impact: primaryFinding.estimated_impact_cents / 100,
+  age: '12 min',
+  evidenceCount: primaryReviewPacket.evidence.length,
+  priority: 'High',
+}
 
 export const opportunities: Opportunity[] = [
-  {
-    id: 'OPP-10482',
-    patientId: 'PAT-ALPHA-001',
-    encounterId: 'ENC-ALPHA-001',
-    facility: 'Alpha Medical Center',
-    serviceLine: 'Wound care',
-    type: 'Coding',
-    title: 'Stage 4 sacral pressure injury absent from claim',
-    summary: 'Explicit wound assessment supports a pressure-injury diagnosis not present on the submitted claim.',
-    status: 'Ready for review',
-    confidence: 98,
-    currentDrg: '871',
-    simulatedDrg: '870',
-    impact: 8420,
-    age: '12 min',
-    evidenceCount: 4,
-    priority: 'High',
-  },
+  primaryOpportunity,
   {
     id: 'OPP-10479',
     patientId: 'PAT-ALPHA-014',
@@ -119,7 +127,7 @@ export const tourSteps: DemoStep[] = [
     eyebrow: '04 · Simulate',
     title: 'Quantify the effect without letting the model touch payment logic.',
     body: 'A deterministic grouper boundary reproduces the current claim and simulates the reviewed candidate under the correct payer and effective date.',
-    proof: '$8,420 illustrative net impact on this encounter',
+    proof: '$8,420 deterministic demo impact on this encounter',
     view: 'case',
   },
   {

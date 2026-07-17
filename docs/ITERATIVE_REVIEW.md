@@ -118,3 +118,11 @@ The provider-folder ingestion work was reviewed through the same five-pass metho
 - implement prospective adapter validation datasets, approval workflow, drift alerts and rollback;
 - store source locators in tenant-isolated object/audit storage rather than relying on local paths;
 - add terminology normalization and licensed grouper integrations without placing code or payment decisions in the model boundary.
+
+## Product-integration hardening pass
+
+**Finding.** The engine, Mastra layer, and reviewer demo each passed independently, but the primary UI opportunity was hand-authored. A rule, ontology, evidence, or grouper change could therefore leave the pitch application displaying a result the repository no longer produced.
+
+**Change.** Added a versioned human-review packet schema and deterministic Python builder with case/rule/audit hashes, component versions, the exact evidence graph, immutable claim snapshot, findings, permitted reviewer actions, and an explicit prohibition on claim mutation. The primary frontend case is generated from that packet, validated again in the browser with Zod, and guarded by a reproducible fixture check in CI. Added interaction tests for the pitch tour, queue-to-case workflow, and unsafe control rejection. Upgraded the frontend build/test toolchain to remove inherited esbuild advisories and disabled production source maps.
+
+**Result.** The frontend is now a real consumer of engine output, not an adjacent mock. Contract drift fails CI, the browser fails closed on unsafe packets, and the core pitch path is exercised on every pull request.

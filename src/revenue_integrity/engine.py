@@ -12,7 +12,7 @@ from .ontology import OntologyDefinition, OntologyEntity, load_builtin_ontology
 from .rules import Condition, ProposedChange, RulePackage, RuleScope
 
 
-ENGINE_VERSION = "0.4.0"
+ENGINE_VERSION = "0.5.0"
 
 
 class RuleEngine:

@@ -10,6 +10,7 @@ from .ontology import (
     load_ontology_definition,
 )
 from .rules import RulePackage
+from .review_packet import REVIEW_PACKET_SCHEMA_VERSION, build_review_packet
 
 __all__ = [
     "EncounterCase",
@@ -23,4 +24,6 @@ __all__ = [
     "OntologyGraph",
     "load_builtin_ontology",
     "load_ontology_definition",
+    "REVIEW_PACKET_SCHEMA_VERSION",
+    "build_review_packet",
 ]

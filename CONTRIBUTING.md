@@ -7,6 +7,7 @@ Install Python 3.11+ and Node.js 22+, then run:
 ```bash
 python -m pip install -e .
 cd agent && npm ci && cd ..
+cd demo && npm ci && cd ..
 make verify
 ```
 
@@ -28,3 +29,5 @@ Run `make demo` to inspect the deterministic review packet. No model credential 
 - Update schema versions for breaking contract changes.
 - Treat changes to rules, code mappings, grouping, pricing or review policy as governed changes requiring domain approval.
 - Preserve deterministic IDs, integer-cent monetary calculations and complete version provenance.
+- Treat the review packet as a versioned public contract; update its schema, Python tests, browser validation, generated fixture and documentation together.
+- Run `make demo-packet-check` so the pitch application cannot drift from the deterministic engine.

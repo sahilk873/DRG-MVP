@@ -1,4 +1,4 @@
-.PHONY: test typecheck demo-ui-check verify demo bulk-profile bulk-demo
+.PHONY: test typecheck demo-packet demo-packet-check demo-ui-check verify demo bulk-profile bulk-demo
 
 test:
 	PYTHONPATH=src python -m unittest discover -s tests -v
@@ -6,8 +6,14 @@ test:
 typecheck:
 	cd agent && npm run check
 
-demo-ui-check:
-	cd demo && npm run typecheck && npm run build
+demo-packet:
+	PYTHONPATH=src python scripts/generate_demo_packet.py
+
+demo-packet-check:
+	PYTHONPATH=src python scripts/generate_demo_packet.py --check
+
+demo-ui-check: demo-packet-check
+	cd demo && npm run test && npm run typecheck && npm run build
 
 verify: test typecheck demo-ui-check
 

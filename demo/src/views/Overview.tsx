@@ -32,7 +32,7 @@ export function Overview({ onNavigate, onStartTour, notify }: OverviewProps) {
   }, [scanStage])
 
   useEffect(() => {
-    if (scanStage === scanStages.length) notify('Scan complete · 3 review candidates identified')
+    if (scanStage === scanStages.length) notify(`Scan complete · ${opportunities.length} review candidates identified`)
   }, [notify, scanStage])
 
   const scanning = scanStage >= 0 && scanStage < scanStages.length
@@ -106,7 +106,7 @@ export function Overview({ onNavigate, onStartTour, notify }: OverviewProps) {
       </section>
 
       <section className="metric-strip" aria-label="Synthetic demonstration metrics">
-        <Metric icon={CircleDollarSign} label="Reviewable impact" value="$48.2K" change="across 12 open cases" />
+        <Metric icon={CircleDollarSign} label="Reviewable impact" value="$14.1K" change="across 5 demo cases" />
         <Metric icon={ShieldCheck} label="Evidence coverage" value="100%" change="no uncited candidates" />
         <Metric icon={Clock3} label="Median review time" value="4m 18s" change="illustrative workflow" />
         <Metric icon={TrendingUp} label="Precision target" value=">95%" change="prospective validation gate" />

@@ -11,6 +11,7 @@
 | Evidence validation | Zod plus Python domain validation | No | No |
 | Reconciliation | Versioned declarative rules | No | Candidate only |
 | Grouping and pricing | Licensed grouper/pricer adapter | No | Simulation |
+| Review-packet assembly | Versioned deterministic projection | No | Candidate only |
 | Compliance criticism | Mastra agent plus deterministic checks | Yes | No |
 | Final disposition | Threshold policy and focused reviewer | No | Institution-defined |
 
@@ -46,6 +47,8 @@ Human review is exception-based. The system should automatically clear encounter
 
 Initial production policy should require approval for every claim-affecting change. Straight-through processing can be considered later only for narrowly scoped actions supported by prospective validation and institutional governance.
 
+The deterministic engine emits a versioned review packet containing the exact evidence graph, immutable claim snapshot, findings, component versions and audit hashes used for evaluation. Reviewer applications consume this packet rather than reimplementing rule or payment logic. The contract explicitly sets `claim_mutation_allowed` to false; reviewer decisions and any later claim workflow require separate authenticated services and audit events. See [REVIEW_PACKET.md](REVIEW_PACKET.md).
+
 ## Planned Mastra workflow
 
 The implementation contains an extraction agent and a separately bounded adapter-designer agent. Subsequent agents should be composed in a Mastra workflow with explicit inputs and outputs:
@@ -56,6 +59,6 @@ The implementation contains an extraction agent and a separately bounded adapter
 4. identify contradictions and missing documentation;
 5. ask a compliance critic to challenge candidates;
 6. pass only validated structured data to the deterministic engine;
-7. draft the reviewer packet from the engine's immutable result.
+7. optionally summarize the deterministic packet for readability without changing its evidence, controls, codes, DRGs, or financial fields.
 
 Agent debate is supporting evidence, not consensus truth. Disagreement increases escalation priority rather than authorizing a code.

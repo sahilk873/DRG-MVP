@@ -39,6 +39,19 @@ test('profile and extraction fragment JSON Schemas compile strictly', async () =
   }
 })
 
+test('review packet schema accepts the engine-generated demo handoff', async () => {
+  const ajv = new Ajv2020({ allErrors: true, strict: true })
+  addFormats(ajv)
+  ajv.addSchema(JSON.parse(await readFile('../schemas/claim.schema.json', 'utf8')))
+  ajv.addSchema(JSON.parse(await readFile('../schemas/encounter_case.schema.json', 'utf8')))
+  const schema = JSON.parse(await readFile('../schemas/review_packet.schema.json', 'utf8'))
+  const fixture = JSON.parse(await readFile('../demo/src/fixtures/review-packet.json', 'utf8'))
+  const validate = ajv.compile(schema)
+  assert.equal(validate(fixture), true, ajv.errorsText(validate.errors))
+  assert.equal(fixture.controls.claim_mutation_allowed, false)
+  assert.equal(fixture.controls.human_review_required, true)
+})
+
 test('encounter schema rejects an ontology digest with the wrong shape', async () => {
   const ajv = new Ajv2020({ allErrors: true, strict: true })
   addFormats(ajv)

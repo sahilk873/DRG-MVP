@@ -20,6 +20,8 @@ Before handling regulated data, complete a formal threat model and security revi
 
 The demo grouper and sample clinical rules are explicitly non-production artifacts.
 
+Reviewer applications must validate the versioned review-packet contract, verify its record and component hashes against the audit store, and enforce `claim_mutation_allowed: false`. Displaying a proposed change never authorizes it. Reviewer identity, tenant, role, reason, and decision must be recorded by a separate authenticated service before any downstream workflow begins.
+
 ## Bulk onboarding boundary
 
 - Mount provider input read-only and write outputs to a separate location.

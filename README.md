@@ -40,6 +40,7 @@ The case model separates what happened clinically, what was explicitly documente
 - Replaceable licensed DRG grouper/pricer interface
 - Integer-cent payment simulation
 - Deterministic finding IDs and hash-chained audit records
+- Versioned human-review packets connecting engine output to reviewer applications
 - Atomic CLI output, CI, dependency monitoring and cross-language tests
 - Configurable input/output resource budgets at both trust boundaries
 - Governed source artifacts with checksum and authority enforcement
@@ -71,6 +72,10 @@ cd agent
 npm ci
 cd ..
 
+cd demo
+npm ci
+cd ..
+
 make verify
 make demo
 ```
@@ -89,7 +94,15 @@ Choose **Start guided demo** for the five-step narrative, or explore the command
 
 The deterministic demo creates a review finding, supporting evidence, a proposed code change, demo regrouping and payment delta. It never modifies or submits a claim.
 
-The v0.4 release uses encounter-case schema `2.0.0`. Earlier case payloads intentionally fail closed until they add a versioned, fingerprinted `ontology` graph and bind every assertion through `subject_id`. Revenue rule packages and bulk adapters must declare their compatible ontology ID, version and digest.
+Generate the same versioned handoff consumed by the pitch application:
+
+```bash
+revenue-integrity examples/case_pressure_injury.json rules/wound_care_v1.json \
+  --format review-packet --environment synthetic \
+  --output output/review-packet.json
+```
+
+The v0.5 release uses encounter-case schema `2.0.0` and review-packet schema `1.0.0`. Earlier case payloads intentionally fail closed until they add a versioned, fingerprinted `ontology` graph and bind every assertion through `subject_id`. Revenue rule packages and bulk adapters must declare their compatible ontology ID, version and digest.
 
 ## Run the bulk-ingestion demo
 
@@ -142,7 +155,7 @@ New specialties are added as versioned ontology definitions and compatible rule 
 
 Before real use, the project still requires licensed terminology and grouping components, FHIR/HL7 and claim adapters, institution-approved rules, representative positive and negative validation data, model/retrieval evaluations, a reviewer application and the security controls in [SECURITY.md](SECURITY.md).
 
-See [docs/ADAPTER_FACTORY.md](docs/ADAPTER_FACTORY.md) for bulk onboarding and extension contracts, [docs/ONTOLOGY.md](docs/ONTOLOGY.md) for the domain-extension contract, [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for trust-boundary decisions and [CONTRIBUTING.md](CONTRIBUTING.md) for change requirements.
+See [docs/ADAPTER_FACTORY.md](docs/ADAPTER_FACTORY.md) for bulk onboarding, [docs/ONTOLOGY.md](docs/ONTOLOGY.md) for the domain-extension contract, [docs/REVIEW_PACKET.md](docs/REVIEW_PACKET.md) for the reviewer-application handoff, [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for trust-boundary decisions and [CONTRIBUTING.md](CONTRIBUTING.md) for change requirements.
 
 The supplied raw wound-care workbook is preserved at [knowledge/sources/wound_care_clinical_rules_raw.xlsx](knowledge/sources/wound_care_clinical_rules_raw.xlsx), governed by [knowledge/wound_care_source_manifest.json](knowledge/wound_care_source_manifest.json), and intentionally non-executable. See [docs/ITERATIVE_REVIEW.md](docs/ITERATIVE_REVIEW.md) for the completed five-pass design review and remaining production roadmap.
 

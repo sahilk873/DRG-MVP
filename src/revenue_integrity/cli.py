@@ -13,6 +13,7 @@ from .engine import RuleEngine
 from .grouper import DeterministicDemoGrouper
 from .models import EncounterCase
 from .ontology import load_ontology_definition
+from .review_packet import REVIEW_PACKET_ENVIRONMENTS, build_review_packet
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -37,6 +38,18 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Exit with status 3 when one or more findings are produced",
     )
+    parser.add_argument(
+        "--format",
+        choices=("audit", "review-packet"),
+        default="audit",
+        help="Output the hash-chained audit record or the reviewer-application handoff contract",
+    )
+    parser.add_argument(
+        "--environment",
+        choices=tuple(sorted(REVIEW_PACKET_ENVIRONMENTS)),
+        default="development",
+        help="Label review-packet data without changing evaluation behavior",
+    )
     return parser
 
 
@@ -57,11 +70,20 @@ def main(argv: list[str] | None = None) -> int:
             allow_unapproved=args.allow_unapproved_rules,
             ontology_definition=ontology_definition,
         ).evaluate(case)
-        result = audit_record(
-            case_payload=case_payload,
-            rule_package=rules_payload,
-            findings=[finding.to_dict() for finding in findings],
-        )
+        if args.format == "review-packet":
+            result = build_review_packet(
+                case=case,
+                case_payload=case_payload,
+                rule_package=rules_payload,
+                findings=findings,
+                environment=args.environment,
+            )
+        else:
+            result = audit_record(
+                case_payload=case_payload,
+                rule_package=rules_payload,
+                findings=[finding.to_dict() for finding in findings],
+            )
         rendered = json.dumps(result, indent=2, ensure_ascii=False) + "\n"
         if args.output:
             _atomic_write(args.output, rendered)
