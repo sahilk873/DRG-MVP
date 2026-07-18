@@ -209,6 +209,17 @@ h1, h2, h3, strong { font-family: Inter, ui-sans-serif, -apple-system, BlinkMacS
 .case-tab--active::after { content: ''; position: absolute; inset: auto 10px -1px; height: 2px; background: var(--teal); }
 .case-tab > span { padding: 1px 5px; background: #e8ebe7; border-radius: 8px; font-size: 8px; }
 .case-tab-content { min-height: 430px; padding: 22px; }
+
+.investigation-layout { display: grid; gap: 18px; }
+.investigation-intro { margin: -4px 0 4px; max-width: 760px; color: var(--text-secondary); }
+.investigation-timeline { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.investigation-timeline li { display: grid; grid-template-columns: 34px 1fr; gap: 12px; align-items: start; padding: 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.investigation-step__number { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 50%; background: var(--blue-soft); color: var(--blue); font-weight: 700; font-size: 13px; }
+.investigation-step__content > div { display: flex; align-items: center; gap: 10px; }
+.investigation-step__content h4 { margin: 0; font-size: 15px; }
+.investigation-step__content p { margin: 8px 0; color: var(--text-secondary); line-height: 1.5; }
+.investigation-step__content small { color: var(--text-tertiary); }
+.investigation-guardrail { display: flex; gap: 10px; align-items: flex-start; padding: 14px 16px; border-radius: 10px; color: var(--text-secondary); background: var(--green-soft); }
 .evidence-layout { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(250px, .5fr); gap: 26px; }
 .tab-section-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 15px; margin-bottom: 16px; }
 .tab-section-heading h3 { margin: 0; font-size: 15px; }
