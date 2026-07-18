@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 import { useState, type CSSProperties, type ReactNode } from 'react'
 
-import { opportunities, primaryReviewPacket } from '../data'
+import { opportunities, primaryInvestigation, primaryReviewPacket } from '../data'
 import type { ReviewPacket } from '../review-packet'
 import type { ViewId } from '../types'
 import type { ReviewerIdentity, ReviewWorkflowGateway, ReviewDecision } from '../workflow'
@@ -34,7 +34,7 @@ interface CaseReviewProps {
   onDecisionRecorded: (decision: ReviewDecision) => void
 }
 
-type CaseTab = 'evidence' | 'graph' | 'claim' | 'audit'
+type CaseTab = 'evidence' | 'graph' | 'claim' | 'investigation' | 'audit'
 
 export function CaseReview({ onNavigate, notify, workflowGateway, reviewer, automationPlan, decisions, onDecisionRecorded }: CaseReviewProps) {
   const opportunity = opportunities[0]
@@ -186,16 +186,41 @@ export function CaseReview({ onNavigate, notify, workflowGateway, reviewer, auto
           <Tab active={tab === 'evidence'} icon={FileText} label="Evidence" count={packet.evidence.length} onClick={() => setTab('evidence')} />
           <Tab active={tab === 'graph'} icon={GitBranch} label="Encounter graph" onClick={() => setTab('graph')} />
           <Tab active={tab === 'claim'} icon={Code2} label="Claim comparison" onClick={() => setTab('claim')} />
+          <Tab active={tab === 'investigation'} icon={ClipboardCheck} label="Investigation" onClick={() => setTab('investigation')} />
           <Tab active={tab === 'audit'} icon={History} label="Audit trail" onClick={() => setTab('audit')} />
         </div>
         <div className="case-tab-content">
           {tab === 'evidence' && <EvidenceTab packet={packet} />}
           {tab === 'graph' && <GraphTab packet={packet} />}
           {tab === 'claim' && <ClaimTab packet={packet} />}
+          {tab === 'investigation' && <InvestigationTab />}
           {tab === 'audit' && <AuditTab packet={packet} decisions={decisions} automationPlan={automationPlan} />}
         </div>
       </section>
     </>
+  )
+}
+
+function InvestigationTab() {
+  const stages = [primaryInvestigation.clinicalPass, primaryInvestigation.reconciliation, primaryInvestigation.critic, primaryInvestigation.validation]
+  return (
+    <div className="investigation-layout">
+      <div className="tab-section-heading">
+        <div><span className="panel-kicker">Governed investigation run</span><h3>From chart evidence to one narrow decision</h3></div>
+        <span className="evidence-complete"><ShieldCheck size={15} /> Claim mutation disabled</span>
+      </div>
+      <p className="investigation-intro">The model investigates the clinical and financial record, but deterministic checks decide whether a reviewer ever sees the result.</p>
+      <ol className="investigation-timeline">
+        {stages.map((stage, index) => <li key={stage.title}>
+          <div className="investigation-step__number">{index + 1}</div>
+          <div className="investigation-step__content">
+            <div><span className="status-label status-label--ready-for-review"><i />{stage.status}</span><h4>{stage.title}</h4></div>
+            <p>{stage.detail}</p><small>{stage.evidence}</small>
+          </div>
+        </li>)}
+      </ol>
+      <div className="investigation-guardrail"><ShieldCheck size={17} /><span><strong>Automation boundary:</strong> the reviewer can route or dismiss this finding; the demo never alters or submits a claim.</span></div>
+    </div>
   )
 }
 
