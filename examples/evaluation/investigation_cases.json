@@ -1,0 +1,10 @@
+{
+  "schema_version": "1.0.0",
+  "cases": [
+    {"case_id": "eval-missed-diagnosis", "category": "missed_diagnosis", "key": "L89.154", "label": "true_positive"},
+    {"case_id": "eval-bundled-charge", "category": "missed_charge", "key": "SUPPLY-BUNDLED", "label": "negative_bundled"},
+    {"case_id": "eval-unsupported-billing", "category": "unsupported_billing", "key": "CPT-UNSUPPORTED", "label": "true_positive"},
+    {"case_id": "eval-contradiction", "category": "documentation_gap", "key": "depth-conflict", "label": "true_positive"},
+    {"case_id": "eval-drug-no-opportunity", "category": "missed_diagnosis", "key": "NO-MATCH", "label": "negative"}
+  ]
+}

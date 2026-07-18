@@ -40,6 +40,29 @@ export const primaryOpportunity: Opportunity = {
   packetBacked: true,
 }
 
+export const primaryInvestigation = {
+  clinicalPass: {
+    status: 'Complete', title: 'Billing-blind clinical reconstruction',
+    detail: 'A stage 4 sacral pressure injury is grounded in the wound assessment before the system compares diagnosis, charge, or DRG data.',
+    evidence: 'EV-001 · exact nurse assessment excerpt',
+  },
+  reconciliation: {
+    status: 'Candidate', title: 'Clinical–financial mismatch',
+    detail: 'The reconstructed diagnosis is absent from the submitted claim snapshot. It remains a hypothesis until deterministic validation completes.',
+    evidence: 'Candidate diagnosis · L89.154',
+  },
+  critic: {
+    status: 'Supported', title: 'Counterevidence review',
+    detail: 'The critic found no conflicting source in this synthetic encounter. Contradictions would escalate rather than auto-route the finding.',
+    evidence: 'No counterevidence emitted',
+  },
+  validation: {
+    status: 'Verified', title: 'Deterministic simulation',
+    detail: 'The validator preserves evidence lineage and simulates the candidate through the configured demo grouper without changing the source claim.',
+    evidence: `DRG ${primaryOpportunity.currentDrg} → ${primaryOpportunity.simulatedDrg}`,
+  },
+} as const
+
 export const opportunities: Opportunity[] = [
   primaryOpportunity,
   {

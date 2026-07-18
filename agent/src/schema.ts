@@ -230,6 +230,14 @@ export const opportunityHypothesisSchema = z.object({
   materiality_cents: z.number().int().nonnegative().nullable().default(null),
 }).strict()
 
+export const opportunityCritiqueSchema = z.object({
+  hypothesis_id: nonEmptyString,
+  supported: z.boolean(),
+  counterevidence_ids: z.array(nonEmptyString).default([]),
+  rationale: nonEmptyString,
+  missing_information: z.array(nonEmptyString).default([]),
+}).strict()
+
 export function createReconciliationOutputSchema(packet: z.infer<typeof investigationPacketSchema>) {
   const evidenceIds = new Set(packet.encounter.evidence.map(item => item.evidence_id))
   const assertionIds = new Set(packet.encounter.assertions.map(item => item.assertion_id))
@@ -255,6 +263,25 @@ export function createReconciliationOutputSchema(packet: z.infer<typeof investig
       }
       for (const assertionId of hypothesis.assertion_ids) {
         if (!assertionIds.has(assertionId)) context.addIssue({ code: 'custom', path: ['hypotheses', index, 'assertion_ids'], message: `unknown assertion: ${assertionId}` })
+      }
+    }
+  })
+}
+
+export function createCritiqueOutputSchema(
+  packet: z.infer<typeof investigationPacketSchema>,
+  hypotheses: readonly z.infer<typeof opportunityHypothesisSchema>[],
+) {
+  const hypothesisIds = new Set(hypotheses.map(item => item.hypothesis_id))
+  const evidenceIds = new Set(packet.encounter.evidence.map(item => item.evidence_id))
+  return z.object({ critiques: z.array(opportunityCritiqueSchema) }).strict().superRefine((value, context) => {
+    const seen = new Set<string>()
+    for (const [index, critique] of value.critiques.entries()) {
+      if (!hypothesisIds.has(critique.hypothesis_id)) context.addIssue({ code: 'custom', path: ['critiques', index, 'hypothesis_id'], message: 'unknown hypothesis_id' })
+      if (seen.has(critique.hypothesis_id)) context.addIssue({ code: 'custom', path: ['critiques', index, 'hypothesis_id'], message: 'duplicate critique' })
+      seen.add(critique.hypothesis_id)
+      for (const evidenceId of critique.counterevidence_ids) {
+        if (!evidenceIds.has(evidenceId)) context.addIssue({ code: 'custom', path: ['critiques', index, 'counterevidence_ids'], message: `unknown evidence: ${evidenceId}` })
       }
     }
   })
@@ -294,6 +321,7 @@ export type OntologyDefinition = z.infer<typeof ontologyDefinitionSchema>
 export type OntologyGraph = z.infer<typeof ontologyGraphSchema>
 export type InvestigationPacket = z.infer<typeof investigationPacketSchema>
 export type OpportunityHypothesis = z.infer<typeof opportunityHypothesisSchema>
+export type OpportunityCritique = z.infer<typeof opportunityCritiqueSchema>
 
 function validateLineage(
   value: {
