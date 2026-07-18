@@ -9,7 +9,7 @@ from .investigation import OpportunityCategory, OpportunityHypothesis
 
 @dataclass(frozen=True, slots=True)
 class LabeledOpportunity:
-    case_id: str
+    encounter_id: str
     category: OpportunityCategory
     key: str
     valid: bool = True
@@ -52,7 +52,7 @@ def evaluate_opportunities(
     labels: Iterable[LabeledOpportunity],
     predictions: Sequence[OpportunityHypothesis],
 ) -> EvaluationMetrics:
-    expected = {(item.case_id, item.category, item.key) for item in labels if item.valid}
+    expected = {(item.encounter_id, item.category, item.key) for item in labels if item.valid}
     predicted = {(item.encounter_id, item.category, _prediction_key(item)) for item in predictions}
     return EvaluationMetrics(
         true_positives=len(expected & predicted),
