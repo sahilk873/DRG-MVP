@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/schemas/claim-v1.json",
+  "title": "Immutable Claim Snapshot",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["diagnoses", "procedures", "charges"],
+  "properties": {
+    "diagnoses": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "procedures": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "charges": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "drg": {"anyOf": [{"type": "string", "minLength": 1}, {"type": "null"}]},
+    "allowed_amount_cents": {"type": ["integer", "null"], "minimum": 0}
+  }
+}

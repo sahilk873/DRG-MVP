@@ -13,7 +13,7 @@ The ontology is a versioned type system for patient-specific encounter graphs. I
 | Revenue rule package | Claim comparisons and candidate corrections | Effective-dated and approved |
 | Clinical rule package | Alerts or treatment recommendations | Separate runtime and clinical governance |
 
-The Python and TypeScript validators read class and relation definitions from data. They do not contain wound-type or wound-relation branches. A new domain supplies a new definition and passes it to the same validators. The packaged registry is only a convenient bootstrap for built-in definitions.
+The Python and TypeScript validators read structural templates, classes and relation definitions from data. They do not contain wound-type, wound-relation or fixed root-ID branches. A new domain supplies a new definition and passes it to the same validators. The packaged registry is only a convenient bootstrap for built-in definitions.
 
 ## Source-derived design
 
@@ -25,7 +25,7 @@ Terminology mappings are carried on instances as `{system, code, display}`. Inte
 
 ## Agent and deterministic boundary
 
-Mastra may extract entities, relationships, modalities, quantities, contradictions, and materialized assertions. It may also suggest terminology candidates. The orchestrator then verifies exact excerpts, source metadata, references, types, relation domain and range, evidence requirements, ontology version, and immutable claim separation.
+Mastra may extract entities, relationships, modalities, quantities, contradictions, and materialized assertions. It may also suggest terminology candidates. The orchestrator then verifies exact excerpts, source metadata, references, types, relation domain and range, evidence requirements, ontology ID/version/digest, configured resource budgets, and immutable claim separation.
 
 Only deterministic components may execute approved rules, compare claims, call a grouper or pricer, calculate deltas, or produce a governed disposition. Agent output cannot introduce code, alter a claim, assign a DRG, authorize treatment, or mark its own rule package approved.
 
@@ -49,9 +49,9 @@ Humans should review the small set of claim-affecting, ambiguous, compliance-sen
 2. Add domain classes, parent relationships, relation domains/ranges, evidence requirements, and value sets. Avoid embedding payer policy or workflow state in clinical classes.
 3. Map external terminologies on instances or in a separately licensed terminology package.
 4. Configure the Mastra extractor with the definition. The same structured-output and semantic validators apply.
-5. Create an effective-dated revenue-integrity rule package that declares the exact ontology ID and version. Clinical decision-support rules belong in a separate package and runtime.
+5. Create an effective-dated revenue-integrity rule package that declares the exact ontology ID, version and semantic digest. Give each rule an ontology `applies_to` scope; clinical decision-support rules belong in a separate package and runtime.
 6. Add positive, negative, boundary, negation, temporality, contradiction, and malformed-graph tests.
 7. Evaluate ontology coverage using a development corpus and an untouched holdout corpus. Add concepts only when the holdout reveals a real coverage gap, then repeat until additions stabilize.
-8. Publish a new ontology version for breaking class or relation changes. Do not silently reinterpret a released version.
+8. Publish a new ontology version for breaking class or relation changes and update the generated digest binding. Digest mismatch fails closed even if a version bump is accidentally omitted; it does not replace version governance.
 
 Rule-facing assertions keep the deterministic engine simple, but each assertion must reference its graph subject. Future graph-pattern evaluators can consume the same instance graph without changing extraction or evidence contracts.

@@ -3,7 +3,7 @@
   "$id": "https://example.org/schemas/ontology-definition-v1.json",
   "title": "Extensible Encounter Ontology Definition",
   "type": "object",
-  "required": ["ontology_id", "version", "status", "classes", "relations"],
+  "required": ["ontology_id", "version", "status", "structural_graph", "classes", "relations"],
   "properties": {
     "ontology_id": {"type": "string", "minLength": 1},
     "version": {"type": "string", "minLength": 1},
@@ -19,7 +19,16 @@
           "title": {"type": "string", "minLength": 1},
           "contribution": {"type": "string", "minLength": 1}
         },
-        "additionalProperties": true
+        "additionalProperties": false
+      }
+    },
+    "structural_graph": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entities", "relations"],
+      "properties": {
+        "entities": {"type": "array", "items": {"$ref": "#/$defs/ontologyEntity"}},
+        "relations": {"type": "array", "items": {"$ref": "#/$defs/ontologyRelation"}}
       }
     },
     "classes": {
@@ -35,7 +44,7 @@
           "abstract": {"type": "boolean"},
           "value_set": {"type": "string", "minLength": 1}
         },
-        "additionalProperties": true
+        "additionalProperties": false
       }
     },
     "relations": {
@@ -49,7 +58,7 @@
           "range": {"$ref": "#/$defs/nonEmptyStringArray"},
           "requires_evidence": {"type": "boolean"}
         },
-        "additionalProperties": true
+        "additionalProperties": false
       }
     },
     "value_sets": {
@@ -57,13 +66,52 @@
       "additionalProperties": {"$ref": "#/$defs/nonEmptyStringArray"}
     }
   },
-  "additionalProperties": true,
+  "additionalProperties": false,
   "$defs": {
+    "nonEmptyString": {"type": "string", "minLength": 1},
     "nonEmptyStringArray": {
       "type": "array",
       "minItems": 1,
       "uniqueItems": true,
       "items": {"type": "string", "minLength": 1}
+    },
+    "conceptCode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["system", "code", "display"],
+      "properties": {
+        "system": {"$ref": "#/$defs/nonEmptyString"},
+        "code": {"$ref": "#/$defs/nonEmptyString"},
+        "display": {"$ref": "#/$defs/nonEmptyString"}
+      }
+    },
+    "ontologyEntity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entity_id", "entity_type", "label", "properties"],
+      "properties": {
+        "entity_id": {"$ref": "#/$defs/nonEmptyString"},
+        "entity_type": {"$ref": "#/$defs/nonEmptyString"},
+        "label": {"$ref": "#/$defs/nonEmptyString"},
+        "concept": {"$ref": "#/$defs/conceptCode"},
+        "properties": {"type": "object"}
+      }
+    },
+    "ontologyRelation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relation_id", "predicate", "source_id", "target_id", "assertion_status", "documentation_status", "confidence", "evidence_ids"],
+      "properties": {
+        "relation_id": {"$ref": "#/$defs/nonEmptyString"},
+        "predicate": {"$ref": "#/$defs/nonEmptyString"},
+        "source_id": {"$ref": "#/$defs/nonEmptyString"},
+        "target_id": {"$ref": "#/$defs/nonEmptyString"},
+        "assertion_status": {"enum": ["present", "absent", "uncertain", "historical"]},
+        "documentation_status": {"enum": ["explicit", "inferred", "conflicted", "absent"]},
+        "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+        "evidence_ids": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/nonEmptyString"}},
+        "contradicting_evidence_ids": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/nonEmptyString"}}
+      }
     }
   }
 }

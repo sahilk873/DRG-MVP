@@ -6,6 +6,17 @@ from enum import StrEnum
 from typing import Any, Mapping
 
 SUPPORTED_SCHEMA_VERSION = "2.0.0"
+EXTRACTION_POLICY_FIELDS = (
+    "max_documents",
+    "max_document_characters",
+    "max_total_document_characters",
+    "max_evidence_items",
+    "max_evidence_characters",
+    "max_total_evidence_characters",
+    "max_entities",
+    "max_relations",
+    "max_assertions",
+)
 
 
 class AssertionStatus(StrEnum):
@@ -31,6 +42,31 @@ class Disposition(StrEnum):
     NO_OPPORTUNITY = "no_opportunity"
 
 
+class ImpactStatus(StrEnum):
+    ESTIMATED = "estimated"
+    NOT_APPLICABLE = "not_applicable"
+    UNAVAILABLE = "unavailable"
+
+
+@dataclass(frozen=True, slots=True)
+class CaseValidationLimits:
+    max_evidence_items: int = 2_000
+    max_evidence_characters: int = 2_000
+    max_total_evidence_characters: int = 250_000
+    max_ontology_entities: int = 2_000
+    max_ontology_relations: int = 5_000
+    max_assertions: int = 2_000
+
+    def __post_init__(self) -> None:
+        for name in self.__dataclass_fields__:
+            value = getattr(self, name)
+            if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+                raise ValueError(f"case validation limit {name} must be a positive integer")
+
+
+DEFAULT_CASE_VALIDATION_LIMITS = CaseValidationLimits()
+
+
 @dataclass(frozen=True, slots=True)
 class ExtractionProvenance:
     framework: str
@@ -38,13 +74,56 @@ class ExtractionProvenance:
     agent_id: str
     extracted_at: str
     schema_version: str
+    extraction_policy: Mapping[str, int]
+    ingestion: Mapping[str, Any] | None = None
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> "ExtractionProvenance":
         fields = ("framework", "model_id", "agent_id", "extracted_at", "schema_version")
-        _validate_keys(data, required=fields, allowed=fields, object_name="provenance")
+        required = fields + ("extraction_policy",)
+        allowed = required + ("ingestion",)
+        _validate_keys(data, required=required, allowed=allowed, object_name="provenance")
         _parse_iso_datetime(str(data["extracted_at"]), "provenance.extracted_at")
-        provenance = cls(**{name: _nonempty_string(data[name], f"provenance.{name}") for name in fields})
+        policy = _mapping(data["extraction_policy"], "provenance.extraction_policy")
+        _validate_keys(
+            policy,
+            required=EXTRACTION_POLICY_FIELDS,
+            allowed=EXTRACTION_POLICY_FIELDS,
+            object_name="provenance.extraction_policy",
+        )
+        parsed_policy: dict[str, int] = {}
+        for name in EXTRACTION_POLICY_FIELDS:
+            value = policy[name]
+            if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+                raise ValueError(f"provenance.extraction_policy.{name} must be a positive integer")
+            parsed_policy[name] = value
+        ingestion = data.get("ingestion")
+        if ingestion is not None:
+            ingestion = _mapping(ingestion, "provenance.ingestion")
+            ingestion_fields = (
+                "framework", "adapter_id", "adapter_version", "source_schema_fingerprint",
+                "input_manifest_digest", "transformed_at", "runtime_version",
+            )
+            _validate_keys(
+                ingestion,
+                required=ingestion_fields,
+                allowed=ingestion_fields,
+                object_name="provenance.ingestion",
+            )
+            if ingestion["framework"] != "deterministic-adapter":
+                raise ValueError("provenance.ingestion.framework must be 'deterministic-adapter'")
+            for name in ("source_schema_fingerprint", "input_manifest_digest"):
+                value = _nonempty_string(ingestion[name], f"provenance.ingestion.{name}")
+                if len(value) != 64 or any(character not in "0123456789abcdef" for character in value):
+                    raise ValueError(f"provenance.ingestion.{name} must be a lowercase SHA-256 digest")
+            _parse_iso_datetime(str(ingestion["transformed_at"]), "provenance.ingestion.transformed_at")
+            for name in ("adapter_id", "adapter_version", "runtime_version"):
+                _nonempty_string(ingestion[name], f"provenance.ingestion.{name}")
+        provenance = cls(
+            **{name: _nonempty_string(data[name], f"provenance.{name}") for name in fields},
+            extraction_policy=parsed_policy,
+            ingestion=dict(ingestion) if ingestion is not None else None,
+        )
         if provenance.framework != "mastra":
             raise ValueError("provenance.framework must be 'mastra'")
         return provenance
@@ -57,19 +136,47 @@ class Evidence:
     author_role: str
     recorded_at: str
     text: str
+    source_locator: Mapping[str, Any] | None = None
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> "Evidence":
         fields = ("evidence_id", "document_id", "author_role", "recorded_at", "text")
-        _validate_keys(data, required=fields, allowed=fields, object_name="evidence")
+        _validate_keys(data, required=fields, allowed=fields + ("source_locator",), object_name="evidence")
         recorded_at = _nonempty_string(data["recorded_at"], "evidence.recorded_at")
         _parse_iso_datetime(recorded_at, "evidence.recorded_at")
+        source_locator = data.get("source_locator")
+        if source_locator is not None:
+            source_locator = _mapping(source_locator, "evidence.source_locator")
+            locator_fields = (
+                "adapter_id", "adapter_version", "resource", "path", "row_number",
+                "source_record_id", "field_names",
+            )
+            _validate_keys(
+                source_locator,
+                required=locator_fields,
+                allowed=locator_fields + ("sheet",),
+                object_name="evidence.source_locator",
+            )
+            for name in ("adapter_id", "adapter_version", "resource", "path", "source_record_id"):
+                _nonempty_string(source_locator[name], f"evidence.source_locator.{name}")
+            locator_path = str(source_locator["path"])
+            if locator_path.startswith(("/", "~")) or ".." in locator_path.split("/") or "\\" in locator_path:
+                raise ValueError("evidence.source_locator.path must be a safe relative path")
+            row_number = source_locator["row_number"]
+            if isinstance(row_number, bool) or not isinstance(row_number, int) or row_number <= 0:
+                raise ValueError("evidence.source_locator.row_number must be a positive integer")
+            locator_fields = _unique_strings(source_locator["field_names"], "evidence.source_locator.field_names")
+            if not locator_fields:
+                raise ValueError("evidence.source_locator.field_names must not be empty")
+            if "sheet" in source_locator:
+                _nonempty_string(source_locator["sheet"], "evidence.source_locator.sheet")
         return cls(
             evidence_id=_nonempty_string(data["evidence_id"], "evidence.evidence_id"),
             document_id=_nonempty_string(data["document_id"], "evidence.document_id"),
             author_role=_nonempty_string(data["author_role"], "evidence.author_role"),
             recorded_at=recorded_at,
             text=_nonempty_string(data["text"], "evidence.text"),
+            source_locator=dict(source_locator) if source_locator is not None else None,
         )
 
 
@@ -163,6 +270,7 @@ class EncounterCase:
         data: Mapping[str, Any],
         *,
         ontology_definition: "OntologyDefinition | None" = None,
+        validation_limits: CaseValidationLimits | None = None,
     ) -> "EncounterCase":
         required = (
             "schema_version", "case_id", "patient_id", "encounter_id", "admitted_at", "discharged_at",
@@ -170,6 +278,7 @@ class EncounterCase:
         )
         allowed = required + ("metadata",)
         _validate_keys(data, required=required, allowed=allowed, object_name="case")
+        _validate_case_limits(data, validation_limits or DEFAULT_CASE_VALIDATION_LIMITS)
         admitted_at = _nonempty_string(data["admitted_at"], "case.admitted_at")
         discharged_at = _nonempty_string(data["discharged_at"], "case.discharged_at")
         admitted = _parse_iso_datetime(admitted_at, "case.admitted_at")
@@ -219,6 +328,18 @@ class EncounterCase:
         if len(evidence_ids) != len(set(evidence_ids)):
             raise ValueError("evidence_id values must be unique")
         known = set(evidence_ids)
+        ingestion = self.provenance.ingestion
+        for evidence in self.evidence:
+            locator = evidence.source_locator
+            if locator is None:
+                continue
+            if ingestion is None:
+                raise ValueError(f"evidence {evidence.evidence_id} has a source locator without ingestion provenance")
+            if (
+                locator["adapter_id"] != ingestion["adapter_id"]
+                or locator["adapter_version"] != ingestion["adapter_version"]
+            ):
+                raise ValueError(f"evidence {evidence.evidence_id} source locator does not match ingestion provenance")
         assertion_ids: set[str] = set()
         ontology_entity_ids = {entity.entity_id for entity in self.ontology.entities}
         for assertion in self.assertions:
@@ -248,6 +369,7 @@ class Finding:
     disposition: Disposition
     confidence: float
     proposed_change: Mapping[str, Any]
+    subject_ids: tuple[str, ...]
     assertion_ids: tuple[str, ...]
     evidence_ids: tuple[str, ...]
     contradicting_evidence_ids: tuple[str, ...]
@@ -256,8 +378,20 @@ class Finding:
     submitted_drg: str | None
     current_drg: str
     simulated_drg: str
-    estimated_impact_cents: int
+    estimated_impact_cents: int | None
+    impact_status: ImpactStatus
     grouper_version: str
+
+    def __post_init__(self) -> None:
+        if self.impact_status is ImpactStatus.ESTIMATED and self.estimated_impact_cents is None:
+            raise ValueError("estimated finding impact requires estimated_impact_cents")
+        if self.impact_status in {ImpactStatus.UNAVAILABLE, ImpactStatus.NOT_APPLICABLE} and self.estimated_impact_cents is not None:
+            raise ValueError("unavailable or not-applicable finding impact cannot carry an estimate")
+        if self.estimated_impact_cents is not None and (
+            isinstance(self.estimated_impact_cents, bool)
+            or not isinstance(self.estimated_impact_cents, int)
+        ):
+            raise ValueError("finding estimated_impact_cents must be an integer or null")
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -269,6 +403,7 @@ class Finding:
             "disposition": self.disposition.value,
             "confidence": self.confidence,
             "proposed_change": dict(self.proposed_change),
+            "subject_ids": list(self.subject_ids),
             "assertion_ids": list(self.assertion_ids),
             "evidence_ids": list(self.evidence_ids),
             "contradicting_evidence_ids": list(self.contradicting_evidence_ids),
@@ -278,6 +413,7 @@ class Finding:
             "current_drg": self.current_drg,
             "simulated_drg": self.simulated_drg,
             "estimated_impact_cents": self.estimated_impact_cents,
+            "impact_status": self.impact_status.value,
             "grouper_version": self.grouper_version,
         }
 
@@ -289,6 +425,36 @@ def _validate_keys(data: Mapping[str, Any], *, required: tuple[str, ...], allowe
         raise ValueError(f"{object_name} missing required fields: {missing}")
     if unknown:
         raise ValueError(f"{object_name} contains unknown fields: {unknown}")
+
+
+def _validate_case_limits(data: Mapping[str, Any], limits: CaseValidationLimits) -> None:
+    evidence = _list(data["evidence"], "case.evidence")
+    assertions = _list(data["assertions"], "case.assertions")
+    ontology = _mapping(data["ontology"], "case.ontology")
+    entities = _list(ontology.get("entities"), "case.ontology.entities")
+    relations = _list(ontology.get("relations"), "case.ontology.relations")
+    counts = (
+        (len(evidence), limits.max_evidence_items, "max_evidence_items"),
+        (len(assertions), limits.max_assertions, "max_assertions"),
+        (len(entities), limits.max_ontology_entities, "max_ontology_entities"),
+        (len(relations), limits.max_ontology_relations, "max_ontology_relations"),
+    )
+    for actual, maximum, name in counts:
+        if actual > maximum:
+            raise ValueError(f"case exceeds {name} ({maximum})")
+    total_evidence_characters = 0
+    for item in evidence:
+        if not isinstance(item, Mapping) or not isinstance(item.get("text"), str):
+            continue
+        length = len(item["text"])
+        if length > limits.max_evidence_characters:
+            raise ValueError(f"case evidence exceeds max_evidence_characters ({limits.max_evidence_characters})")
+        total_evidence_characters += length
+        if total_evidence_characters > limits.max_total_evidence_characters:
+            raise ValueError(
+                "case evidence exceeds max_total_evidence_characters "
+                f"({limits.max_total_evidence_characters})"
+            )
 
 
 def _mapping(value: Any, name: str) -> Mapping[str, Any]:

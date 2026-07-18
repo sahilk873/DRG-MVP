@@ -4,7 +4,8 @@
   "rule_domain": "revenue_integrity",
   "ontology": {
     "ontology_id": "wound-care-encounter-ontology",
-    "version": "1.0.0-draft"
+    "version": "1.0.0-draft",
+    "digest": "eb2b6f6aa447825fa45012fd23a91fe0f572fe280cf776a239699d6230390779"
   },
   "status": "approved-for-demo",
   "effective_from": "2026-01-01",
@@ -12,6 +13,7 @@
     {
       "rule_id": "WC-PI-OMITTED-001",
       "title": "Explicitly documented stage 4 sacral pressure injury absent from claim",
+      "applies_to": {"subject_types": ["Wound"], "include_subtypes": true},
       "when": {
         "all": [
           {"field": "concept", "op": "eq", "value": "pressure_injury"},
@@ -35,6 +37,7 @@
     {
       "rule_id": "WC-PI-QUERY-002",
       "title": "Pressure-injury indicators require physician clarification",
+      "applies_to": {"subject_types": ["Wound"], "include_subtypes": true},
       "when": {
         "all": [
           {"field": "concept", "op": "eq", "value": "pressure_injury"},

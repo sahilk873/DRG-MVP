@@ -8,5 +8,5 @@ build/
 .env
 output/
 node_modules/
+*.tsbuildinfo
 agent/.mastra/
-

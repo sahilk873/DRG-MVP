@@ -18,6 +18,7 @@
   "ontology": {
     "ontology_id": "wound-care-encounter-ontology",
     "ontology_version": "1.0.0-draft",
+    "ontology_digest": "eb2b6f6aa447825fa45012fd23a91fe0f572fe280cf776a239699d6230390779",
     "entities": [
       {"entity_id": "root:patient", "entity_type": "Patient", "label": "Patient", "properties": {}},
       {"entity_id": "root:encounter", "entity_type": "Encounter", "label": "Encounter", "properties": {}},
@@ -70,6 +71,17 @@
     "model_id": "synthetic/test-fixture",
     "agent_id": "encounter-evidence-extractor",
     "extracted_at": "2026-06-06T16:00:00Z",
-    "schema_version": "2.0.0"
+    "schema_version": "2.0.0",
+    "extraction_policy": {
+      "max_documents": 200,
+      "max_document_characters": 200000,
+      "max_total_document_characters": 1000000,
+      "max_evidence_items": 2000,
+      "max_evidence_characters": 2000,
+      "max_total_evidence_characters": 250000,
+      "max_entities": 2000,
+      "max_relations": 5000,
+      "max_assertions": 2000
+    }
   }
 }

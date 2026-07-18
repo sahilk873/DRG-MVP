@@ -7,6 +7,7 @@ Install Python 3.11+ and Node.js 22+, then run:
 ```bash
 python -m pip install -e .
 cd agent && npm ci && cd ..
+cd demo && npm ci && cd ..
 make verify
 ```
 
@@ -17,9 +18,16 @@ Run `make demo` to inspect the deterministic review packet. No model credential 
 - Never commit PHI, credentials, licensed terminology files or customer data.
 - Keep agent output schema-constrained and evidence-grounded.
 - Do not allow generated code to enter the rule-execution path.
+- Keep adapter design and adapter execution in separate trust boundaries; agents may emit only draft declarative DSL.
+- Add malformed-file, schema-drift, unlinked-row, unmapped-value and resource-budget tests for reader or adapter changes.
+- Version adapter definitions and require new approval whenever source schema, ontology binding or transformation behavior changes.
 - Add positive, negative, contradictory and malformed-input tests for rule changes.
-- Version ontology definitions and test class inheritance, relation domains/ranges and evidence requirements.
+- Version ontology definitions and test class inheritance, relation domains/ranges, evidence requirements and semantic digest compatibility.
+- Give every executable rule an ontology subject scope and retain subject/assertion/evidence lineage in findings.
+- Preserve source-artifact bytes and update their governed checksum only as a deliberate reviewed change.
 - Keep clinical decision-support sources and rules separate from revenue-integrity packages.
 - Update schema versions for breaking contract changes.
 - Treat changes to rules, code mappings, grouping, pricing or review policy as governed changes requiring domain approval.
 - Preserve deterministic IDs, integer-cent monetary calculations and complete version provenance.
+- Treat the review packet as a versioned public contract; update its schema, Python tests, browser validation, generated fixture and documentation together.
+- Run `make demo-packet-check` so the pitch application cannot drift from the deterministic engine.

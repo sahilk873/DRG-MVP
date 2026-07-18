@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
 from .models import Claim, EncounterCase
+from .integrations import CapabilityDescriptor, CapabilityKind
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,6 +31,10 @@ class DeterministicDemoGrouper:
     """Fake integration adapter. Never use its values for real coding or billing."""
 
     version = "demo-0.2-not-for-billing"
+    descriptor = CapabilityDescriptor(
+        "deterministic-demo-grouper", version, CapabilityKind.GROUPER_PRICER, False,
+        ("synthetic-encounter-case-v2",),
+    )
 
     def group(self, case: EncounterCase, claim: Claim) -> GroupingResult:
         has_pressure_injury = any(code.startswith("L89") for code in claim.diagnoses)
@@ -39,4 +44,3 @@ class DeterministicDemoGrouper:
         if has_pressure_injury:
             return GroupingResult("DEMO-291", 1_280_000, self.version)
         return GroupingResult("DEMO-292", 1_000_000, self.version)
-

@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import hashlib
 import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from importlib.resources import files
 from pathlib import Path
 from typing import Any, Mapping
@@ -101,18 +102,20 @@ class OntologyGraph:
 
     ontology_id: str
     ontology_version: str
+    ontology_digest: str
     entities: tuple[OntologyEntity, ...]
     relations: tuple[OntologyRelation, ...]
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> "OntologyGraph":
-        required = {"ontology_id", "ontology_version", "entities", "relations"}
+        required = {"ontology_id", "ontology_version", "ontology_digest", "entities", "relations"}
         _exact_keys(data, required, "ontology graph")
         if not isinstance(data["entities"], list) or not isinstance(data["relations"], list):
             raise ValueError("ontology graph entities and relations must be arrays")
         graph = cls(
             ontology_id=_nonempty(data["ontology_id"], "ontology_id"),
             ontology_version=_nonempty(data["ontology_version"], "ontology_version"),
+            ontology_digest=_sha256_digest(data["ontology_digest"], "ontology_digest"),
             entities=tuple(OntologyEntity.from_dict(_mapping(item, "ontology entity")) for item in data["entities"]),
             relations=tuple(OntologyRelation.from_dict(_mapping(item, "ontology relation")) for item in data["relations"]),
         )
@@ -156,6 +159,7 @@ class OntologyDefinition:
     ontology_id: str
     version: str
     status: str
+    structural_graph: OntologyGraph
     classes: Mapping[str, ClassDefinition]
     relations: Mapping[str, RelationDefinition]
     value_sets: Mapping[str, tuple[str, ...]]
@@ -164,8 +168,32 @@ class OntologyDefinition:
     def from_dict(cls, data: Mapping[str, Any]) -> "OntologyDefinition":
         if not isinstance(data, Mapping):
             raise ValueError("ontology definition must be an object")
+        _keys(
+            data,
+            {"ontology_id", "version", "status", "structural_graph", "classes", "relations"},
+            {
+                "ontology_id", "version", "status", "purpose", "sources", "structural_graph",
+                "classes", "relations", "value_sets",
+            },
+            "ontology definition",
+        )
         if not isinstance(data.get("classes"), list) or not isinstance(data.get("relations"), list):
             raise ValueError("ontology definition classes and relations must be arrays")
+
+        ontology_id = _nonempty(data.get("ontology_id"), "ontology_id")
+        version = _nonempty(data.get("version"), "version")
+        status = _nonempty(data.get("status"), "status")
+        if status not in {"draft", "clinical-review-required", "approved"}:
+            raise ValueError(f"unsupported ontology definition status: {status}")
+        structural_data = _mapping(data.get("structural_graph"), "structural_graph")
+        _exact_keys(structural_data, {"entities", "relations"}, "structural_graph")
+        structural_graph = OntologyGraph.from_dict({
+            "ontology_id": ontology_id,
+            "ontology_version": version,
+            "ontology_digest": "0" * 64,
+            "entities": structural_data["entities"],
+            "relations": structural_data["relations"],
+        })
 
         class_definitions: dict[str, ClassDefinition] = {}
         raw_value_sets = data.get("value_sets", {})
@@ -177,6 +205,12 @@ class OntologyDefinition:
         }
         for raw_item in data["classes"]:
             item = _mapping(raw_item, "class definition")
+            _keys(
+                item,
+                {"class_id", "label"},
+                {"class_id", "label", "parent", "abstract", "value_set"},
+                "class definition",
+            )
             class_id = _nonempty(item.get("class_id"), "class_id")
             if class_id in class_definitions:
                 raise ValueError(f"duplicate ontology class: {class_id}")
@@ -195,6 +229,11 @@ class OntologyDefinition:
         relation_definitions: dict[str, RelationDefinition] = {}
         for raw_item in data["relations"]:
             item = _mapping(raw_item, "relation definition")
+            _exact_keys(
+                item,
+                {"relation_id", "domain", "range", "requires_evidence"},
+                "relation definition",
+            )
             relation_id = _nonempty(item.get("relation_id"), "relation_id")
             if relation_id in relation_definitions:
                 raise ValueError(f"duplicate ontology relation: {relation_id}")
@@ -208,23 +247,97 @@ class OntologyDefinition:
                 requires_evidence,
             )
 
-        status = _nonempty(data.get("status"), "status")
-        if status not in {"draft", "clinical-review-required", "approved"}:
-            raise ValueError(f"unsupported ontology definition status: {status}")
         definition = cls(
-            ontology_id=_nonempty(data.get("ontology_id"), "ontology_id"),
-            version=_nonempty(data.get("version"), "version"),
+            ontology_id=ontology_id,
+            version=version,
             status=status,
+            structural_graph=structural_graph,
             classes=class_definitions,
             relations=relation_definitions,
             value_sets=value_sets,
         )
         definition._validate_definition()
+        definition = replace(
+            definition,
+            structural_graph=replace(structural_graph, ontology_digest=definition.digest),
+        )
+        definition.validate_graph(definition.structural_graph, set())
         return definition
+
+    @property
+    def digest(self) -> str:
+        """Stable fingerprint of behaviorally meaningful ontology content."""
+
+        material = {
+            "ontology_id": self.ontology_id,
+            "version": self.version,
+            "status": self.status,
+            "structural_graph": {
+                "entities": [
+                    {
+                        "entity_id": item.entity_id,
+                        "entity_type": item.entity_type,
+                        "label": item.label,
+                        "concept": (
+                            {
+                                "system": item.concept.system,
+                                "code": item.concept.code,
+                                "display": item.concept.display,
+                            }
+                            if item.concept is not None
+                            else None
+                        ),
+                        "properties": dict(item.properties),
+                    }
+                    for item in sorted(self.structural_graph.entities, key=lambda entity: entity.entity_id)
+                ],
+                "relations": [
+                    {
+                        "relation_id": item.relation_id,
+                        "predicate": item.predicate,
+                        "source_id": item.source_id,
+                        "target_id": item.target_id,
+                        "assertion_status": item.assertion_status.value,
+                        "documentation_status": item.documentation_status.value,
+                        "confidence": format(item.confidence, ".15g"),
+                        "evidence_ids": sorted(item.evidence_ids),
+                        "contradicting_evidence_ids": sorted(item.contradicting_evidence_ids),
+                    }
+                    for item in sorted(self.structural_graph.relations, key=lambda relation: relation.relation_id)
+                ],
+            },
+            "classes": [
+                {
+                    "class_id": item.class_id,
+                    "label": item.label,
+                    "parent": item.parent,
+                    "abstract": item.abstract,
+                    "value_set": item.value_set,
+                }
+                for item in sorted(self.classes.values(), key=lambda class_definition: class_definition.class_id)
+            ],
+            "relations": [
+                {
+                    "relation_id": item.relation_id,
+                    "domain": sorted(item.domain),
+                    "range": sorted(item.range),
+                    "requires_evidence": item.requires_evidence,
+                }
+                for item in sorted(self.relations.values(), key=lambda relation: relation.relation_id)
+            ],
+            "value_sets": {
+                key: sorted(values)
+                for key, values in sorted(self.value_sets.items())
+            },
+        }
+        encoded = json.dumps(material, sort_keys=True, separators=(",", ":")).encode()
+        return hashlib.sha256(encoded).hexdigest()
 
     def validate_graph(self, graph: OntologyGraph, evidence_ids: set[str]) -> None:
         if graph.ontology_id != self.ontology_id or graph.ontology_version != self.version:
             raise ValueError("ontology graph definition ID or version does not match the configured ontology")
+        if graph.ontology_digest != self.digest:
+            raise ValueError("ontology graph digest does not match the configured ontology definition")
         entities = {entity.entity_id: entity for entity in graph.entities}
         for entity in graph.entities:
             definition = self.classes.get(entity.entity_type)
@@ -326,6 +439,13 @@ def _nonempty(value: Any, name: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{name} must be a non-empty string")
     return value
+
+
+def _sha256_digest(value: Any, name: str) -> str:
+    digest = _nonempty(value, name)
+    if len(digest) != 64 or any(character not in "0123456789abcdef" for character in digest):
+        raise ValueError(f"{name} must be a lowercase SHA-256 hex digest")
+    return digest
 
 
 def _string_array(value: Any, name: str) -> tuple[str, ...]:

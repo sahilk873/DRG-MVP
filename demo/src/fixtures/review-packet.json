@@ -1,0 +1,276 @@
+{
+  "review_packet_schema_version": "3.0.0",
+  "packet_id": "packet-bda4081df44c0b455d21",
+  "environment": "synthetic",
+  "tenant": {
+    "tenant_id": "tenant-demo-alpha",
+    "workspace_id": "workspace-revenue-integrity"
+  },
+  "case": {
+    "schema_version": "2.0.0",
+    "case_id": "CASE-DEMO-001",
+    "patient_id": "PATIENT-DEIDENTIFIED-001",
+    "encounter_id": "ENC-DEMO-001",
+    "admitted_at": "2026-06-01T09:00:00Z",
+    "discharged_at": "2026-06-06T15:00:00Z",
+    "metadata": {
+      "payer": "demo",
+      "facility": "demo-hospital",
+      "poa_status": "Y"
+    },
+    "claim": {
+      "diagnoses": [
+        "A41.9"
+      ],
+      "procedures": [],
+      "charges": [
+        "ROOM-BOARD"
+      ],
+      "drg": "DEMO-292",
+      "allowed_amount_cents": 1000000
+    }
+  },
+  "evidence": [
+    {
+      "evidence_id": "EV-001",
+      "document_id": "WOUND-CONSULT-001",
+      "author_role": "physician",
+      "recorded_at": "2026-06-01T14:30:00Z",
+      "text": "Stage 4 pressure injury of the sacral region with exposed muscle. Present on admission."
+    }
+  ],
+  "ontology": {
+    "ontology_id": "wound-care-encounter-ontology",
+    "ontology_version": "1.0.0-draft",
+    "ontology_digest": "eb2b6f6aa447825fa45012fd23a91fe0f572fe280cf776a239699d6230390779",
+    "entities": [
+      {
+        "entity_id": "root:patient",
+        "entity_type": "Patient",
+        "label": "Patient",
+        "properties": {}
+      },
+      {
+        "entity_id": "root:encounter",
+        "entity_type": "Encounter",
+        "label": "Encounter",
+        "properties": {}
+      },
+      {
+        "entity_id": "root:claim",
+        "entity_type": "Claim",
+        "label": "Submitted claim",
+        "properties": {}
+      },
+      {
+        "entity_id": "wound:1",
+        "entity_type": "PressureInjury",
+        "label": "Sacral pressure injury",
+        "concept": {
+          "system": "urn:kunal:wound-care",
+          "code": "pressure-injury",
+          "display": "Pressure injury"
+        },
+        "properties": {
+          "present_on_admission": true
+        }
+      },
+      {
+        "entity_id": "assessment:1",
+        "entity_type": "WoundAssessment",
+        "label": "Admission wound assessment",
+        "properties": {}
+      },
+      {
+        "entity_id": "location:sacral",
+        "entity_type": "AnatomicalLocation",
+        "label": "Sacral region",
+        "properties": {}
+      },
+      {
+        "entity_id": "stage:4",
+        "entity_type": "PressureInjuryStage",
+        "label": "Stage 4",
+        "properties": {
+          "value": "4"
+        }
+      },
+      {
+        "entity_id": "finding:exposed-muscle",
+        "entity_type": "ClinicalFinding",
+        "label": "Exposed muscle",
+        "properties": {}
+      }
+    ],
+    "relations": [
+      {
+        "relation_id": "rel:patient-encounter",
+        "predicate": "hasEncounter",
+        "source_id": "root:patient",
+        "target_id": "root:encounter",
+        "assertion_status": "present",
+        "documentation_status": "explicit",
+        "confidence": 1.0,
+        "evidence_ids": []
+      },
+      {
+        "relation_id": "rel:encounter-claim",
+        "predicate": "hasClaim",
+        "source_id": "root:encounter",
+        "target_id": "root:claim",
+        "assertion_status": "present",
+        "documentation_status": "explicit",
+        "confidence": 1.0,
+        "evidence_ids": []
+      },
+      {
+        "relation_id": "rel:patient-wound",
+        "predicate": "hasWound",
+        "source_id": "root:patient",
+        "target_id": "wound:1",
+        "assertion_status": "present",
+        "documentation_status": "explicit",
+        "confidence": 0.98,
+        "evidence_ids": [
+          "EV-001"
+        ]
+      },
+      {
+        "relation_id": "rel:wound-encounter",
+        "predicate": "associatedWithEncounter",
+        "source_id": "wound:1",
+        "target_id": "root:encounter",
+        "assertion_status": "present",
+        "documentation_status": "explicit",
+        "confidence": 1.0,
+        "evidence_ids": []
+      },
+      {
+        "relation_id": "rel:wound-assessment",
+        "predicate": "hasAssessment",
+        "source_id": "wound:1",
+        "target_id": "assessment:1",
+        "assertion_status": "present",
+        "documentation_status": "explicit",
+        "confidence": 0.98,
+        "evidence_ids": [
+          "EV-001"
+        ]
+      },
+      {
+        "relation_id": "rel:wound-location",
+        "predicate": "hasLocation",
+        "source_id": "wound:1",
+        "target_id": "location:sacral",
+        "assertion_status": "present",
+        "documentation_status": "explicit",
+        "confidence": 0.98,
+        "evidence_ids": [
+          "EV-001"
+        ]
+      },
+      {
+        "relation_id": "rel:wound-stage",
+        "predicate": "hasStage",
+        "source_id": "wound:1",
+        "target_id": "stage:4",
+        "assertion_status": "present",
+        "documentation_status": "explicit",
+        "confidence": 0.98,
+        "evidence_ids": [
+          "EV-001"
+        ]
+      },
+      {
+        "relation_id": "rel:assessment-finding",
+        "predicate": "hasFinding",
+        "source_id": "assessment:1",
+        "target_id": "finding:exposed-muscle",
+        "assertion_status": "present",
+        "documentation_status": "explicit",
+        "confidence": 0.98,
+        "evidence_ids": [
+          "EV-001"
+        ]
+      }
+    ]
+  },
+  "assertions": [
+    {
+      "assertion_id": "AS-001",
+      "subject_id": "wound:1",
+      "concept": "pressure_injury",
+      "status": "present",
+      "documentation_status": "explicit",
+      "confidence": 0.98,
+      "attributes": {
+        "site": "sacral_region",
+        "stage": 4,
+        "poa": "Y"
+      },
+      "evidence_ids": [
+        "EV-001"
+      ],
+      "contradicting_evidence_ids": []
+    }
+  ],
+  "findings": [
+    {
+      "finding_id": "finding-bea21fce00e5c10a",
+      "rule_id": "WC-PI-OMITTED-001",
+      "rule_package_id": "wound-care-revenue-integrity",
+      "rule_package_version": "2.0.0-demo",
+      "title": "Explicitly documented stage 4 sacral pressure injury absent from claim",
+      "disposition": "coding_review",
+      "confidence": 0.98,
+      "proposed_change": {
+        "add_diagnoses": [
+          "L89.154"
+        ]
+      },
+      "subject_ids": [
+        "wound:1"
+      ],
+      "assertion_ids": [
+        "AS-001"
+      ],
+      "evidence_ids": [
+        "EV-001"
+      ],
+      "contradicting_evidence_ids": [],
+      "rationale": "The structured evidence graph contains an explicit, high-confidence stage 4 sacral pressure-injury assertion, while the corresponding diagnosis is absent from the claim. Confirm coding and POA before claim modification.",
+      "requires_human_review": true,
+      "submitted_drg": "DEMO-292",
+      "current_drg": "DEMO-292",
+      "simulated_drg": "DEMO-290",
+      "estimated_impact_cents": 842000,
+      "impact_status": "estimated",
+      "grouper_version": "demo-0.2-not-for-billing"
+    }
+  ],
+  "controls": {
+    "claim_mutation_allowed": false,
+    "human_review_required": true,
+    "permitted_actions": [
+      "route_to_coding",
+      "route_to_cdi",
+      "route_to_charge_review",
+      "route_to_compliance",
+      "dismiss_with_reason"
+    ]
+  },
+  "provenance": {
+    "evaluated_at": "2026-07-17T12:00:00Z",
+    "engine_version": "0.7.0",
+    "case_hash": "597606f4a7fe59c03670d0ba2270d388fd17ae77dacff43d7fdda289ac82c0e1",
+    "rule_package_id": "wound-care-revenue-integrity",
+    "rule_package_version": "2.0.0-demo",
+    "rule_package_hash": "cf1daa386c80a22e7b9a606178fc3b3b0b784425ed95ad05e6160b11938cd4c7",
+    "record_hash": "2efaf5eea3cc572fba88ff765f30d209848eee5d089cb3aaaa1c796b8b5d8f79",
+    "previous_record_hash": null,
+    "grouper_versions": [
+      "demo-0.2-not-for-billing"
+    ],
+    "packet_hash": "ead6ca273de9d35b9d484ca182835edf5eb067f661662bff0054ced715a0d19f"
+  }
+}

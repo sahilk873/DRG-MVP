@@ -1,0 +1,70 @@
+{
+  "automation_schema_version": "1.0.0",
+  "tenant": {
+    "tenant_id": "tenant-demo-alpha",
+    "workspace_id": "workspace-revenue-integrity"
+  },
+  "packet": {
+    "packet_id": "packet-bda4081df44c0b455d21",
+    "packet_hash": "ead6ca273de9d35b9d484ca182835edf5eb067f661662bff0054ced715a0d19f",
+    "case_id": "CASE-DEMO-001",
+    "encounter_id": "ENC-DEMO-001"
+  },
+  "policy": {
+    "policy_id": "exception-orchestration",
+    "version": "1.0.0",
+    "quick_confirm_confidence": 0.95,
+    "auto_route_confidence": 0.93,
+    "auto_route_max_impact_cents": 250000,
+    "max_review_cases": 25,
+    "max_review_seconds": 1800,
+    "digest": "5e681af4f91886a20be095ffda5e370a031f59c7f26df23fa479ef6643c2e9a6"
+  },
+  "findings": [
+    {
+      "automation_id": "automation-16b84808059830b34f20",
+      "finding_id": "finding-bea21fce00e5c10a",
+      "finding_hash": "ae5cd49846657cf8d61caf59fa6434d84bb4f9afdfd90be4f5d358a886704634",
+      "semantic_fingerprint": "5ed650dcb7b799a72be1e9a8a2d206815102f017b783f4218393fe2cc74262d4",
+      "tier": "quick_confirm",
+      "queue": "coding",
+      "reason_codes": [
+        "material_drg_change"
+      ],
+      "recommended_action": "route_to_coding",
+      "allowed_actions": [
+        "route_to_coding",
+        "dismiss_with_reason"
+      ],
+      "draft": {
+        "kind": "workflow_note",
+        "title": "Evidence-supported revenue integrity recommendation",
+        "body": "The structured evidence graph contains an explicit, high-confidence stage 4 sacral pressure-injury assertion, while the corresponding diagnosis is absent from the claim. Confirm coding and POA before claim modification.",
+        "action": "route_to_coding",
+        "editable": false
+      },
+      "priority_score": 48220,
+      "estimated_review_seconds": 30,
+      "duplicate_of": null,
+      "related_finding_ids": []
+    }
+  ],
+  "review_now_finding_ids": [
+    "finding-bea21fce00e5c10a"
+  ],
+  "deferred_finding_ids": [],
+  "metrics": {
+    "input_findings": 1,
+    "consolidated_findings": 1,
+    "review_now": 1,
+    "deferred": 0,
+    "estimated_review_seconds": 30,
+    "suppressed": 0,
+    "needs_enrichment": 0,
+    "auto_routed": 0,
+    "quick_confirm": 1,
+    "focused_review": 0,
+    "escalated": 0
+  },
+  "plan_hash": "b9ab3dd6eb0b1aa04a07f70b5d60da7e466104ad6ba5db59a5f2944ecef776fb"
+}

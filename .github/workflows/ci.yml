@@ -24,7 +24,9 @@ jobs:
       - run: python -m pip install -e .
       - run: python -m compileall -q src
       - run: python -m unittest discover -s tests -v
-      - run: revenue-integrity examples/case_pressure_injury.json rules/wound_care_v1.json --output output/review_packet.json
+      - run: python scripts/generate_demo_packet.py --check
+      - run: revenue-integrity examples/case_pressure_injury.json rules/wound_care_v1.json --output output/audit_record.json
+      - run: revenue-integrity examples/case_pressure_injury.json rules/wound_care_v1.json --format review-packet --environment synthetic --tenant-id ci-tenant --workspace-id ci-workspace --output output/review_packet.json
 
   mastra-agent:
     runs-on: ubuntu-latest
@@ -41,4 +43,22 @@ jobs:
           cache-dependency-path: agent/package-lock.json
       - run: npm ci
       - run: npm run check
+      - run: npm run build
+
+  pitch-demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: demo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: demo/package-lock.json
+      - run: npm ci
+      - run: npm run test
+      - run: npm run typecheck
       - run: npm run build

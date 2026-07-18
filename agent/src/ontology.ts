@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto'
+
 import woundCareOntology from '../../src/revenue_integrity/data/wound_care_ontology_v1.json' with { type: 'json' }
 
 import {
@@ -6,10 +8,63 @@ import {
   type OntologyGraph,
 } from './schema.ts'
 
-export const CORE_ENTITY_IDS = ['root:patient', 'root:encounter', 'root:claim'] as const
-
 export const DEFAULT_ONTOLOGY_DEFINITION = ontologyDefinitionSchema.parse(woundCareOntology)
 validateOntologyDefinition(DEFAULT_ONTOLOGY_DEFINITION)
+
+export function ontologyDigest(definition: OntologyDefinition): string {
+  const material = {
+    ontology_id: definition.ontology_id,
+    version: definition.version,
+    status: definition.status,
+    structural_graph: {
+      entities: [...definition.structural_graph.entities]
+        .sort((left, right) => left.entity_id.localeCompare(right.entity_id))
+        .map(item => ({
+          entity_id: item.entity_id,
+          entity_type: item.entity_type,
+          label: item.label,
+          concept: item.concept ?? null,
+          properties: item.properties,
+        })),
+      relations: [...definition.structural_graph.relations]
+        .sort((left, right) => left.relation_id.localeCompare(right.relation_id))
+        .map(item => ({
+          relation_id: item.relation_id,
+          predicate: item.predicate,
+          source_id: item.source_id,
+          target_id: item.target_id,
+          assertion_status: item.assertion_status,
+          documentation_status: item.documentation_status,
+          confidence: String(item.confidence),
+          evidence_ids: [...item.evidence_ids].sort(),
+          contradicting_evidence_ids: [...item.contradicting_evidence_ids].sort(),
+        })),
+    },
+    classes: [...definition.classes]
+      .sort((left, right) => left.class_id.localeCompare(right.class_id))
+      .map(item => ({
+        class_id: item.class_id,
+        label: item.label,
+        parent: item.parent ?? null,
+        abstract: item.abstract ?? false,
+        value_set: item.value_set ?? null,
+      })),
+    relations: [...definition.relations]
+      .sort((left, right) => left.relation_id.localeCompare(right.relation_id))
+      .map(item => ({
+        relation_id: item.relation_id,
+        domain: [...item.domain].sort(),
+        range: [...item.range].sort(),
+        requires_evidence: item.requires_evidence,
+      })),
+    value_sets: Object.fromEntries(
+      Object.entries(definition.value_sets ?? {})
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, values]) => [key, [...values].sort()]),
+    ),
+  }
+  return createHash('sha256').update(stableStringify(material)).digest('hex')
+}
 
 export function validateOntologyDefinition(definition: OntologyDefinition): void {
   const classes = new Map<string, (typeof definition.classes)[number]>()
@@ -38,6 +93,12 @@ export function validateOntologyDefinition(definition: OntologyDefinition): void
       current = classes.get(current)?.parent
     }
   }
+  validateOntologyGraphSemantics(definition, {
+    ontology_id: definition.ontology_id,
+    ontology_version: definition.version,
+    ontology_digest: ontologyDigest(definition),
+    ...definition.structural_graph,
+  }, new Set())
 }
 
 export function validateOntologyGraph(
@@ -49,6 +110,17 @@ export function validateOntologyGraph(
   if (graph.ontology_id !== definition.ontology_id || graph.ontology_version !== definition.version) {
     throw new Error('ontology graph definition ID or version does not match the configured ontology')
   }
+  if (graph.ontology_digest !== ontologyDigest(definition)) {
+    throw new Error('ontology graph digest does not match the configured ontology definition')
+  }
+  validateOntologyGraphSemantics(definition, graph, evidenceIds)
+}
+
+function validateOntologyGraphSemantics(
+  definition: OntologyDefinition,
+  graph: OntologyGraph,
+  evidenceIds: ReadonlySet<string>,
+): void {
   const classes = new Map(definition.classes.map(item => [item.class_id, item]))
   const relationDefinitions = new Map(definition.relations.map(item => [item.relation_id, item]))
   const entities = new Map(graph.entities.map(item => [item.entity_id, item]))
@@ -102,48 +174,38 @@ export function validateOntologyGraph(
 
 export function mergeWithStructuralGraph(
   definition: OntologyDefinition,
-  fragment: OntologyGraph,
+  ...fragments: OntologyGraph[]
 ): OntologyGraph {
-  if (fragment.ontology_id !== definition.ontology_id || fragment.ontology_version !== definition.version) {
-    throw new Error('agent ontology fragment does not match the configured ontology definition')
+  const digest = ontologyDigest(definition)
+  const reservedIds = new Set(definition.structural_graph.entities.map(entity => entity.entity_id))
+  const entityIds = new Set(reservedIds)
+  const relationIds = new Set(definition.structural_graph.relations.map(relation => relation.relation_id))
+  for (const fragment of fragments) {
+    if (
+      fragment.ontology_id !== definition.ontology_id
+      || fragment.ontology_version !== definition.version
+      || fragment.ontology_digest !== digest
+    ) {
+      throw new Error('ontology fragment does not match the configured ontology definition')
+    }
+    for (const entity of fragment.entities) {
+      if (reservedIds.has(entity.entity_id)) {
+        throw new Error(`ontology fragment cannot replace structural entity ${entity.entity_id}`)
+      }
+      if (entityIds.has(entity.entity_id)) throw new Error(`ontology fragments contain duplicate entity ${entity.entity_id}`)
+      entityIds.add(entity.entity_id)
+    }
+    for (const relation of fragment.relations) {
+      if (relationIds.has(relation.relation_id)) throw new Error(`ontology fragments contain duplicate relation ${relation.relation_id}`)
+      relationIds.add(relation.relation_id)
+    }
   }
-  const reservedIds = new Set<string>(CORE_ENTITY_IDS)
-  const returnedReservedId = fragment.entities.find(entity => reservedIds.has(entity.entity_id))
-  if (returnedReservedId) throw new Error(`agent cannot replace structural entity ${returnedReservedId.entity_id}`)
   return {
     ontology_id: definition.ontology_id,
     ontology_version: definition.version,
-    entities: [
-      { entity_id: 'root:patient', entity_type: 'Patient', label: 'Patient', properties: {} },
-      { entity_id: 'root:encounter', entity_type: 'Encounter', label: 'Encounter', properties: {} },
-      { entity_id: 'root:claim', entity_type: 'Claim', label: 'Submitted claim', properties: {} },
-      ...fragment.entities,
-    ],
-    relations: [
-      {
-        relation_id: 'rel:patient-encounter',
-        predicate: 'hasEncounter',
-        source_id: 'root:patient',
-        target_id: 'root:encounter',
-        assertion_status: 'present',
-        documentation_status: 'explicit',
-        confidence: 1,
-        evidence_ids: [],
-        contradicting_evidence_ids: [],
-      },
-      {
-        relation_id: 'rel:encounter-claim',
-        predicate: 'hasClaim',
-        source_id: 'root:encounter',
-        target_id: 'root:claim',
-        assertion_status: 'present',
-        documentation_status: 'explicit',
-        confidence: 1,
-        evidence_ids: [],
-        contradicting_evidence_ids: [],
-      },
-      ...fragment.relations,
-    ],
+    ontology_digest: digest,
+    entities: [...definition.structural_graph.entities, ...fragments.flatMap(fragment => fragment.entities)],
+    relations: [...definition.structural_graph.relations, ...fragments.flatMap(fragment => fragment.relations)],
   }
 }
 
@@ -151,7 +213,8 @@ export function ontologyPromptContract(definition: OntologyDefinition): object {
   return {
     ontology_id: definition.ontology_id,
     ontology_version: definition.version,
-    reserved_entity_ids: CORE_ENTITY_IDS,
+    ontology_digest: ontologyDigest(definition),
+    reserved_entity_ids: definition.structural_graph.entities.map(entity => entity.entity_id),
     classes: definition.classes.map(({ class_id, parent, abstract, value_set }) => ({
       class_id,
       parent,
@@ -166,4 +229,15 @@ export function ontologyPromptContract(definition: OntologyDefinition): object {
     })),
     value_sets: definition.value_sets ?? {},
   }
+}
+
+function stableStringify(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`
+  if (value !== null && typeof value === 'object') {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, item]) => `${JSON.stringify(key)}:${stableStringify(item)}`)
+    return `{${entries.join(',')}}`
+  }
+  return JSON.stringify(value)
 }

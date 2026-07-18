@@ -6,16 +6,19 @@ An evidence-grounded reference implementation for reconstructing an inpatient en
 
 ## Architecture
 
-Clinical records benefit from semantic extraction. Claim grouping, rule evaluation, payment simulation and audit records must remain reproducible. The agent therefore produces **schema-constrained evidence and hypotheses, never executable rules or authoritative financial fields**.
+Clinical records benefit from semantic extraction. Claim grouping, rule evaluation, payment simulation and audit records must remain reproducible. The agent therefore produces **schema-constrained evidence and hypotheses, never executable rules or authoritative financial fields**. Variable provider exports are handled by an adapter factory: Mastra proposes a draft declarative mapping from a bounded profile, while an approved deterministic runtime processes the full dataset.
 
 ```mermaid
 flowchart TD
-    A["Source documents"] --> B["Mastra extraction agent"]
-    B --> C["Ontology, grounding and schema gate"]
-    H["Immutable claim data"] --> C
-    C --> D["Versioned rule engine"]
-    D --> E["Licensed grouper boundary"]
-    E --> F["Focused review packet"]
+    A["Provider bulk export"] --> B["Approved deterministic adapter"]
+    B --> C["Source bundle and structured fragment"]
+    C --> D["Mastra note extraction"]
+    D --> E["Ontology and evidence gate"]
+    E --> F["Rules and grouper boundary"]
+    F --> G["Integrity-bound review packet"]
+    G --> H["Deterministic exception policy"]
+    H --> I["Auto-route, enrich, consolidate, or review"]
+    I --> J["Minimal governed human decision"]
 ```
 
 The case model separates what happened clinically, what was explicitly documented, what was coded and charged, what was submitted and paid, and what evidence supports or contradicts a proposed change.
@@ -23,23 +26,36 @@ The case model separates what happened clinically, what was explicitly documente
 ## Current capabilities
 
 - Canonical source-bundle and encounter-case JSON Schemas
+- Bounded CSV, JSON, JSONL and XLSX bulk profiling with schema-drift and content-manifest fingerprints
+- Versioned declarative adapters with row filters, composite keys, safe transforms and structured ontology projections
+- Provider-agnostic Mastra adapter designer with bounded repair feedback and no code-generation path
+- Deterministic row-level provenance linking structured facts to source files, records and fields
 - Data-driven ontology definitions with inheritance and relation domain/range validation
+- Cross-runtime semantic ontology digests that reject unversioned definition drift
 - Patient-specific graphs linking assertions to typed subjects and exact evidence
 - Mastra model routing through a configurable `provider/model` ID
 - Claims, charges, DRGs and payment fields excluded from model generation
 - Exact-excerpt grounding against immutable source documents
 - Supporting and contradicting evidence lineage
 - Strict, declarative JSON rules with no generated-code execution path
+- Ontology-scoped rule targeting with explicit subtype semantics
 - Fail-closed package approval and action validation
 - Replaceable licensed DRG grouper/pricer interface
 - Integer-cent payment simulation
 - Deterministic finding IDs and hash-chained audit records
+- Versioned human-review packets connecting engine output to reviewer applications
+- Deterministic exception orchestration with duplicate consolidation and effort budgets
+- Idempotent automatic-routing outbox that cannot mutate claims
+- One-click, policy-bound reviewer actions with structured feedback labels
 - Atomic CLI output, CI, dependency monitoring and cross-language tests
+- Configurable input/output resource budgets at both trust boundaries
+- Governed source artifacts with checksum and authority enforcement
 
 ## Repository layout
 
 ```text
 agent/          Provider-agnostic Mastra extraction service
+demo/           Interactive React pitch and reviewer workflow
 schemas/        Source and encounter interoperability contracts
 knowledge/      Source manifests and non-executable governance records
 rules/          Versioned declarative rule packages
@@ -62,13 +78,55 @@ cd agent
 npm ci
 cd ..
 
+cd demo
+npm ci
+cd ..
+
 make verify
 make demo
 ```
 
+## Run the interactive pitch demo
+
+The `demo/` application turns the architecture into a three-minute product story: adaptive provider onboarding, evidence-linked encounter reconstruction, deterministic claim comparison, and focused human review.
+
+```bash
+cd demo
+npm ci
+npm run dev
+```
+
+Choose **Start guided demo** for the five-step narrative, or explore the command center, review queue, encounter graph, onboarding, and governance views directly. All cases, facilities, metrics, DRGs, and payment amounts shown in this interface are synthetic or illustrative. See [demo/README.md](demo/README.md) for the pitch script and demo boundaries.
+
 The deterministic demo creates a review finding, supporting evidence, a proposed code change, demo regrouping and payment delta. It never modifies or submits a claim.
 
-The v0.3 release uses encounter-case schema `2.0.0`. Earlier case payloads intentionally fail closed until they add a versioned `ontology` graph and bind every assertion through `subject_id`. Revenue rule packages must also declare their compatible ontology ID and version.
+Generate the same versioned handoff consumed by the pitch application:
+
+```bash
+revenue-integrity examples/case_pressure_injury.json rules/wound_care_v1.json \
+  --tenant-id tenant-demo-alpha --workspace-id workspace-revenue-integrity \
+  --format review-packet --environment synthetic \
+  --output output/review-packet.json
+```
+
+The v0.7 release uses encounter-case schema `2.0.0`, tenant-scoped review-packet schema `3.0.0`, automation-plan schema `1.0.0`, and review-decision schema `2.0.0`. Earlier payloads intentionally fail closed until they satisfy these trust boundaries. Revenue rule packages and bulk adapters must declare their compatible ontology ID, version and digest.
+
+Reviewer actions pass through a role-aware workflow service and a tenant-scoped, hash-linked SQLite reference repository. A separately hashed automation plan suppresses only exact duplicates/no-opportunities, requests enrichment for insufficient evidence, automatically queues bounded operational work, and reserves people for quick confirmations or true exceptions. See [exception automation](docs/AUTOMATION.md), [the governed review workflow](docs/REVIEW_WORKFLOW.md), and [production integration boundaries](docs/PRODUCTION_INTEGRATIONS.md).
+
+## Run the bulk-ingestion demo
+
+```bash
+revenue-integrity-ingest profile examples/bulk/clinic_alpha \
+  --output output/clinic-alpha.profile.json
+
+revenue-integrity-ingest run \
+  examples/bulk/clinic_alpha \
+  examples/adapters/clinic_alpha_wound_care_v1.json \
+  --output-directory output/source-bundles \
+  --report output/clinic-alpha.run.json
+```
+
+The full provider folder is processed by deterministic readers and transforms. Only the bounded profile is suitable for the adapter-designer agent; narrative document text is sent separately to the evidence-extraction agent. Claims, charges, existing DRGs and payment fields remain outside model generation.
 
 ## Run the Mastra extraction layer
 
@@ -106,7 +164,9 @@ New specialties are added as versioned ontology definitions and compatible rule 
 
 Before real use, the project still requires licensed terminology and grouping components, FHIR/HL7 and claim adapters, institution-approved rules, representative positive and negative validation data, model/retrieval evaluations, a reviewer application and the security controls in [SECURITY.md](SECURITY.md).
 
-See [docs/ONTOLOGY.md](docs/ONTOLOGY.md) for the domain-extension contract, [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for trust-boundary decisions and [CONTRIBUTING.md](CONTRIBUTING.md) for change requirements.
+See [docs/ADAPTER_FACTORY.md](docs/ADAPTER_FACTORY.md) for bulk onboarding, [docs/ONTOLOGY.md](docs/ONTOLOGY.md) for the domain-extension contract, [docs/REVIEW_PACKET.md](docs/REVIEW_PACKET.md) for the reviewer-application handoff, [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for trust-boundary decisions and [CONTRIBUTING.md](CONTRIBUTING.md) for change requirements.
+
+The supplied raw wound-care workbook is preserved at [knowledge/sources/wound_care_clinical_rules_raw.xlsx](knowledge/sources/wound_care_clinical_rules_raw.xlsx), governed by [knowledge/wound_care_source_manifest.json](knowledge/wound_care_source_manifest.json), and intentionally non-executable. See [docs/ITERATIVE_REVIEW.md](docs/ITERATIVE_REVIEW.md) for the completed five-pass design review and remaining production roadmap.
 
 ## License
 
