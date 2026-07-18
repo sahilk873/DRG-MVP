@@ -8,9 +8,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import StrEnum
+import hashlib
+import json
+from dataclasses import replace
 from typing import Any, Mapping, Protocol, Sequence
 
-from .models import EncounterCase
+from .grouper import Grouper
+from .models import Disposition, EncounterCase, Finding, ImpactStatus
 
 
 class OpportunityCategory(StrEnum):
@@ -147,3 +151,131 @@ def validate_hypotheses(packet: InvestigationPacket, hypotheses: Sequence[Opport
         if valid:
             accepted.append(item)
     return accepted
+
+
+def promote_hypotheses_to_findings(
+    packet: InvestigationPacket,
+    hypotheses: Sequence[OpportunityHypothesis],
+    grouper: Grouper,
+    *,
+    validator: HypothesisValidator | None = None,
+) -> list[Finding]:
+    """Convert safe agent hypotheses into governed findings.
+
+    Candidate codes are used only to create an in-memory simulated claim. The
+    original claim in ``packet.case`` is never mutated, and every resulting
+    finding remains human-reviewable. Licensed grouper/pricer implementations
+    can replace the deterministic demo adapter through the ``Grouper`` protocol.
+    """
+    safe_hypotheses = validate_hypotheses(packet, hypotheses, validator)
+    baseline = grouper.group(packet.case, packet.case.claim)
+    assertion_subjects = {item.assertion_id: item.subject_id for item in packet.case.assertions}
+    findings: list[Finding] = []
+    for hypothesis in safe_hypotheses:
+        change = _hypothesis_change(hypothesis)
+        simulated = baseline
+        impact_status = ImpactStatus.NOT_APPLICABLE
+        impact: int | None = None
+        if change:
+            simulated_claim = _simulate_claim(packet.case.claim, change)
+            simulated = grouper.group(packet.case, simulated_claim)
+            if simulated.grouper_version != baseline.grouper_version:
+                raise ValueError("baseline and simulated results must use the same grouper version")
+            impact_status = ImpactStatus.ESTIMATED
+            impact = simulated.estimated_payment_cents - baseline.estimated_payment_cents
+
+        digest_material = {
+            "packet_id": packet.packet_id,
+            "hypothesis": hypothesis.to_dict(),
+            "grouper_version": baseline.grouper_version,
+        }
+        digest = hashlib.sha256(
+            json.dumps(digest_material, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()[:16]
+        rationale = hypothesis.hypothesis
+        if hypothesis.missing_information:
+            rationale += " Missing information: " + "; ".join(hypothesis.missing_information)
+        findings.append(Finding(
+            finding_id=f"finding-agent-{digest}",
+            rule_id=f"AGENT-{hypothesis.category.value.upper()}",
+            rule_package_id="agent-investigation",
+            rule_package_version=str(hypothesis.provenance.get("prompt_version", "unversioned")),
+            title=_title(hypothesis.category),
+            disposition=_disposition(hypothesis.category),
+            confidence=min(hypothesis.confidence.evidence, hypothesis.confidence.semantic, hypothesis.confidence.financial),
+            proposed_change=change,
+            subject_ids=tuple(dict.fromkeys(
+                assertion_subjects[item] for item in hypothesis.assertion_ids if item in assertion_subjects
+            )),
+            assertion_ids=hypothesis.assertion_ids,
+            evidence_ids=hypothesis.evidence_ids,
+            contradicting_evidence_ids=hypothesis.contradicting_evidence_ids,
+            rationale=rationale,
+            requires_human_review=True,
+            submitted_drg=packet.case.claim.drg,
+            current_drg=baseline.drg,
+            simulated_drg=simulated.drg,
+            estimated_impact_cents=impact,
+            impact_status=impact_status,
+            grouper_version=baseline.grouper_version,
+        ))
+    return findings
+
+
+def _hypothesis_change(hypothesis: OpportunityHypothesis) -> dict[str, list[str]]:
+    if hypothesis.category in {OpportunityCategory.MISSED_DIAGNOSIS, OpportunityCategory.CODING_SPECIFICITY}:
+        return {"add_diagnoses": list(hypothesis.candidate_codes)} if hypothesis.candidate_codes else {}
+    if hypothesis.category is OpportunityCategory.MISSED_PROCEDURE:
+        return {"add_procedures": list(hypothesis.candidate_codes)} if hypothesis.candidate_codes else {}
+    if hypothesis.category is OpportunityCategory.MISSED_CHARGE:
+        return {"add_charges": list(hypothesis.candidate_codes)} if hypothesis.candidate_codes else {}
+    return {}
+
+
+def _simulate_claim(claim: Any, change: Mapping[str, Sequence[str]]) -> Any:
+    collections = {
+        "diagnoses": list(claim.diagnoses),
+        "procedures": list(claim.procedures),
+        "charges": list(claim.charges),
+    }
+    for name, values in change.items():
+        collection = name.removeprefix("add_")
+        if collection not in collections:
+            raise ValueError(f"unsupported agent simulation change: {name}")
+        for value in values:
+            if value not in collections[collection]:
+                collections[collection].append(value)
+    return replace(
+        claim,
+        diagnoses=tuple(collections["diagnoses"]),
+        procedures=tuple(collections["procedures"]),
+        charges=tuple(collections["charges"]),
+    )
+
+
+def _disposition(category: OpportunityCategory) -> Disposition:
+    return {
+        OpportunityCategory.MISSED_DIAGNOSIS: Disposition.CODING_REVIEW,
+        OpportunityCategory.MISSED_PROCEDURE: Disposition.CODING_REVIEW,
+        OpportunityCategory.CODING_SPECIFICITY: Disposition.CODING_REVIEW,
+        OpportunityCategory.MISSED_CHARGE: Disposition.CHARGE_REVIEW,
+        OpportunityCategory.DOCUMENTATION_GAP: Disposition.CDI_QUERY,
+        OpportunityCategory.UNSUPPORTED_BILLING: Disposition.COMPLIANCE_REVIEW,
+        OpportunityCategory.DENIAL_RISK: Disposition.CODING_REVIEW,
+        OpportunityCategory.DRG_DISCREPANCY: Disposition.CODING_REVIEW,
+        OpportunityCategory.PAYMENT_VARIANCE: Disposition.CHARGE_REVIEW,
+    }[category]
+
+
+def _title(category: OpportunityCategory) -> str:
+    return {
+        OpportunityCategory.MISSED_DIAGNOSIS: "Agent identified a possible omitted diagnosis",
+        OpportunityCategory.MISSED_PROCEDURE: "Agent identified a possible omitted procedure",
+        OpportunityCategory.MISSED_CHARGE: "Agent identified a possible missed charge",
+        OpportunityCategory.CODING_SPECIFICITY: "Agent identified a possible coding-specificity gap",
+        OpportunityCategory.DRG_DISCREPANCY: "Agent identified a possible DRG discrepancy",
+        OpportunityCategory.DOCUMENTATION_GAP: "Agent identified a documentation gap",
+        OpportunityCategory.DENIAL_RISK: "Agent identified a possible denial risk",
+        OpportunityCategory.PAYMENT_VARIANCE: "Agent identified a possible payment variance",
+        OpportunityCategory.UNSUPPORTED_BILLING: "Agent identified a possible unsupported billing issue",
+    }[category]
