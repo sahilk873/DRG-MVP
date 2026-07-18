@@ -180,6 +180,86 @@ export const encounterCaseSchema = z.object({
   provenance: provenanceSchema,
 }).strict().superRefine((value, context) => validateLineage(value, context))
 
+const opportunityCategorySchema = z.enum([
+  'missed_diagnosis',
+  'missed_procedure',
+  'missed_charge',
+  'coding_specificity',
+  'drg_discrepancy',
+  'documentation_gap',
+  'denial_risk',
+  'payment_variance',
+  'unsupported_billing',
+])
+
+const confidenceDimensionsSchema = z.object({
+  evidence: z.number().min(0).max(1),
+  semantic: z.number().min(0).max(1),
+  financial: z.number().min(0).max(1),
+}).strict()
+
+export const investigationPacketSchema = z.object({
+  packet_id: nonEmptyString,
+  encounter: encounterCaseSchema,
+  financial: z.record(z.string(), z.unknown()).default({}),
+  payer_context: z.record(z.string(), z.unknown()).default({}),
+  policy_context: z.record(z.string(), z.unknown()).default({}),
+  data_quality: z.record(z.string(), z.unknown()).default({}),
+  allowed_data_views: uniqueNonEmptyStringArray,
+}).strict().superRefine((value, context) => {
+  if (!value.allowed_data_views.includes('clinical')) {
+    context.addIssue({ code: 'custom', path: ['allowed_data_views'], message: 'clinical access is required' })
+  }
+})
+
+export const opportunityHypothesisSchema = z.object({
+  hypothesis_id: nonEmptyString,
+  category: opportunityCategorySchema,
+  encounter_id: nonEmptyString,
+  hypothesis: nonEmptyString,
+  evidence_ids: z.array(nonEmptyString),
+  contradicting_evidence_ids: z.array(nonEmptyString).default([]),
+  assertion_ids: z.array(nonEmptyString).default([]),
+  claim_line_ids: z.array(nonEmptyString).default([]),
+  missing_information: z.array(nonEmptyString).default([]),
+  candidate_codes: z.array(nonEmptyString).default([]),
+  candidate_drgs: z.array(nonEmptyString).default([]),
+  required_validations: z.array(nonEmptyString).default([]),
+  recommended_action: z.string().default(''),
+  confidence: confidenceDimensionsSchema,
+  materiality_cents: z.number().int().nonnegative().nullable().default(null),
+}).strict()
+
+export function createReconciliationOutputSchema(packet: z.infer<typeof investigationPacketSchema>) {
+  const evidenceIds = new Set(packet.encounter.evidence.map(item => item.evidence_id))
+  const assertionIds = new Set(packet.encounter.assertions.map(item => item.assertion_id))
+  return z.object({ hypotheses: z.array(opportunityHypothesisSchema) }).strict().superRefine((value, context) => {
+    const seen = new Set<string>()
+    for (const [index, hypothesis] of value.hypotheses.entries()) {
+      if (seen.has(hypothesis.hypothesis_id)) {
+        context.addIssue({ code: 'custom', path: ['hypotheses', index, 'hypothesis_id'], message: 'hypothesis_id values must be unique' })
+      }
+      seen.add(hypothesis.hypothesis_id)
+      if (hypothesis.encounter_id !== packet.encounter.encounter_id) {
+        context.addIssue({ code: 'custom', path: ['hypotheses', index, 'encounter_id'], message: 'must match packet encounter_id' })
+      }
+      if (!hypothesis.evidence_ids.length && hypothesis.category !== 'payment_variance') {
+        context.addIssue({ code: 'custom', path: ['hypotheses', index, 'evidence_ids'], message: 'supporting evidence is required' })
+      }
+      for (const evidenceId of hypothesis.evidence_ids) {
+        if (!evidenceIds.has(evidenceId)) context.addIssue({ code: 'custom', path: ['hypotheses', index, 'evidence_ids'], message: `unknown evidence: ${evidenceId}` })
+      }
+      for (const evidenceId of hypothesis.contradicting_evidence_ids) {
+        if (!evidenceIds.has(evidenceId)) context.addIssue({ code: 'custom', path: ['hypotheses', index, 'contradicting_evidence_ids'], message: `unknown evidence: ${evidenceId}` })
+        if (hypothesis.evidence_ids.includes(evidenceId)) context.addIssue({ code: 'custom', path: ['hypotheses', index], message: `evidence cannot both support and contradict: ${evidenceId}` })
+      }
+      for (const assertionId of hypothesis.assertion_ids) {
+        if (!assertionIds.has(assertionId)) context.addIssue({ code: 'custom', path: ['hypotheses', index, 'assertion_ids'], message: `unknown assertion: ${assertionId}` })
+      }
+    }
+  })
+}
+
 export const ontologyDefinitionSchema = z.object({
   ontology_id: nonEmptyString,
   version: nonEmptyString,
@@ -212,6 +292,8 @@ export type AgentExtraction = z.infer<typeof agentExtractionSchema>
 export type EncounterCase = z.infer<typeof encounterCaseSchema>
 export type OntologyDefinition = z.infer<typeof ontologyDefinitionSchema>
 export type OntologyGraph = z.infer<typeof ontologyGraphSchema>
+export type InvestigationPacket = z.infer<typeof investigationPacketSchema>
+export type OpportunityHypothesis = z.infer<typeof opportunityHypothesisSchema>
 
 function validateLineage(
   value: {
