@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Encounter Revenue Integrity — Platform Report</title>
+<style>
+  :root {
+    --ink: #16211d; --muted: #5f726b; --faint: #85958e; --line: #e3e8e4;
+    --paper: #fbfcfb; --card: #ffffff; --teal: #126b5c; --teal-soft: #eef6f2;
+    --amber: #9a6b00; --amber-soft: #fbf3e0; --red: #b23b3b; --red-soft: #fbeceb;
+    --code-bg: #0f1c18; --code-ink: #d7e6df; --shadow: 0 1px 2px rgba(20,40,33,.05), 0 8px 24px rgba(20,40,33,.05);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  code, pre, .mono { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; }
+  a { color: var(--teal); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 28px; }
+  .layout { display: grid; grid-template-columns: 248px 1fr; gap: 44px; align-items: start; }
+  @media (max-width: 940px) { .layout { grid-template-columns: 1fr; } nav.toc { position: static !important; max-height: none !important; } }
+
+  /* Hero */
+  header.hero { background: linear-gradient(160deg, #0f2a24 0%, #12463b 60%, #126b5c 100%); color: #eafaf3; padding: 56px 0 48px; }
+  header.hero .eyebrow { text-transform: uppercase; letter-spacing: .18em; font-size: 12px; color: #9fd8c6; margin: 0 0 12px; }
+  header.hero h1 { font-size: 40px; line-height: 1.08; letter-spacing: -.02em; margin: 0 0 14px; font-weight: 700; }
+  header.hero p.lede { font-size: 18px; color: #cdeadf; max-width: 760px; margin: 0 0 22px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.18); color: #eafaf3; border-radius: 999px; padding: 4px 12px; font-size: 12px; }
+  .chip .mono { color: #b8ead9; }
+  .banner-synthetic { margin-top: 22px; background: rgba(250,243,224,.14); border: 1px solid rgba(250,243,224,.4); border-radius: 10px; padding: 12px 16px; font-size: 13px; color: #f6ecd2; max-width: 820px; }
+
+  /* TOC */
+  nav.toc { position: sticky; top: 20px; max-height: calc(100vh - 40px); overflow-y: auto; padding: 20px 0; font-size: 13.5px; }
+  nav.toc h4 { text-transform: uppercase; letter-spacing: .12em; font-size: 11px; color: var(--faint); margin: 18px 0 8px; }
+  nav.toc a { display: block; color: var(--muted); padding: 3px 0; border-left: 2px solid transparent; padding-left: 12px; margin-left: -2px; }
+  nav.toc a:hover { color: var(--teal); text-decoration: none; border-left-color: var(--teal); }
+
+  main { padding: 44px 0 80px; min-width: 0; }
+  section { margin: 0 0 46px; scroll-margin-top: 20px; }
+  section > h2 { font-size: 27px; letter-spacing: -.015em; margin: 0 0 6px; padding-top: 10px; }
+  section > h2 .num { color: var(--teal); font-weight: 700; margin-right: 10px; }
+  section > .sub { color: var(--muted); margin: 0 0 20px; font-size: 15.5px; }
+  h3 { font-size: 18px; margin: 26px 0 8px; letter-spacing: -.01em; }
+  h4 { font-size: 14.5px; margin: 18px 0 6px; }
+  p { margin: 0 0 14px; }
+  ul, ol { margin: 0 0 14px; padding-left: 22px; }
+  li { margin: 5px 0; }
+  strong { font-weight: 650; }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 22px 24px; box-shadow: var(--shadow); margin: 0 0 18px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  @media (max-width: 720px) { .grid2, .grid3 { grid-template-columns: 1fr; } }
+
+  .callout { border-radius: 12px; padding: 16px 20px; margin: 0 0 18px; border: 1px solid; }
+  .callout .k { font-weight: 700; letter-spacing: .02em; display: block; margin-bottom: 4px; font-size: 13px; text-transform: uppercase; }
+  .callout.invariant { background: var(--teal-soft); border-color: #bfe0d3; }
+  .callout.invariant .k { color: var(--teal); }
+  .callout.warn { background: var(--amber-soft); border-color: #ecdcae; }
+  .callout.warn .k { color: var(--amber); }
+
+  pre { background: var(--code-bg); color: var(--code-ink); border-radius: 12px; padding: 16px 18px; overflow-x: auto; font-size: 13px; line-height: 1.55; margin: 0 0 16px; }
+  pre .c { color: #6f8f83; } pre .g { color: #8fd6b6; } pre .y { color: #e6c477; }
+  p code, li code, td code { background: #eef2ef; border: 1px solid #e0e6e1; border-radius: 5px; padding: .5px 5px; font-size: 12.5px; color: #123; }
+
+  table { border-collapse: collapse; width: 100%; margin: 0 0 18px; font-size: 13.5px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--faint); font-weight: 650; }
+  tbody tr:hover { background: #f6f9f7; }
+
+  .pill { display: inline-block; font-size: 11px; padding: 1.5px 8px; border-radius: 999px; font-weight: 600; }
+  .pill.det { background: var(--teal-soft); color: var(--teal); }
+  .pill.ai { background: #eef1fb; color: #3a4ba0; }
+  .pill.human { background: #f3eefb; color: #6b3aa0; }
+  .pill.done { background: #e7f6ec; color: #1a7f52; }
+  .pill.todo { background: #f1f3f2; color: #6a7a73; }
+
+  .stat-row { display: flex; flex-wrap: wrap; gap: 14px; margin: 4px 0 20px; }
+  .stat { flex: 1 1 140px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; box-shadow: var(--shadow); }
+  .stat strong { display: block; font-size: 26px; letter-spacing: -.03em; color: var(--teal); }
+  .stat span { font-size: 12px; color: var(--muted); }
+
+  .flow { width: 100%; height: auto; margin: 6px 0 8px; }
+  figcaption { font-size: 12.5px; color: var(--muted); text-align: center; margin-top: 4px; }
+
+  footer { border-top: 1px solid var(--line); padding: 26px 0 60px; color: var(--muted); font-size: 13px; }
+  .kbd { background:#eef2ef; border:1px solid #dbe2dc; border-bottom-width:2px; border-radius:5px; padding:0 5px; font-size:12px; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <p class="eyebrow">Platform report · v0.7</p>
+    <h1>Encounter Revenue Integrity</h1>
+    <p class="lede">An evidence-grounded, <strong>deterministic</strong> reference platform that reconstructs an inpatient encounter, compares what the chart supports against what was documented, coded, grouped, and charged, and routes only the few consequential exceptions to a human reviewer.</p>
+    <div class="chips">
+      <span class="chip">Engine <span class="mono">0.7.0</span></span>
+      <span class="chip">Case schema <span class="mono">2.0.0</span></span>
+      <span class="chip">Review packet <span class="mono">3.2.0</span></span>
+      <span class="chip">Ontology <span class="mono">wound-care 1.1.0-draft</span></span>
+      <span class="chip">276 automated tests</span>
+    </div>
+    <div class="banner-synthetic">⚠️ <strong>Synthetic reference implementation.</strong> Every rule, code, price, ontology, and grouper shipped here is a fabricated integration artifact — <strong>not for production billing or clinical use</strong>, and not clinically or operationally validated.</div>
+  </div>
+</header>
+
+<div class="wrap layout">
+  <nav class="toc">
+    <h4>Overview</h4>
+    <a href="#what">1 · What it is</a>
+    <a href="#invariant">2 · The core invariant</a>
+    <a href="#pipeline">3 · End-to-end pipeline</a>
+    <h4>The deterministic engine</h4>
+    <a href="#onboarding">4 · Bulk onboarding</a>
+    <a href="#extraction">5 · Evidence extraction</a>
+    <a href="#ontology">6 · Ontology &amp; the case</a>
+    <a href="#rules">7 · Governed rules</a>
+    <a href="#grouping">8 · DRG grouping</a>
+    <a href="#findings">9 · Findings, ROI &amp; automation</a>
+    <a href="#review">10 · Review packet &amp; audit</a>
+    <a href="#eval">11 · Accuracy &amp; evaluation</a>
+    <h4>The agentic runtime</h4>
+    <a href="#agentic">12 · Two-plane model</a>
+    <a href="#learning">13 · RAG &amp; self-learning</a>
+    <a href="#authoring">14 · Sandboxed authoring</a>
+    <h4>Reference</h4>
+    <a href="#datamodel">15 · Data model &amp; fidelity</a>
+    <a href="#formats">16 · Formats &amp; limits</a>
+    <a href="#governance">17 · Governance &amp; versions</a>
+    <a href="#arch">18 · Architecture &amp; commands</a>
+    <a href="#verification">19 · Verification</a>
+    <a href="#readiness">20 · Readiness</a>
+  </nav>
+
+  <main>
+
+  <section id="what">
+    <h2><span class="num">1</span>What it is</h2>
+    <p class="sub">A trustworthy layer between the medical record and the claim.</p>
+    <p>Hospitals lose revenue and take on compliance risk when the clinical record, the coded claim, and the billed charges disagree. Encounter reconstructs each inpatient stay from a provider's own data, reconciles it against the claim, and surfaces only the discrepancies a qualified person actually needs to decide — a missed diagnosis, an unsupported charge, a present-on-admission conflict.</p>
+    <p>The defining design choice is <strong>determinism</strong>: language models help interpret variable, messy inputs, but nothing a model produces can execute, change a claim, assign a DRG, compute a payment, or bypass review. Every consequential result is reproducible, versioned, and hash-audited. That is what makes the output defensible to a coder, a compliance officer, and an auditor.</p>
+    <div class="grid3">
+      <div class="card"><h4>Three cooperating parts</h4><p style="margin:0"><strong>Python engine</strong> — deterministic models, rules, grouper, audit.<br><strong>Mastra/TS agents</strong> — semantic extraction &amp; authoring only.<br><strong>React demo</strong> — the interactive pitch &amp; reviewer UI.</p></div>
+      <div class="card"><h4>Who it serves</h4><p style="margin:0">Hospital revenue-integrity, CDI (clinical documentation integrity), coding, and compliance teams — plus the finance leaders who care about recoverable, defensible revenue.</p></div>
+      <div class="card"><h4>What makes it different</h4><p style="margin:0">Bi-directional (catches over- <em>and</em> under-coding), evidence-grounded to an exact source excerpt, and reproducible end to end — not a black box.</p></div>
+    </div>
+  </section>
+
+  <section id="invariant">
+    <h2><span class="num">2</span>The core invariant</h2>
+    <p class="sub">The single rule the whole architecture protects.</p>
+    <div class="callout invariant">
+      <span class="k">Core invariant</span>
+      No language-model output may execute code, create or change a claim, assign a DRG, compute reimbursement, or bypass required review. The agent emits only evidence excerpts and schema-constrained hypotheses; deterministic Python then verifies exact grounding, merges immutable source fields, evaluates governed declarative rules, and calls a licensed-grouper boundary.
+    </div>
+    <p>This is enforced <strong>structurally</strong>, not by convention, and it is locked by an executable test suite:</p>
+    <ul>
+      <li>Rules are a <strong>declarative JSON DSL</strong> (a fixed operator + change-key set) — there is no <code>eval</code>/<code>exec</code> of generated code on the claim path.</li>
+      <li>The grouper/pricer is a <code>Protocol</code> boundary; the shipped grouper is a fake whose version literally contains <span class="mono">not-for-billing</span>.</li>
+      <li>Rule and adapter packages <strong>fail closed</strong> unless <code>status ∈ {approved, approved-for-demo}</code>.</li>
+      <li>The review packet sets <code>claim_mutation_allowed = false</code>; any claim-affecting finding forces <code>requires_human_review</code>.</li>
+      <li>Money is integer-cent only; IDs are deterministic; every result carries full version provenance and a hash chain.</li>
+    </ul>
+    <p>There are <strong>two trust boundaries</strong>, and each keeps model influence to interpretation only:</p>
+    <div class="grid2">
+      <div class="card"><h4>① Adapter factory (onboarding)</h4><p style="margin:0">The adapter-designer agent sees only a <em>bounded profile</em> of a bulk export and proposes a <em>declarative mapping</em>. The deterministic runtime sees the full data and accepts only an approved, fingerprint-compatible adapter. Discovery and execution never share a code path.</p></div>
+      <div class="card"><h4>② Evidence extraction</h4><p style="margin:0">The extractor agent receives encounter timing, an ontology contract, and source documents — <strong>but not the claim</strong>. It returns evidence excerpts + an ontology fragment + assertions; Python verifies every excerpt is a literal source substring, checks the ontology, merges the immutable claim, and runs an independent validator.</p></div>
+    </div>
+  </section>
+
+  <section id="pipeline">
+    <h2><span class="num">3</span>End-to-end pipeline</h2>
+    <p class="sub">From a provider's raw export to one governed human decision.</p>
+    <figure>
+    <svg class="flow" viewBox="0 0 1120 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Pipeline diagram">
+      <defs>
+        <marker id="arrow" markerWidth="9" markerHeight="9" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 z" fill="#9aa6a0"/></marker>
+        <style>
+          .box{fill:#fff;stroke:#cdd8d1;rx:10;} .det{fill:#eef6f2;stroke:#bfe0d3;}
+          .ai{fill:#eef1fb;stroke:#c7cff0;} .human{fill:#f3eefb;stroke:#d8c9f0;}
+          .lbl{font:600 12px -apple-system,sans-serif;fill:#16211d;} .tag{font:10px ui-monospace,monospace;fill:#5f726b;}
+          .ln{stroke:#9aa6a0;stroke-width:1.5;fill:none;}
+        </style>
+      </defs>
+      <!-- row 1 -->
+      <rect class="box" x="8" y="20" width="150" height="54" rx="10"/><text class="lbl" x="26" y="42">Bulk export</text><text class="tag" x="26" y="60">CSV/JSON/XLSX</text>
+      <rect class="box ai" x="186" y="20" width="168" height="54" rx="10"/><text class="lbl" x="204" y="42">Adapter designer</text><text class="tag" x="204" y="60">agent · bounded profile</text>
+      <rect class="box det" x="382" y="20" width="168" height="54" rx="10"/><text class="lbl" x="400" y="42">Approved adapter</text><text class="tag" x="400" y="60">deterministic run</text>
+      <rect class="box det" x="578" y="20" width="150" height="54" rx="10"/><text class="lbl" x="596" y="42">Source bundle</text><text class="tag" x="596" y="60">+ provenance</text>
+      <rect class="box ai" x="756" y="20" width="168" height="54" rx="10"/><text class="lbl" x="774" y="42">Encounter extractor</text><text class="tag" x="774" y="60">agent · docs only</text>
+      <rect class="box det" x="952" y="20" width="160" height="54" rx="10"/><text class="lbl" x="970" y="42">Grounding gate</text><text class="tag" x="970" y="60">exact-substring</text>
+      <path class="ln" d="M158,47 H186" marker-end="url(#arrow)"/>
+      <path class="ln" d="M354,47 H382" marker-end="url(#arrow)"/>
+      <path class="ln" d="M550,47 H578" marker-end="url(#arrow)"/>
+      <path class="ln" d="M728,47 H756" marker-end="url(#arrow)"/>
+      <path class="ln" d="M924,47 H952" marker-end="url(#arrow)"/>
+      <!-- down connector -->
+      <path class="ln" d="M1032,74 V104 H72 V128" marker-end="url(#arrow)"/>
+      <!-- row 2 -->
+      <rect class="box det" x="8" y="128" width="150" height="54" rx="10"/><text class="lbl" x="26" y="150">Encounter case</text><text class="tag" x="26" y="168">ontology + claim</text>
+      <rect class="box det" x="186" y="128" width="150" height="54" rx="10"/><text class="lbl" x="204" y="150">Governed rules</text><text class="tag" x="204" y="168">declarative DSL</text>
+      <rect class="box det" x="364" y="128" width="150" height="54" rx="10"/><text class="lbl" x="382" y="150">Grouper boundary</text><text class="tag" x="382" y="168">DRG + derivation</text>
+      <rect class="box det" x="542" y="128" width="150" height="54" rx="10"/><text class="lbl" x="560" y="150">Findings + ROI</text><text class="tag" x="560" y="168">impact_summary</text>
+      <rect class="box det" x="720" y="128" width="160" height="54" rx="10"/><text class="lbl" x="738" y="150">Automation policy</text><text class="tag" x="738" y="168">tiers + routing</text>
+      <rect class="box det" x="908" y="128" width="150" height="54" rx="10"/><text class="lbl" x="926" y="150">Review packet</text><text class="tag" x="926" y="168">3.2.0 · hashed</text>
+      <path class="ln" d="M158,155 H186" marker-end="url(#arrow)"/>
+      <path class="ln" d="M336,155 H364" marker-end="url(#arrow)"/>
+      <path class="ln" d="M514,155 H542" marker-end="url(#arrow)"/>
+      <path class="ln" d="M692,155 H720" marker-end="url(#arrow)"/>
+      <path class="ln" d="M880,155 H908" marker-end="url(#arrow)"/>
+      <path class="ln" d="M983,182 V212 H520 V226" marker-end="url(#arrow)"/>
+      <!-- row 3 -->
+      <rect class="box human" x="446" y="214" width="150" height="30" rx="8"/><text class="lbl" x="464" y="233">Human decision</text>
+    </svg>
+    <figcaption><span class="pill ai">agent (interpretation)</span> &nbsp; <span class="pill det">deterministic + audited</span> &nbsp; <span class="pill human">human-authorized</span></figcaption>
+    </figure>
+    <p>Each stage below expands one box. The colored responsibility split is the whole story: agents interpret variable inputs, deterministic code produces every consequential result, and a person owns the final call.</p>
+  </section>
+
+  <section id="onboarding">
+    <h2><span class="num">4</span>Bulk onboarding — the adapter factory</h2>
+    <p class="sub"><span class="mono">src/revenue_integrity/ingestion/</span></p>
+    <p>Providers export data in wildly different shapes. Onboarding is a governed three-step boundary:</p>
+    <ol>
+      <li><strong>Profile</strong> (<code>profiling.py</code>) — a deterministic profiler reads the export folder and emits a <em>bounded profile</em>: column names, inferred types, tiny samples, a <code>schema_fingerprint</code> (columns/types) and an <code>input_manifest_digest</code> (file content). The full dataset never leaves the deterministic plane.</li>
+      <li><strong>Design</strong> (<code>agents/adapter-designer.ts</code>) — a Mastra agent sees only that profile and proposes a <strong>declarative adapter</strong> (a JSON mapping): resource files, field bindings, transform ops, row filters, and structured ontology projections. It is explicitly forbidden to emit Python/JS/SQL/regex/executable code.</li>
+      <li><strong>Run</strong> (<code>adapter.py</code>, <code>readers.py</code>, <code>transforms.py</code>) — a human approves the adapter; the deterministic runtime validates the fingerprint matches (schema-drift check), then transforms the full dataset into canonical <strong>source bundles</strong> with row-level provenance (adapter id/version, resource, path, row number, source-record id, field names).</li>
+    </ol>
+    <h3>Transform operations (the fixed, safe DSL)</h3>
+    <p>Readers cover <span class="mono">CSV · JSON · JSONL · XLSX</span>. Field transforms are a deliberately narrow set — <code>trim, lower, upper, integer, number, boolean, datetime</code> (with format + timezone), <code>map</code> (fail-closed enum), <code>split</code>. Structured projections deterministically build ontology entities/relations/assertions from source rows (no model inference), each grounded to an evidence locator.</p>
+    <h3>Graceful degradation (quarantine plane)</h3>
+    <p>By default any bad row fails the whole batch closed. Opt in with a <code>DegradationPolicy(mode="quarantine")</code> and the recoverable per-encounter faults — duplicate encounter, multiple/zero claims, orphan rows referencing an unknown encounter, admission-after-discharge — are routed to a <strong>quarantine list</strong> while clean encounters keep flowing. A <code>max_quarantined</code> <strong>circuit breaker</strong> aborts a batch that is too broken to trust.</p>
+    <div class="callout"><span class="k" style="color:var(--teal)">Notional data</span><span style="text-transform:none;font-weight:400"><code>examples/bulk/mercy_regional/</code> is a synthetic, EHR-warehouse-shaped export (6 encounters, MRN/POA/revenue codes/working-final DRG/ICD-10) used to exercise this whole path end to end. See <code>docs/NOTIONAL_DATA.md</code>.</span></div>
+  </section>
+
+  <section id="extraction">
+    <h2><span class="num">5</span>Evidence extraction</h2>
+    <p class="sub"><span class="mono">agent/src/agents/encounter-extractor.ts</span> → <span class="mono">investigation.py</span></p>
+    <p>The extractor agent receives encounter timing, the ontology contract, and the source documents — never the claim. It returns <strong>evidence excerpts</strong>, a patient-specific <strong>ontology fragment</strong>, and <strong>clinical assertions</strong> (concept, present/absent/uncertain/historical status, explicit/inferred/conflicted/absent documentation status, confidence, supporting &amp; contradicting evidence).</p>
+    <p>The orchestrator then runs a deterministic gauntlet before anything is trusted:</p>
+    <ol>
+      <li>validate the source bundle;</li>
+      <li>verify <strong>every excerpt is an exact literal substring</strong> of the identified document, and its id/author-role/timestamp are unchanged;</li>
+      <li>validate entity types, relation domain/range, evidence requirements, lineage, and contradictions against the ontology;</li>
+      <li>attach structural patient/encounter/claim nodes and model/schema provenance <em>outside</em> the model;</li>
+      <li>merge immutable encounter and claim fields;</li>
+      <li>run an independent Python validator.</li>
+    </ol>
+    <p>Anything malformed — bad confidence, unknown fields, duplicate ids, naive timestamps, dangling citations, overlapping supporting/contradicting evidence, schema mismatch — <strong>fails closed</strong>. Grounding is validated in both TypeScript (<code>schema.ts</code>) and Python, with a shared, byte-identical ontology digest so the two runtimes cannot silently diverge. The agent is provider-agnostic via a <code>MODEL_ID</code> string and imports no provider SDK — swapping models changes nothing downstream.</p>
+  </section>
+
+  <section id="ontology">
+    <h2><span class="num">6</span>Ontology &amp; the encounter case</h2>
+    <p class="sub"><span class="mono">ontology.py</span>, <span class="mono">models.py</span> · <span class="mono">wound-care-encounter-ontology 1.1.0-draft</span></p>
+    <p>The ontology is the semantic backbone everything is built on: ~50 versioned classes (Wound → PressureInjury/DiabeticFootUlcer/…, PressureInjuryStage, DiagnosisCode, Claim, and first-class <strong>PresentOnAdmission</strong> and <strong>DRGSeverityTier</strong>), ~36 relations with domain/range, and value-sets (POA status, severity tier, PI stage, exudate, urgency…). It carries a <strong>semantic digest</strong> that rejects unversioned drift, computed identically in Python and TypeScript.</p>
+    <p>The <code>EncounterCase</code> (schema <span class="mono">2.0.0</span>) cleanly separates what happened clinically, what was documented, what was coded and charged, what was submitted and paid, and what evidence supports or contradicts a proposed change. New specialties are added as <em>new versioned ontology + rule packages</em>, not engine branches — the same validators serve every domain.</p>
+  </section>
+
+  <section id="rules">
+    <h2><span class="num">7</span>Governed rules</h2>
+    <p class="sub"><span class="mono">rules.py</span>, <span class="mono">engine.py</span> · declarative, no code execution</p>
+    <p>Reconciliation logic is authored as versioned, ontology-scoped, declarative rule packages. A rule targets a subject type, matches a condition tree, checks case-level conditions, and proposes a change — but a claim-affecting change always requires human review.</p>
+    <div class="grid2">
+      <div class="card"><h4>Condition operators</h4><p class="mono" style="margin:0;font-size:12px">eq · ne · gte · lte · in · contains · not_contains · exists · between · starts_with · count_gte · count_lte</p><p style="margin:8px 0 0">The last four were added to express severity bands, prefix/code logic, and evidence-count thresholds off the ontology.</p></div>
+      <div class="card"><h4>Derived read-only fields</h4><p style="margin:0">Python-computed (never model-supplied) on each assertion: <code>evidence_count</code>, <code>contradicting_evidence_count</code>, <code>has_contradicting_evidence</code> — so a rule can decline to propose a change over self-contradicting evidence.</p></div>
+    </div>
+    <p><strong>Proposed-change keys</strong> are limited to <span class="mono">add/remove diagnoses·procedures·charges</span>. Two governed packages ship: <code>wound_care_v1</code> (omitted-diagnosis + CDI query) and <code>wound_care_v2</code> (severity coding using the new operators + a hospital-acquired POA compliance rule). Every executable rule carries a subject scope and retains subject/assertion/evidence lineage in its findings; packages fail closed unless approved.</p>
+  </section>
+
+  <section id="grouping">
+    <h2><span class="num">8</span>DRG grouping</h2>
+    <p class="sub"><span class="mono">grouper.py</span> + governed <span class="mono">data/demo_grouping_v1.json</span></p>
+    <p>The DRG grouper is the product's core proposition, and it is fully <strong>data-driven and versioned</strong> rather than hardcoded. A governed grouping-definition artifact declares a base rate, MCC/CC/none severity tiers, and a diagnosis→severity table. The grouper scans the coded diagnoses, resolves the most severe tier deterministically, and prices with integer-cent math.</p>
+    <p>Every result carries an ordered, hash-stable <strong>derivation trace</strong> — <code>severity_resolution → tier_selection → pricing</code> — so a reviewer can see exactly <em>why</em> a DRG and payment were produced. It stays a fake (<span class="mono">demo-0.2-not-for-billing</span>); a licensed MS-DRG/APR-DRG grouper drops in through the same <code>Grouper</code> protocol.</p>
+    <pre><span class="c"># derivation trace surfaced on every finding</span>
+current  : severity_resolution → <span class="y">none</span>  → tier_selection → <span class="g">DEMO-292</span> → pricing 1,000,000¢
+simulated: severity_resolution → <span class="y">mcc</span>   → tier_selection → <span class="g">DEMO-290</span> → pricing 1,842,000¢
+           (driver: L89.154)                                    Δ +$8,420</pre>
+  </section>
+
+  <section id="findings">
+    <h2><span class="num">9</span>Findings, ROI &amp; automation</h2>
+    <p class="sub"><span class="mono">investigation.py</span>, <span class="mono">review_packet.py</span>, <span class="mono">automation.py</span></p>
+    <p>A <strong>Finding</strong> binds the rule, disposition, confidence, proposed change, DRG delta, estimated impact, grouper derivation, and full evidence/assertion/subject lineage. From the set of findings the engine computes a deterministic, hash-covered <strong>impact summary</strong> (recoverable upside, downside at risk, net, counts by disposition) so a CFO can reproduce every figure from the packet.</p>
+    <h3>Exception automation</h3>
+    <p>A separately-hashed automation plan classifies each finding into a tier and minimizes human work:</p>
+    <table>
+      <thead><tr><th>Tier</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><span class="mono">suppressed</span></td><td>No opportunity, or an exact semantic duplicate consolidated without double-counting.</td></tr>
+        <tr><td><span class="mono">needs_enrichment</span></td><td>Evidence insufficient — returns to acquisition rather than disappearing.</td></tr>
+        <tr><td><span class="mono">auto_routed</span></td><td>Supported, high-confidence, bounded-impact operational work placed in a governed queue.</td></tr>
+        <tr><td><span class="mono">quick_confirm</span></td><td>High-confidence material DRG change → a prepared action + short confirmation.</td></tr>
+        <tr><td><span class="mono">focused_review</span></td><td>Lower confidence or documentation clarification needing targeted expertise.</td></tr>
+        <tr><td><span class="mono">escalated</span></td><td>Contradiction, compliance sensitivity, negative or unknown impact — bypasses ordinary budgets.</td></tr>
+      </tbody>
+    </table>
+    <p>Priority is an <strong>itemized, integer</strong> score (<code>tier_weight + confidence_weight + impact_weight + urgency_weight</code>) with an <em>uncapped</em> dollar weight so a six-figure recovery outranks routine work instead of saturating. A <code>reviewer_effort</code> rollup estimates no-touch rate and reviewer-minutes saved (clearly labelled estimates). An idempotent SQLite routing outbox can enqueue only <code>auto_routed</code> items and can never mutate a claim.</p>
+  </section>
+
+  <section id="review">
+    <h2><span class="num">10</span>Review packet &amp; audit</h2>
+    <p class="sub">The versioned public contract between engine and reviewer</p>
+    <p>The review packet (<span class="mono">3.2.0</span>) is the stable handoff: tenant/workspace scope, the immutable claim snapshot, the evidence graph, findings (with derivation trace + impact), the <code>impact_summary</code>, explicit controls (<code>claim_mutation_allowed = false</code>, permitted actions), and provenance (engine/rule/grouper versions, case &amp; rule-package hashes, a full-packet hash). The packet is a <em>review artifact, not a claim transaction</em>.</p>
+    <p>Reviewer decisions pass through a role-aware workflow service and a tenant-scoped, hash-linked decision repository; each decision binds the exact packet, plan, actor, structured reason code, and idempotency key. Audit records are canonical-JSON, sha256, and <strong>hash-chained</strong> — a read-only <code>verify_audit_chain</code> makes the whole ledger tamper-evident and replayable.</p>
+  </section>
+
+  <section id="eval">
+    <h2><span class="num">11</span>Accuracy &amp; evaluation</h2>
+    <p class="sub"><span class="mono">evaluation.py</span>, <span class="mono">eval_cli.py</span> · <span class="kbd">make eval</span></p>
+    <p>Deterministic discovery is only credible if it is measured. The evaluation harness runs the engine over a labelled gold manifest, maps each finding to an opportunity key, and reports <strong>precision / recall / F1</strong> in a canonical, hash-signed report — the honest source for any quoted accuracy figure. A <code>--enforce</code> flag turns threshold breaches into a non-zero exit, so an accuracy regression fails the build. It never touches a claim, DRG, or payment; it only compares engine output to human labels.</p>
+  </section>
+
+  <section id="agentic">
+    <h2><span class="num">12</span>The agentic runtime — two-plane model</h2>
+    <p class="sub"><span class="mono">src/revenue_integrity/runtime/</span></p>
+    <p>To make the agents far more capable without giving up determinism, the platform adopts a two-plane model. The agent authors freely upstream; only verified, versioned, hash-pinned artifacts cross into the deterministic execution plane.</p>
+    <div class="grid2">
+      <div class="card"><h4><span class="pill ai">Authoring / design plane</span></h4><p style="margin:0">The agent examines bounded data, <strong>writes code, runs it in an OS sandbox</strong>, evaluates the output against golden samples, and self-corrects — iterating until a deterministic scorer passes.</p></div>
+      <div class="card"><h4><span class="pill det">Execution plane</span></h4><p style="margin:0">A <strong>verify-then-promote</strong> gate admits only a frozen artifact whose hash equals what was scored, with an executable status and a version. Execution loads artifacts from a content-addressed, hash-chained registry.</p></div>
+    </div>
+    <p style="margin-top:14px">Net effect: the agent contributes everywhere and writes/runs code freely in the sandbox, while what touches real claims/PHI stays reproducible, versioned, human-approvable, and auditable. Model output is never authoritative until it clears the gate.</p>
+  </section>
+
+  <section id="learning">
+    <h2><span class="num">13</span>RAG &amp; self-learning</h2>
+    <p class="sub"><span class="mono">runtime/knowledge.py · retrieval.py · promotion.py</span></p>
+    <p>The system improves over time by accumulating <em>verified experience</em>, not opaque model drift:</p>
+    <ul>
+      <li><strong>Knowledge store</strong> — an append-only, content-addressed, hash-chained ledger of exemplars: approved adapter mappings, transforms, readers, ontology deltas, and labelled reviewer outcomes. Idempotent, tamper-evident, serializable.</li>
+      <li><strong>Deterministic RAG retriever</strong> — given a new task's feature tokens (a provider's columns, or a finding's rule + codes), it returns the top-k most relevant prior exemplars by transparent Jaccard overlap with a content-hash tiebreak. Agents get a small, relevant context instead of everything → <strong>fewer tokens, higher accuracy</strong>, with a reproducible <code>retrieval_digest</code>. It is wired live into the adapter-designer, and pairs with deterministic ontology-subgraph retrieval on the extraction side.</li>
+      <li><strong>Reviewer write-back</strong> — a deterministic projection of an audited packet + decision log into retrievable <code>review_outcome</code> exemplars, so future similar findings surface how comparable ones were resolved. Built from the audited artifacts (not a side-effect of submit) and idempotent on replay.</li>
+    </ul>
+  </section>
+
+  <section id="authoring">
+    <h2><span class="num">14</span>Sandboxed authoring</h2>
+    <p class="sub"><span class="mono">runtime/sandbox.py · self_eval.py · authored_reader.py · authored_transform.py · ontology_extension.py</span></p>
+    <ul>
+      <li><strong>OS sandbox</strong> — agent-authored code runs in a fresh isolated subprocess (<code>python -I -S</code>, empty env, throwaway cwd, <code>RLIMIT_CPU/FSIZE/NOFILE</code> + <code>RLIMIT_AS</code> on Linux, wall-clock kill). Runaway loops, crashes, and per-row errors are contained and reported — never fatal to the host, and host env vars are invisible to the code.</li>
+      <li><strong>Self-eval loop</strong> — <code>score_artifact</code> runs authored code through the same sandbox on golden samples and returns a score (parse rate, conformance, exact match); <code>evaluate_and_admit</code> closes generate → run → evaluate → promote in one call.</li>
+      <li><strong>Authored readers</strong> — the agent writes a <code>read(raw)</code> parser for a novel format (FHIR NDJSON, HL7 v2, X12, fixed-width, pipe-delimited…); it is sandbox-scored, promoted hash-pinned, and executed only in the sandbox with a code-hash freeze. Rows flow into the profiler/adapter pipeline.</li>
+      <li><strong>Authored transforms</strong> — the same pattern for field logic the fixed DSL can't express: regex extraction, currency→cents, arithmetic, conditional.</li>
+      <li><strong>Ontology-extension gate</strong> — the agent proposes an <em>additive-only</em> delta (data, not code); a deterministic preflight fails closed unless it is additive-only, internally valid, version-bumped, and digest-recomputable.</li>
+    </ul>
+    <div class="callout warn"><span class="k">Honest scope</span><span style="text-transform:none;font-weight:400">The sandbox bounds CPU, memory (Linux), files, descriptors, time, and isolates the environment/interpreter. Hard <strong>network/syscall</strong> isolation is out of scope for this interface and must be added via a container / seccomp jail in production.</span></div>
+  </section>
+
+  <section id="datamodel">
+    <h2><span class="num">15</span>Data model &amp; fidelity</h2>
+    <p class="sub"><span class="mono">models.py</span>, <span class="mono">financial.py</span></p>
+    <p>The core case models separate clinical reality, documentation, coding, billing, and evidence. The <code>Claim</code> carries the coded diagnoses/procedures/charges, DRG, and allowed amount — plus optional, additive fidelity fields introduced without breaking existing data:</p>
+    <ul>
+      <li><code>diagnosis_details</code> — per-diagnosis <strong>sequence</strong> (1 = principal) and <strong>present-on-admission</strong> indicator, with a <code>principal_diagnosis()</code> accessor;</li>
+      <li><code>charge_lines</code> — full charge-line detail (revenue code, units, cents, status), activating the <code>financial.ClaimLine</code> model, with a <code>charges_from_lines()</code> reducer.</li>
+    </ul>
+    <p>These are backward-compatible (legacy cases are unaffected). A formal case <code>schema_version</code> migration and a sequence-/POA-aware grouper are the natural follow-ups.</p>
+  </section>
+
+  <section id="formats">
+    <h2><span class="num">16</span>Formats &amp; known limits</h2>
+    <p class="sub">What flows through today, and where the edges are.</p>
+    <p><strong>Native readers:</strong> CSV, JSON, JSONL, XLSX. <strong>Via authored readers</strong> (sandbox-verified): arbitrary text formats such as FHIR NDJSON, HL7 v2, X12 837/835, fixed-width, pipe-delimited. Not yet handled: OCR/layout for PDF/TIFF/scans, and native binary/columnar formats (Parquet/Avro).</p>
+    <p>Two honest, structural trade-offs to name for any evaluator:</p>
+    <ul>
+      <li><strong>Safety vs. coverage.</strong> Declarative + fail-closed + verified-code is what makes the platform auditable and non-hallucinating — but it caps how much messy data flows through without human/agent authoring. The quarantine plane softens whole-batch failure into per-encounter degradation.</li>
+      <li><strong>Fidelity vs. the synthetic core.</strong> The engine, rules, ontology, and agentic runtime are real; the grouper, terminology, and pricing are demo-grade until a licensed grouper and a terminology service are attached.</li>
+    </ul>
+  </section>
+
+  <section id="governance">
+    <h2><span class="num">17</span>Governance &amp; versioned contracts</h2>
+    <p class="sub">Everything consequential is versioned, digested, and fails closed.</p>
+    <table>
+      <thead><tr><th>Contract</th><th>Version</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>Engine</td><td class="mono">0.7.0</td><td>Stamped into every audit record</td></tr>
+        <tr><td>Encounter-case schema</td><td class="mono">2.0.0</td><td>Fails closed on mismatch</td></tr>
+        <tr><td>Review packet</td><td class="mono">3.2.0</td><td>Adds impact_summary + finding derivation trace</td></tr>
+        <tr><td>Automation plan</td><td class="mono">1.0.0</td><td>priority_components + reviewer_effort</td></tr>
+        <tr><td>Review decision</td><td class="mono">2.0.0</td><td>Role-aware, hash-linked</td></tr>
+        <tr><td>Ontology</td><td class="mono">wound-care 1.1.0-draft</td><td>POA + severity first-class; cross-language digest</td></tr>
+        <tr><td>Grouping definition</td><td class="mono">demo-0.2-not-for-billing</td><td>Data-driven severity table + derivation</td></tr>
+        <tr><td>Rule packages</td><td class="mono">wound_care_v1 2.1.0 · v2 1.0.0</td><td>approved-for-demo; ontology-bound by digest</td></tr>
+        <tr><td>Adapter runtime</td><td class="mono">1.0.0</td><td>Fingerprint-gated; quarantine-capable</td></tr>
+      </tbody>
+    </table>
+    <p>The governance rules enforced on every change: version everything governed on a breaking or binding change; require the rule test matrix (positive + negative + contradictory + malformed) per rule change and the reader/adapter matrix (malformed-file, schema-drift, unlinked-row, unmapped-value, budget) per ingestion change; move the review packet's schema + tests + browser validation + generated fixture + docs together (a golden <span class="kbd">make demo-packet-check</span> proves the demo can't drift from the engine); preserve deterministic IDs, integer-cent money, and full provenance; and never commit PHI, credentials, or licensed terminology.</p>
+  </section>
+
+  <section id="arch">
+    <h2><span class="num">18</span>Architecture &amp; commands</h2>
+    <p class="sub">Three toolchains, one contract.</p>
+    <pre><span class="c"># Repository layout</span>
+src/revenue_integrity/   <span class="c"># deterministic Python engine</span>
+  models · engine · rules · ontology · grouper · investigation
+  orchestration · automation · routing · workflow · promotion
+  review_packet · audit · evaluation · eval_cli · financial
+  ontology_extension · ingestion/ · runtime/
+agent/src/               <span class="c"># Mastra/TS: extraction + authoring agents, RAG</span>
+demo/src/                <span class="c"># React (Vite) pitch + reviewer UI</span>
+rules/ · schemas/ · examples/ · knowledge/ · docs/</pre>
+    <pre><span class="c"># Full local gate</span>
+make verify              <span class="c"># tests + agent check + demo packet/UI check</span>
+make test                <span class="c"># Python unit tests</span>
+make eval                <span class="c"># signed precision/recall/F1 backtest</span>
+make demo                <span class="c"># deterministic CLI demo (no model needed)</span>
+make demo-packet-check   <span class="c"># prove the demo fixture matches the engine</span>
+make bulk-demo-mercy     <span class="c"># onboard the notional provider export</span></pre>
+    <p>Console scripts: <code>revenue-integrity</code> (CLI), <code>revenue-integrity-ingest</code> (bulk profiler/runner), <code>revenue-integrity-eval</code> (accuracy backtest). The agent is provider-agnostic (<code>MODEL_ID=provider/model</code>); requires Python 3.11+ and Node 22+.</p>
+  </section>
+
+  <section id="verification">
+    <h2><span class="num">19</span>Verification</h2>
+    <p class="sub">Evidence, not assertions.</p>
+    <div class="stat-row">
+      <div class="stat"><strong>221</strong><span>Python engine tests</span></div>
+      <div class="stat"><strong>43</strong><span>Agent (TS) tests</span></div>
+      <div class="stat"><strong>12</strong><span>Demo (TS) tests</span></div>
+      <div class="stat"><strong>1.0</strong><span>Backtest P / R / F1 (gold set)</span></div>
+    </div>
+    <p>The suite includes an <strong>executable core-invariant suite</strong> (claim never mutated by the model path; claim-affecting findings always require review; packets forbid claim mutation; the DSL surface is frozen), a <strong>golden-artifact conformance</strong> suite (every shipped ontology/rule/adapter loads with a matching digest and executable status), the full rule test matrix, the ingestion + quarantine matrix, the agentic-runtime tests (knowledge/RAG/sandbox/promotion/authored readers &amp; transforms/ontology gate), and the cross-language ontology-digest parity check. A deterministic demo-packet fixture is regenerated from the engine and <span class="kbd">--check</span>-gated so the pitch UI cannot drift from reality.</p>
+  </section>
+
+  <section id="readiness">
+    <h2><span class="num">20</span>Readiness</h2>
+    <p class="sub">What is built today vs. what needs external inputs.</p>
+    <div class="grid2">
+      <div class="card">
+        <h4><span class="pill done">Built &amp; verified</span></h4>
+        <ul style="margin:8px 0 0">
+          <li>Deterministic engine, rules, data-driven grouper, derivation trace</li>
+          <li>Governed bulk onboarding + quarantine plane</li>
+          <li>Evidence extraction with dual-runtime grounding</li>
+          <li>Impact/ROI rollup, automation tiers, review packet 3.2.0, hash-chained audit</li>
+          <li>Signed precision/recall/F1 backtest</li>
+          <li>Full agentic runtime: RAG + self-learning + sandbox + authored readers/transforms + ontology gate</li>
+          <li>Two-case, lineage- and trust-forward demo</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4><span class="pill todo">Needs external inputs (production pilot)</span></h4>
+        <ul style="margin:8px 0 0">
+          <li>A <strong>licensed grouper/pricer</strong> (MS-DRG / APR-DRG) behind the <code>Grouper</code> protocol</li>
+          <li>Native <strong>FHIR/HL7/837/835</strong> adapters + a <strong>de-identified client export</strong> (BAA)</li>
+          <li>Institution-approved rules, licensed terminology, payer contracts</li>
+          <li>Container/seccomp <strong>network jailing</strong> of the sandbox</li>
+          <li>Productionization: auth, managed multi-tenant DB, deployment, monitoring, the controls in <code>SECURITY.md</code></li>
+        </ul>
+      </div>
+    </div>
+    <p style="margin-top:16px">In short: the <strong>reference/demo MVP is built, runnable, and demonstrates the full capability set end to end</strong>. It is <strong>not</strong> a production billing system, and by design cannot become one without the licensed grouper, real-data adapters, institution-approved content, and productionization above. See <code>docs/READINESS.md</code>, <code>docs/ARCHITECTURE.md</code>, and <code>docs/AGENTIC_RUNTIME.md</code>.</p>
+  </section>
+
+  </main>
+</div>
+
+<footer>
+  <div class="wrap">
+    Encounter Revenue Integrity · platform report · v0.7 · engine 0.7.0. Synthetic reference implementation — not for production billing or clinical use.
+    Generated documentation; see <span class="mono">docs/</span> for the authoritative, versioned contracts.
+  </div>
+</footer>
+
+</body>
+</html>

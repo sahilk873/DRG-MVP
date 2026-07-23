@@ -1,6 +1,6 @@
 {
-  "review_packet_schema_version": "3.0.0",
-  "packet_id": "packet-bda4081df44c0b455d21",
+  "review_packet_schema_version": "3.5.0",
+  "packet_id": "packet-643301ed61e454bde3f5",
   "environment": "synthetic",
   "tenant": {
     "tenant_id": "tenant-demo-alpha",
@@ -36,13 +36,21 @@
       "document_id": "WOUND-CONSULT-001",
       "author_role": "physician",
       "recorded_at": "2026-06-01T14:30:00Z",
-      "text": "Stage 4 pressure injury of the sacral region with exposed muscle. Present on admission."
+      "text": "Stage 4 pressure injury of the sacral region with exposed muscle. Present on admission.",
+      "source_locator": {
+        "kind": "clinical_note_excerpt",
+        "document_id": "WOUND-CONSULT-001",
+        "char_start": 0,
+        "char_end": 87,
+        "length": 87,
+        "excerpt_sha256": "0bb9ba3c6fcfa9d0e6b51f101da9971fc6baef53b8b5e7489a32185446acd922"
+      }
     }
   ],
   "ontology": {
     "ontology_id": "wound-care-encounter-ontology",
-    "ontology_version": "1.0.0-draft",
-    "ontology_digest": "eb2b6f6aa447825fa45012fd23a91fe0f572fe280cf776a239699d6230390779",
+    "ontology_version": "1.1.0-draft",
+    "ontology_digest": "66da3211d53adaa7cffc4fd45e0a7ca86175f5a7774d5ce80d4a34a0a0786f52",
     "entities": [
       {
         "entity_id": "root:patient",
@@ -216,10 +224,10 @@
   ],
   "findings": [
     {
-      "finding_id": "finding-bea21fce00e5c10a",
+      "finding_id": "finding-b8b4c11b890362c8",
       "rule_id": "WC-PI-OMITTED-001",
       "rule_package_id": "wound-care-revenue-integrity",
-      "rule_package_version": "2.0.0-demo",
+      "rule_package_version": "2.1.0-demo",
       "title": "Explicitly documented stage 4 sacral pressure injury absent from claim",
       "disposition": "coding_review",
       "confidence": 0.98,
@@ -245,9 +253,69 @@
       "simulated_drg": "DEMO-290",
       "estimated_impact_cents": 842000,
       "impact_status": "estimated",
-      "grouper_version": "demo-0.2-not-for-billing"
+      "grouper_version": "demo-0.2-not-for-billing",
+      "derivation": {
+        "current": [
+          {
+            "step": "severity_resolution",
+            "value": "none",
+            "detail": "no severity-driving diagnosis"
+          },
+          {
+            "step": "tier_selection",
+            "value": "DEMO-292",
+            "detail": "none tier"
+          },
+          {
+            "step": "pricing",
+            "value": "1000000",
+            "detail": "base 1000000c x 1000000 micros"
+          }
+        ],
+        "simulated": [
+          {
+            "step": "severity_resolution",
+            "value": "mcc",
+            "detail": "L89.154"
+          },
+          {
+            "step": "tier_selection",
+            "value": "DEMO-290",
+            "detail": "mcc tier"
+          },
+          {
+            "step": "pricing",
+            "value": "1842000",
+            "detail": "base 1000000c x 1842000 micros"
+          }
+        ]
+      },
+      "charge_line_refs": [],
+      "narrative": "On CASE-DEMO-001, rule WC-PI-OMITTED-001 flagged: Explicitly documented stage 4 sacral pressure injury absent from claim. DRG would move from DEMO-292 to DEMO-290. Estimated upside of $8,420.00 (synthetic demo grouper, not for billing). Requires human review; route to coding review."
     }
   ],
+  "impact_summary": {
+    "currency": "USD",
+    "net_estimated_impact_cents": 842000,
+    "positive_opportunity_cents": 842000,
+    "at_risk_cents": 0,
+    "estimated_finding_count": 1,
+    "unavailable_impact_count": 0,
+    "not_applicable_impact_count": 0,
+    "total_findings": 1,
+    "findings_requiring_review": 1,
+    "findings_by_disposition": {
+      "coding_review": 1
+    },
+    "basis": "synthetic-demo-grouper-not-for-billing"
+  },
+  "denial_summary": {
+    "currency": "USD",
+    "denied_amount_cents": 0,
+    "denial_count": 0,
+    "at_risk_line_count": 0,
+    "at_risk_line_ids": []
+  },
   "controls": {
     "claim_mutation_allowed": false,
     "human_review_required": true,
@@ -262,15 +330,15 @@
   "provenance": {
     "evaluated_at": "2026-07-17T12:00:00Z",
     "engine_version": "0.7.0",
-    "case_hash": "597606f4a7fe59c03670d0ba2270d388fd17ae77dacff43d7fdda289ac82c0e1",
+    "case_hash": "1337b6b9132a188aa4f2439365a3e2a5da90b579d2aa6bf6fffbe1eddba0a940",
     "rule_package_id": "wound-care-revenue-integrity",
-    "rule_package_version": "2.0.0-demo",
-    "rule_package_hash": "cf1daa386c80a22e7b9a606178fc3b3b0b784425ed95ad05e6160b11938cd4c7",
-    "record_hash": "2efaf5eea3cc572fba88ff765f30d209848eee5d089cb3aaaa1c796b8b5d8f79",
+    "rule_package_version": "2.1.0-demo",
+    "rule_package_hash": "cddb701a42428cd16902890068f9f87994a9c4013a3f764db79c3278e0e33a47",
+    "record_hash": "f38a8b9bc2e69614b55513e74b5eead8ea28ef67a5a5f2f350411caaba612034",
     "previous_record_hash": null,
     "grouper_versions": [
       "demo-0.2-not-for-billing"
     ],
-    "packet_hash": "ead6ca273de9d35b9d484ca182835edf5eb067f661662bff0054ced715a0d19f"
+    "packet_hash": "6661e1da06426e30e19dff597846b2ede0376692f9b6b407dc5f7ab2c06f45d6"
   }
 }

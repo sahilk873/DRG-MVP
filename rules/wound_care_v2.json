@@ -1,0 +1,57 @@
+{
+  "package_id": "wound-care-severity-integrity",
+  "version": "1.0.0-demo",
+  "rule_domain": "revenue_integrity",
+  "ontology": {
+    "ontology_id": "wound-care-encounter-ontology",
+    "version": "1.1.0-draft",
+    "digest": "66da3211d53adaa7cffc4fd45e0a7ca86175f5a7774d5ce80d4a34a0a0786f52"
+  },
+  "status": "approved-for-demo",
+  "effective_from": "2026-01-01",
+  "rules": [
+    {
+      "rule_id": "WC-PI-SEVERITY-001",
+      "title": "Grounded stage 3-4 pressure injury absent from claim raises DRG severity",
+      "applies_to": {"subject_types": ["Wound"], "include_subtypes": true},
+      "when": {
+        "all": [
+          {"field": "concept", "op": "starts_with", "value": "pressure"},
+          {"field": "status", "op": "eq", "value": "present"},
+          {"field": "documentation_status", "op": "eq", "value": "explicit"},
+          {"field": "attributes.stage", "op": "between", "value": [3, 4]},
+          {"field": "has_contradicting_evidence", "op": "eq", "value": false},
+          {"field": "evidence_ids", "op": "count_gte", "value": 1}
+        ]
+      },
+      "case_conditions": [
+        {"field": "claim.diagnoses", "op": "count_gte", "value": 1},
+        {"field": "claim.diagnoses", "op": "not_contains", "value": "L89.154"}
+      ],
+      "then": {
+        "disposition": "coding_review",
+        "requires_human_review": true,
+        "proposed_change": {"add_diagnoses": ["L89.154"]},
+        "rationale": "A high-confidence, uncontradicted stage 3-4 pressure injury is grounded in the evidence graph but the specific diagnosis is absent from the claim. Adding it raises the DRG severity tier. Confirm coding, sequencing, and POA before any claim change."
+      }
+    },
+    {
+      "rule_id": "WC-PI-POA-002",
+      "title": "Hospital-acquired pressure injury (not present on admission) requires compliance review",
+      "applies_to": {"subject_types": ["Wound"], "include_subtypes": true},
+      "when": {
+        "all": [
+          {"field": "concept", "op": "starts_with", "value": "pressure"},
+          {"field": "status", "op": "eq", "value": "present"},
+          {"field": "attributes.poa", "op": "eq", "value": "N"}
+        ]
+      },
+      "then": {
+        "disposition": "compliance_review",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "The pressure injury is documented as not present on admission (hospital-acquired). Route to compliance for POA validation and quality reporting; do not alter the claim."
+      }
+    }
+  ]
+}

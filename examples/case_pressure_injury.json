@@ -17,8 +17,8 @@
   ],
   "ontology": {
     "ontology_id": "wound-care-encounter-ontology",
-    "ontology_version": "1.0.0-draft",
-    "ontology_digest": "eb2b6f6aa447825fa45012fd23a91fe0f572fe280cf776a239699d6230390779",
+    "ontology_version": "1.1.0-draft",
+    "ontology_digest": "66da3211d53adaa7cffc4fd45e0a7ca86175f5a7774d5ce80d4a34a0a0786f52",
     "entities": [
       {"entity_id": "root:patient", "entity_type": "Patient", "label": "Patient", "properties": {}},
       {"entity_id": "root:encounter", "entity_type": "Encounter", "label": "Encounter", "properties": {}},

@@ -1,0 +1,20 @@
+{
+  "table_id": "wound-care-terms",
+  "version": "1.0.0",
+  "status": "approved-for-demo",
+  "description": "SYNTHETIC governed equivalence table for wound-care terminology normalization. Maps case-insensitive synonyms to a single canonical value (equivalent-only fold). It NEVER invents a target for an unknown value and is NOT wired into any authoritative coding/billing path; it is an audited, deterministic pre-pass only. NOT for real coding or billing.",
+  "equivalences": {
+    "dti": "deep_tissue_pressure_injury",
+    "deep tissue injury": "deep_tissue_pressure_injury",
+    "deep tissue pressure injury": "deep_tissue_pressure_injury",
+    "suspected deep tissue injury": "deep_tissue_pressure_injury",
+    "sdti": "deep_tissue_pressure_injury",
+    "pressure ulcer": "pressure_injury",
+    "pressure sore": "pressure_injury",
+    "decubitus ulcer": "pressure_injury",
+    "bed sore": "pressure_injury",
+    "bedsore": "pressure_injury",
+    "unstageable pressure ulcer": "unstageable_pressure_injury",
+    "unstageable": "unstageable_pressure_injury"
+  }
+}

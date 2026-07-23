@@ -1,0 +1,21 @@
+{
+  "basis": "synthetic-gold-set-not-for-billing",
+  "case_count": 4,
+  "engine_version": "0.7.0",
+  "eval_schema_version": "1.0.0",
+  "label_count": 7,
+  "metrics": {
+    "f1": 1.0,
+    "false_negatives": 0,
+    "false_positives": 0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "true_positives": 7
+  },
+  "passed": true,
+  "report_hash": "ad5a44cc5c3dcb7691f5464142e5badde8b78c3613467e3225560eded577a985",
+  "thresholds": {
+    "min_precision": 0.95,
+    "min_recall": 0.95
+  }
+}

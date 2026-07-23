@@ -4,12 +4,164 @@ from pathlib import Path
 import unittest
 
 from revenue_integrity.agents import accept_agent_output
-from revenue_integrity.engine import RuleEngine
+from revenue_integrity.engine import RuleEngine, evaluate_condition
 from revenue_integrity.grouper import DeterministicDemoGrouper, GroupingResult
 from revenue_integrity.models import Disposition, EncounterCase, ImpactStatus
+from revenue_integrity.rules import Condition
 
 
 ROOT = Path(__file__).parents[1]
+
+
+def _match(payload, field, op, value=None):
+    spec = {"field": field, "op": op}
+    if op != "exists" or value is not None:
+        spec["value"] = value
+    return evaluate_condition(payload, Condition.from_dict(spec))
+
+
+class SeverityRulePackageTests(unittest.TestCase):
+    """The governed v2 package (rules/wound_care_v2.json) exercising the new DSL operators."""
+
+    def setUp(self):
+        self.payload = load("examples/case_pressure_injury_v2.json")
+        self.rules = load("rules/wound_care_v2.json")
+
+    def _findings(self, payload=None):
+        case = EncounterCase.from_dict(payload or self.payload)
+        return RuleEngine(self.rules, DeterministicDemoGrouper()).evaluate(case)
+
+    def test_positive_both_rules_fire(self):
+        findings = {f.rule_id: f for f in self._findings()}
+        self.assertIn("WC-PI-SEVERITY-001", findings)
+        self.assertIn("WC-PI-POA-002", findings)
+        coding = findings["WC-PI-SEVERITY-001"]
+        self.assertEqual(dict(coding.proposed_change), {"add_diagnoses": ["L89.154"]})
+        self.assertEqual((coding.current_drg, coding.simulated_drg), ("DEMO-292", "DEMO-290"))
+        self.assertEqual(coding.estimated_impact_cents, 842000)
+        self.assertEqual(findings["WC-PI-POA-002"].disposition.value, "compliance_review")
+
+    def test_negative_stage_outside_between_range_suppresses_coding_rule(self):
+        # between [3,4] must exclude a stage-2 injury; the POA rule still fires.
+        payload = load("examples/case_pressure_injury_v2.json")
+        payload["assertions"][0]["attributes"]["stage"] = 2
+        stage_entity = next(e for e in payload["ontology"]["entities"] if e["entity_type"] == "PressureInjuryStage")
+        stage_entity["properties"]["value"] = "2"
+        rule_ids = {f.rule_id for f in self._findings(payload)}
+        self.assertNotIn("WC-PI-SEVERITY-001", rule_ids)
+        self.assertIn("WC-PI-POA-002", rule_ids)
+
+    def test_negative_poa_present_suppresses_compliance_rule(self):
+        payload = load("examples/case_pressure_injury_v2.json")
+        payload["assertions"][0]["attributes"]["poa"] = "Y"
+        rule_ids = {f.rule_id for f in self._findings(payload)}
+        self.assertIn("WC-PI-SEVERITY-001", rule_ids)
+        self.assertNotIn("WC-PI-POA-002", rule_ids)
+
+    def test_contradictory_evidence_suppresses_the_coding_rule(self):
+        # has_contradicting_evidence eq false must fail when a contradiction is cited.
+        payload = load("examples/case_pressure_injury_v2.json")
+        payload["assertions"][0]["contradicting_evidence_ids"] = ["EV-001"]
+        rule_ids = {f.rule_id for f in self._findings(payload)}
+        self.assertNotIn("WC-PI-SEVERITY-001", rule_ids)
+
+    def test_already_coded_claim_suppresses_the_coding_rule(self):
+        payload = load("examples/case_pressure_injury_v2.json")
+        payload["claim"]["diagnoses"] = ["A41.9", "L89.154"]
+        rule_ids = {f.rule_id for f in self._findings(payload)}
+        self.assertNotIn("WC-PI-SEVERITY-001", rule_ids)
+
+
+class NewOperatorEvaluationTests(unittest.TestCase):
+    def test_between_is_inclusive_and_type_safe(self):
+        payload = {"attributes": {"stage": 4}}
+        self.assertTrue(_match(payload, "attributes.stage", "between", [3, 4]))
+        self.assertFalse(_match({"attributes": {"stage": 2}}, "attributes.stage", "between", [3, 4]))
+        self.assertFalse(_match({"attributes": {"stage": True}}, "attributes.stage", "between", [0, 5]))
+
+    def test_starts_with_matches_prefix_and_ignores_non_strings(self):
+        self.assertTrue(_match({"concept": "L89.154"}, "concept", "starts_with", "L89"))
+        self.assertFalse(_match({"concept": "E11.9"}, "concept", "starts_with", "L89"))
+        self.assertFalse(_match({"concept": 189}, "concept", "starts_with", "L89"))
+
+    def test_count_operators_count_collections_not_characters(self):
+        claim = {"claim": {"diagnoses": ["A", "B", "C"]}}
+        self.assertTrue(_match(claim, "claim.diagnoses", "count_gte", 2))
+        self.assertFalse(_match({"claim": {"diagnoses": ["A"]}}, "claim.diagnoses", "count_gte", 2))
+        self.assertTrue(_match(claim, "claim.diagnoses", "count_lte", 3))
+        # A string field must never be counted as characters.
+        self.assertFalse(_match({"claim": {"diagnoses": "ABCDE"}}, "claim.diagnoses", "count_gte", 2))
+
+    def test_derived_assertion_fields_are_available_to_rules(self):
+        # Exercise the exact payload the engine exposes for an assertion, via _matches_assertion.
+        case = EncounterCase.from_dict(load("examples/case_pressure_injury.json"))
+        assertion = case.assertions[0]
+        subject = next(e for e in case.ontology.entities if e.entity_id == assertion.subject_id)
+
+        def matches(field, op, value):
+            return RuleEngine._matches_assertion(assertion, subject, Condition.from_dict(
+                {"field": field, "op": op, "value": value}
+            ))
+
+        self.assertTrue(matches("evidence_count", "gte", 1))
+        self.assertTrue(matches("has_contradicting_evidence", "eq", False))
+        self.assertFalse(matches("has_contradicting_evidence", "eq", True))
+
+        contradicted = replace(assertion, contradicting_evidence_ids=(assertion.evidence_ids[0] + "-x",))
+        self.assertTrue(RuleEngine._matches_assertion(
+            contradicted, subject,
+            Condition.from_dict({"field": "has_contradicting_evidence", "op": "eq", "value": True}),
+        ))
+
+
+class DenialFactsCaseConditionTests(unittest.TestCase):
+    """Read-only denial facts exposed to the declarative case-condition DSL (additive)."""
+
+    def setUp(self):
+        self.rules = load("rules/wound_care_v2.json")
+        # Gate the coding rule on a denial-amount case condition.
+        self.rules["rules"][0]["case_conditions"].append(
+            {"field": "financial.denied_amount_cents", "op": "gte", "value": 1}
+        )
+
+    def _financial(self, claim_id):
+        return {
+            "schema_version": "1.0.0",
+            "payer_id": "PAYER-1",
+            "claim_id": claim_id,
+            "denials": [{
+                "denial_id": "DEN-1",
+                "line_ids": ["L1"],
+                "reason_code": "CO-97",
+                "status": "open",
+                "amount_cents": 5000,
+            }],
+            "claim_lines": [{
+                "line_id": "L1", "code": "L89.154", "code_system": "ICD-10-CM",
+                "units": 1, "charged_amount_cents": 5000,
+            }],
+        }
+
+    def _rule_ids(self, payload):
+        case = EncounterCase.from_dict(payload)
+        return {f.rule_id for f in RuleEngine(self.rules, DeterministicDemoGrouper()).evaluate(case)}
+
+    def test_rule_fires_when_case_has_denials(self):
+        payload = load("examples/case_pressure_injury_v2.json")
+        payload["financial"] = self._financial(payload["case_id"])
+        self.assertIn("WC-PI-SEVERITY-001", self._rule_ids(payload))
+
+    def test_rule_does_not_fire_without_financial_snapshot(self):
+        payload = load("examples/case_pressure_injury_v2.json")
+        self.assertNotIn("financial", payload)
+        self.assertNotIn("WC-PI-SEVERITY-001", self._rule_ids(payload))
+
+    def test_financial_facts_all_zero_when_snapshot_absent(self):
+        from revenue_integrity.engine import _financial_facts
+        self.assertEqual(
+            _financial_facts(None),
+            {"has_denials": False, "denied_amount_cents": 0, "denial_count": 0},
+        )
 
 
 def load(name: str):
@@ -176,3 +328,71 @@ class RuleEngineTests(unittest.TestCase):
             replace(finding, estimated_impact_cents=None)
         with self.assertRaisesRegex(ValueError, "cannot carry an estimate"):
             replace(finding, impact_status=ImpactStatus.UNAVAILABLE)
+
+
+class DrgSequencingFindingTests(unittest.TestCase):
+    """Deterministic SYSTEM-DRG-SEQUENCING counterfactual (only fires with diagnosis_details)."""
+
+    def _findings(self, payload):
+        return RuleEngine(
+            load("rules/wound_care_v1.json"), DeterministicDemoGrouper()
+        ).evaluate(EncounterCase.from_dict(payload))
+
+    def _sequencing(self, findings):
+        return [item for item in findings if item.rule_id == "SYSTEM-DRG-SEQUENCING"]
+
+    def test_positive_mis_sequenced_details_emit_finding_with_drg_delta(self):
+        # Submitted DRG claims MCC (DEMO-290), but the MCC-severity code L89.154 is a HAC
+        # documented as NOT present on admission (poa='N'); re-grouping under the documented
+        # principal + POA/HAC drops severity to CC -> DEMO-291. The finding must appear.
+        payload = load("examples/case_pressure_injury.json")
+        payload["claim"]["drg"] = "DEMO-290"
+        payload["claim"]["allowed_amount_cents"] = 1_842_000
+        payload["claim"]["diagnoses"] = ["L89.154", "L89.100"]
+        payload["claim"]["diagnosis_details"] = [
+            {"code": "L89.100", "sequence": 1, "poa": "Y"},
+            {"code": "L89.154", "sequence": 2, "poa": "N"},
+        ]
+        findings = self._sequencing(self._findings(payload))
+        self.assertEqual(len(findings), 1)
+        finding = findings[0]
+        self.assertEqual(finding.rule_package_id, "deterministic-system-checks")
+        self.assertEqual(finding.submitted_drg, "DEMO-290")
+        self.assertEqual(finding.simulated_drg, "DEMO-291")
+        self.assertEqual(dict(finding.proposed_change), {"replace_drg": ["DEMO-291"]})
+        self.assertTrue(finding.requires_human_review)
+        self.assertIs(finding.disposition, Disposition.CODING_REVIEW)
+        self.assertIs(finding.impact_status, ImpactStatus.ESTIMATED)
+        # Payment for DEMO-291 (1,280,000c) minus submitted allowed (1,842,000c).
+        self.assertEqual(finding.estimated_impact_cents, 1_280_000 - 1_842_000)
+        self.assertTrue(finding.derivation["simulated"])
+
+    def test_negative_no_diagnosis_details_emits_no_sequencing_finding(self):
+        # The demo case carries no diagnosis_details -> the counterfactual never runs.
+        payload = load("examples/case_pressure_injury.json")
+        self.assertNotIn("diagnosis_details", payload["claim"])
+        self.assertEqual(self._sequencing(self._findings(payload)), [])
+
+    def test_negative_correctly_sequenced_details_emit_no_finding(self):
+        # Documented principal + POA reproduce exactly the submitted DRG -> no finding.
+        payload = load("examples/case_pressure_injury.json")
+        payload["claim"]["drg"] = "DEMO-290"
+        payload["claim"]["diagnoses"] = ["L89.154", "L89.100"]
+        payload["claim"]["diagnosis_details"] = [
+            {"code": "L89.154", "sequence": 1, "poa": "Y"},
+            {"code": "L89.100", "sequence": 2, "poa": "Y"},
+        ]
+        self.assertEqual(self._sequencing(self._findings(payload)), [])
+
+    def test_missing_allowed_amount_is_unavailable_not_zero(self):
+        payload = load("examples/case_pressure_injury.json")
+        payload["claim"]["drg"] = "DEMO-290"
+        payload["claim"]["allowed_amount_cents"] = None
+        payload["claim"]["diagnoses"] = ["L89.154", "L89.100"]
+        payload["claim"]["diagnosis_details"] = [
+            {"code": "L89.100", "sequence": 1, "poa": "Y"},
+            {"code": "L89.154", "sequence": 2, "poa": "N"},
+        ]
+        finding = self._sequencing(self._findings(payload))[0]
+        self.assertIsNone(finding.estimated_impact_cents)
+        self.assertIs(finding.impact_status, ImpactStatus.UNAVAILABLE)

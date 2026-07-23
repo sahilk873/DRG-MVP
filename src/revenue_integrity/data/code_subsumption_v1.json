@@ -1,0 +1,19 @@
+{
+  "table_id": "code-subsumption",
+  "version": "1.0.0",
+  "status": "approved-for-demo",
+  "description": "SYNTHETIC governed code-subsumption reference: a small child->parent hierarchy of diagnosis/procedure codes used ONLY by the declarative subsumed_by rule operator to test whether a specific coded value rolls up to a more general parent code. It NEVER creates or changes a claim, assigns a DRG, computes reimbursement, or bypasses review. NOT for real coding, billing, or terminology use.",
+  "digest": "855e721d2ad34ac21a357bb7c36d214fc7f1f9ac23acd1c1b96c2374b71fcca7",
+  "parents": {
+    "L89.153": "L89.15",
+    "L89.154": "L89.15",
+    "L89.15": "L89.1",
+    "L89.1": "L89",
+    "L89.213": "L89.21",
+    "L89.21": "L89.2",
+    "L89.2": "L89",
+    "E11.9": "E11",
+    "E11.65": "E11",
+    "I10": "I1"
+  }
+}

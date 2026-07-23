@@ -1,0 +1,1906 @@
+{
+  "package_id": "wound-care-clinical-care-gap",
+  "version": "1.0.0-demo",
+  "rule_domain": "clinical_care_gap",
+  "ontology": {
+    "ontology_id": "wound-care-encounter-ontology",
+    "version": "1.3.0-draft",
+    "digest": "aed1542929b5a845f4ec7b23169a815d255aadf2a21bcfbaffef590f5c4fd10e"
+  },
+  "status": "approved-for-demo",
+  "effective_from": "2026-01-01",
+  "rules": [
+    {
+      "rule_id": "CG-INF-001",
+      "title": "Stage >=3 pressure injury with purulent exudate suggests infection risk",
+      "applies_to": {
+        "subject_types": [
+          "PressureInjury"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "present"
+          },
+          {
+            "field": "attributes.stage",
+            "op": "gte",
+            "value": 3
+          },
+          {
+            "field": "attributes.exudate_type",
+            "op": "eq",
+            "value": "purulent"
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Stage >=3 pressure injury with purulent exudate suggests infection risk. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "missing_action",
+        "expected_action": "wound_culture",
+        "recommended_action": "Obtain a wound culture and evaluate for infection.",
+        "alert_urgency": "same_day",
+        "clinical_impact": "Untreated wound infection risks tissue loss, sepsis, and delayed healing."
+      }
+    },
+    {
+      "rule_id": "CG-INF-002",
+      "title": "Chronic wound with no size reduction after two weeks of standard care needs clinician reassessment",
+      "applies_to": {
+        "subject_types": [
+          "WoundAssessment"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "attributes.standard_care_documented",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "field": "attributes.days_since_baseline",
+            "op": "gte",
+            "value": 14
+          },
+          {
+            "field": "attributes.size_trend_pct",
+            "op": "pct_change_gte",
+            "value": -0.0001
+          },
+          {
+            "field": "attributes.reassessment_overdue",
+            "op": "eq",
+            "value": true
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Chronic wound with no size reduction after two weeks of standard care needs clinician reassessment. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "delayed_action",
+        "expected_action": "clinician_reassessment",
+        "recommended_action": "Reassess the wound and evaluate for chronic wound infection or advanced therapy.",
+        "alert_urgency": "urgent",
+        "clinical_impact": "A chronic wound failing to reduce despite standard care may harbor infection or biofilm; delayed reassessment lets it deteriorate.",
+        "timing_window_days": 2
+      }
+    },
+    {
+      "rule_id": "CG-INF-003",
+      "title": "Purulent exudate with periwound erythema and warmth suggests local infection",
+      "applies_to": {
+        "subject_types": [
+          "WoundAssessment"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "attributes.exudate_type",
+            "op": "eq",
+            "value": "purulent"
+          },
+          {
+            "field": "attributes.periwound_erythema",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "field": "attributes.warmth",
+            "op": "eq",
+            "value": true
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Purulent exudate with periwound erythema and warmth suggests local infection. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "missing_action",
+        "expected_action": "wound_specialist_escalation",
+        "recommended_action": "Escalate to a wound specialist for suspected local infection.",
+        "alert_urgency": "urgent",
+        "clinical_impact": "Local wound infection can progress to cellulitis or systemic infection if unaddressed."
+      }
+    },
+    {
+      "rule_id": "CG-INF-004",
+      "title": "Foul odor with heavy exudate and increasing pain suggests infection or necrotic burden",
+      "applies_to": {
+        "subject_types": [
+          "WoundAssessment"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "attributes.odor",
+            "op": "eq",
+            "value": "foul"
+          },
+          {
+            "field": "attributes.exudate_amount",
+            "op": "eq",
+            "value": "heavy"
+          },
+          {
+            "field": "attributes.pain_trend",
+            "op": "eq",
+            "value": "increasing"
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Foul odor with heavy exudate and increasing pain suggests infection or necrotic burden. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "missing_action",
+        "expected_action": "debridement_evaluation",
+        "recommended_action": "Evaluate for debridement of necrotic or infected tissue.",
+        "alert_urgency": "same_day",
+        "clinical_impact": "Necrotic burden and infection impede healing and can seed systemic infection."
+      }
+    },
+    {
+      "rule_id": "CG-INF-005",
+      "title": "Surgical wound with purulent drainage and dehisced edge suggests surgical site infection",
+      "applies_to": {
+        "subject_types": [
+          "SurgicalWound"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "attributes.exudate_type",
+            "op": "eq",
+            "value": "purulent"
+          },
+          {
+            "field": "attributes.edge",
+            "op": "eq",
+            "value": "dehisced"
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Surgical wound with purulent drainage and dehisced edge suggests surgical site infection. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "missing_action",
+        "expected_action": "notify_provider",
+        "recommended_action": "Notify the provider immediately for suspected surgical site infection.",
+        "alert_urgency": "urgent",
+        "clinical_impact": "Surgical site infection with dehiscence can progress rapidly to deep infection.",
+        "timing_window_days": 0
+      }
+    },
+    {
+      "rule_id": "CG-PI-001",
+      "title": "Stage 1 pressure injury with nonblanchable erythema needs offloading",
+      "applies_to": {
+        "subject_types": [
+          "PressureInjury"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "present"
+          },
+          {
+            "field": "attributes.stage",
+            "op": "eq",
+            "value": 1
+          },
+          {
+            "field": "attributes.nonblanchable_erythema",
+            "op": "eq",
+            "value": true
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Stage 1 pressure injury with nonblanchable erythema needs offloading. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "missing_action",
+        "expected_action": "offloading_repositioning",
+        "recommended_action": "Initiate offloading and a repositioning schedule.",
+        "alert_urgency": "routine",
+        "clinical_impact": "Early pressure damage can progress to full-thickness injury without offloading.",
+        "timing_window_days": 1
+      }
+    },
+    {
+      "rule_id": "CG-PI-002",
+      "title": "Stage 2 pressure injury with serous exudate needs moisture-balancing dressing",
+      "applies_to": {
+        "subject_types": [
+          "PressureInjury"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "present"
+          },
+          {
+            "field": "attributes.stage",
+            "op": "eq",
+            "value": 2
+          },
+          {
+            "field": "attributes.wound_bed",
+            "op": "in",
+            "value": [
+              "pink",
+              "red"
+            ]
+          },
+          {
+            "field": "attributes.exudate_type",
+            "op": "eq",
+            "value": "serous"
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Stage 2 pressure injury with serous exudate needs moisture-balancing dressing. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "missing_action",
+        "expected_action": "moisture_balancing_dressing",
+        "recommended_action": "Apply a moisture-balancing dressing for partial-thickness tissue loss.",
+        "alert_urgency": "routine",
+        "clinical_impact": "Partial-thickness loss heals best with balanced moisture; imbalance stalls healing."
+      }
+    },
+    {
+      "rule_id": "CG-PI-003",
+      "title": "Stage 3 pressure injury with slough needs wound specialist review",
+      "applies_to": {
+        "subject_types": [
+          "PressureInjury"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "present"
+          },
+          {
+            "field": "attributes.stage",
+            "op": "eq",
+            "value": 3
+          },
+          {
+            "field": "attributes.tissue",
+            "op": "eq",
+            "value": "slough"
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Stage 3 pressure injury with slough needs wound specialist review. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "missing_action",
+        "expected_action": "wound_specialist_review",
+        "recommended_action": "Refer for wound specialist review of the advanced pressure injury.",
+        "alert_urgency": "same_day",
+        "clinical_impact": "Advanced full-thickness injury with slough needs specialist-directed management."
+      }
+    },
+    {
+      "rule_id": "CG-PI-004",
+      "title": "Stage 4 pressure injury with exposed bone, tendon, or muscle needs urgent multidisciplinary care",
+      "applies_to": {
+        "subject_types": [
+          "PressureInjury"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "present"
+          },
+          {
+            "field": "attributes.stage",
+            "op": "eq",
+            "value": 4
+          },
+          {
+            "field": "attributes.exposed_structures",
+            "op": "eq",
+            "value": true
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Stage 4 pressure injury with exposed bone, tendon, or muscle needs urgent multidisciplinary care. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "missing_action",
+        "expected_action": "multidisciplinary_care",
+        "recommended_action": "Arrange urgent multidisciplinary wound care.",
+        "alert_urgency": "urgent",
+        "clinical_impact": "Exposed deep structures risk osteomyelitis and require coordinated care.",
+        "timing_window_days": 1
+      }
+    },
+    {
+      "rule_id": "CG-PI-005",
+      "title": "Sacral or heel pressure injury with limited mobility has high recurrence risk",
+      "applies_to": {
+        "subject_types": [
+          "PressureInjury"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "present"
+          },
+          {
+            "field": "attributes.site",
+            "op": "in",
+            "value": [
+              "sacral_region",
+              "heel"
+            ]
+          },
+          {
+            "field": "attributes.mobility",
+            "op": "eq",
+            "value": "limited"
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Sacral or heel pressure injury with limited mobility has high recurrence risk. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "incomplete_follow_through",
+        "expected_action": "pressure_redistribution_surface",
+        "recommended_action": "Provide a pressure-redistribution support surface.",
+        "alert_urgency": "routine",
+        "clinical_impact": "High-risk sites with limited mobility recur without redistribution surfaces."
+      }
+    },
+    {
+      "rule_id": "CG-DFU-001",
+      "title": "Diabetic foot ulcer with reduced sensation on the plantar surface fits a neuropathic pattern",
+      "applies_to": {
+        "subject_types": [
+          "DiabeticFootUlcer"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "present"
+          },
+          {
+            "field": "attributes.reduced_sensation",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "field": "attributes.site",
+            "op": "eq",
+            "value": "plantar"
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Diabetic foot ulcer with reduced sensation on the plantar surface fits a neuropathic pattern. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "missing_action",
+        "expected_action": "offloading_device_evaluation",
+        "recommended_action": "Evaluate for an offloading device.",
+        "alert_urgency": "routine",
+        "clinical_impact": "Neuropathic plantar ulcers worsen without pressure offloading."
+      }
+    },
+    {
+      "rule_id": "CG-DFU-002",
+      "title": "Diabetic foot ulcer with a positive probe-to-bone test suggests osteomyelitis risk",
+      "applies_to": {
+        "subject_types": [
+          "DiabeticFootUlcer"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "present"
+          },
+          {
+            "field": "attributes.probe_to_bone",
+            "op": "eq",
+            "value": true
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Diabetic foot ulcer with a positive probe-to-bone test suggests osteomyelitis risk. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "missing_action",
+        "expected_action": "imaging_specialist_referral",
+        "recommended_action": "Order imaging and refer to a specialist for osteomyelitis workup.",
+        "alert_urgency": "same_day",
+        "clinical_impact": "Probe-to-bone positivity substantially raises osteomyelitis likelihood."
+      }
+    },
+    {
+      "rule_id": "CG-DFU-003",
+      "title": "Diabetic foot ulcer with purulent exudate and periwound erythema suggests diabetic foot infection",
+      "applies_to": {
+        "subject_types": [
+          "DiabeticFootUlcer"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "present"
+          },
+          {
+            "field": "attributes.exudate_type",
+            "op": "eq",
+            "value": "purulent"
+          },
+          {
+            "field": "attributes.periwound_erythema",
+            "op": "eq",
+            "value": true
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Diabetic foot ulcer with purulent exudate and periwound erythema suggests diabetic foot infection. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "missing_action",
+        "expected_action": "same_day_clinical_evaluation",
+        "recommended_action": "Arrange same-day clinical evaluation for diabetic foot infection.",
+        "alert_urgency": "urgent",
+        "clinical_impact": "Diabetic foot infection can progress rapidly to limb-threatening infection.",
+        "timing_window_days": 0
+      }
+    },
+    {
+      "rule_id": "CG-DFU-004",
+      "title": "Diabetic foot ulcer with callus and hyperkeratotic edge indicates excess pressure or shear",
+      "applies_to": {
+        "subject_types": [
+          "DiabeticFootUlcer"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "present"
+          },
+          {
+            "field": "attributes.callus",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "field": "attributes.edge",
+            "op": "eq",
+            "value": "hyperkeratotic"
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Diabetic foot ulcer with callus and hyperkeratotic edge indicates excess pressure or shear. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "missing_action",
+        "expected_action": "offloading_and_callus_management",
+        "recommended_action": "Provide offloading and callus management.",
+        "alert_urgency": "routine",
+        "clinical_impact": "Uncontrolled pressure and shear perpetuate ulceration."
+      }
+    },
+    {
+      "rule_id": "CG-DFU-005",
+      "title": "Diabetic foot ulcer with poor glucose control and delayed healing risks impaired healing",
+      "applies_to": {
+        "subject_types": [
+          "DiabeticFootUlcer"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "present"
+          },
+          {
+            "field": "attributes.poor_glucose_control",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "field": "attributes.healing_trend",
+            "op": "in",
+            "value": [
+              "stalled",
+              "no_change",
+              "worsening"
+            ]
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Diabetic foot ulcer with poor glucose control and delayed healing risks impaired healing. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "incomplete_follow_through",
+        "expected_action": "diabetes_management_review",
+        "recommended_action": "Review diabetes management to support wound healing.",
+        "alert_urgency": "routine",
+        "clinical_impact": "Hyperglycemia impairs healing and increases infection risk."
+      }
+    },
+    {
+      "rule_id": "CG-VEN-001",
+      "title": "Venous leg ulcer with edema in the medial gaiter area fits a venous insufficiency pattern",
+      "applies_to": {
+        "subject_types": [
+          "VenousLegUlcer"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "present"
+          },
+          {
+            "field": "attributes.edema",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "field": "attributes.site",
+            "op": "eq",
+            "value": "medial_gaiter"
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Venous leg ulcer with edema in the medial gaiter area fits a venous insufficiency pattern. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "missing_action",
+        "expected_action": "compression_eligibility_assessment",
+        "recommended_action": "Assess compression eligibility.",
+        "alert_urgency": "routine",
+        "clinical_impact": "Untreated venous insufficiency perpetuates ulceration."
+      }
+    },
+    {
+      "rule_id": "CG-VEN-002",
+      "title": "Venous leg ulcer with heavy exudate and maceration risks periwound moisture damage",
+      "applies_to": {
+        "subject_types": [
+          "VenousLegUlcer"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "present"
+          },
+          {
+            "field": "attributes.exudate_amount",
+            "op": "eq",
+            "value": "heavy"
+          },
+          {
+            "field": "attributes.periwound",
+            "op": "eq",
+            "value": "macerated"
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Venous leg ulcer with heavy exudate and maceration risks periwound moisture damage. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "missing_action",
+        "expected_action": "increase_absorbency_protect_periwound",
+        "recommended_action": "Increase dressing absorbency and protect the periwound skin.",
+        "alert_urgency": "routine",
+        "clinical_impact": "Maceration enlarges the wound and delays healing."
+      }
+    },
+    {
+      "rule_id": "CG-ART-001",
+      "title": "Arterial ulcer on toes or foot with rest pain and diminished pulses suggests ischemia",
+      "applies_to": {
+        "subject_types": [
+          "ArterialUlcer"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "present"
+          },
+          {
+            "field": "attributes.site",
+            "op": "in",
+            "value": [
+              "toes",
+              "foot"
+            ]
+          },
+          {
+            "field": "attributes.rest_pain",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "field": "attributes.pulses",
+            "op": "eq",
+            "value": "diminished"
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Arterial ulcer on toes or foot with rest pain and diminished pulses suggests ischemia. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "missing_action",
+        "expected_action": "vascular_referral",
+        "recommended_action": "Refer for vascular assessment of suspected ischemia.",
+        "alert_urgency": "urgent",
+        "clinical_impact": "Ischemia risks tissue necrosis and limb loss without revascularization."
+      }
+    },
+    {
+      "rule_id": "CG-ART-002",
+      "title": "Arterial ulcer with pale or dry bed and delayed capillary refill indicates poor perfusion",
+      "applies_to": {
+        "subject_types": [
+          "ArterialUlcer"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "present"
+          },
+          {
+            "field": "attributes.wound_bed",
+            "op": "in",
+            "value": [
+              "pale",
+              "dry"
+            ]
+          },
+          {
+            "field": "attributes.delayed_capillary_refill",
+            "op": "eq",
+            "value": true
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Arterial ulcer with pale or dry bed and delayed capillary refill indicates poor perfusion. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "missing_action",
+        "expected_action": "confirm_vascular_status_before_compression",
+        "recommended_action": "Avoid compression until vascular status is confirmed.",
+        "alert_urgency": "same_day",
+        "clinical_impact": "Compression on a poorly perfused limb can cause tissue damage."
+      }
+    },
+    {
+      "rule_id": "CG-ART-003",
+      "title": "Mixed etiology leg ulcer with both venous and arterial signs needs ABI/TBI before compression",
+      "applies_to": {
+        "subject_types": [
+          "MixedEtiologyLegUlcer"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "present"
+          },
+          {
+            "field": "attributes.venous_signs",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "field": "attributes.arterial_signs",
+            "op": "eq",
+            "value": true
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Mixed etiology leg ulcer with both venous and arterial signs needs ABI/TBI before compression. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "missing_action",
+        "expected_action": "abi_tbi_before_compression",
+        "recommended_action": "Obtain ABI/TBI before applying compression.",
+        "alert_urgency": "same_day",
+        "clinical_impact": "Mixed disease requires perfusion measurement to compress safely."
+      }
+    },
+    {
+      "rule_id": "CG-TIS-001",
+      "title": "Necrotic eschar with infection signs suggests infected necrotic tissue",
+      "applies_to": {
+        "subject_types": [
+          "WoundAssessment"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "attributes.tissue",
+            "op": "eq",
+            "value": "eschar"
+          },
+          {
+            "field": "attributes.infection_signs",
+            "op": "eq",
+            "value": true
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Necrotic eschar with infection signs suggests infected necrotic tissue. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "missing_action",
+        "expected_action": "urgent_debridement_evaluation",
+        "recommended_action": "Evaluate urgently for debridement of infected necrotic tissue.",
+        "alert_urgency": "urgent",
+        "clinical_impact": "Infected eschar can seed deep and systemic infection."
+      }
+    },
+    {
+      "rule_id": "CG-TIS-002",
+      "title": "Slough over half the wound bed with moderate to heavy exudate is a high devitalized-tissue burden",
+      "applies_to": {
+        "subject_types": [
+          "WoundAssessment"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "attributes.tissue",
+            "op": "eq",
+            "value": "slough"
+          },
+          {
+            "field": "attributes.slough_pct",
+            "op": "gte",
+            "value": 50
+          },
+          {
+            "field": "attributes.exudate_amount",
+            "op": "in",
+            "value": [
+              "moderate",
+              "heavy"
+            ]
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Slough over half the wound bed with moderate to heavy exudate is a high devitalized-tissue burden. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "missing_action",
+        "expected_action": "debridement_method_review",
+        "recommended_action": "Review the debridement method for a high devitalized-tissue burden.",
+        "alert_urgency": "routine",
+        "clinical_impact": "Devitalized tissue harbors bacteria and blocks granulation."
+      }
+    },
+    {
+      "rule_id": "CG-TIS-003",
+      "title": "Granulating wound bed with light to moderate exudate and no infection has a favorable trajectory",
+      "applies_to": {
+        "subject_types": [
+          "WoundAssessment"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "attributes.tissue",
+            "op": "eq",
+            "value": "granulation"
+          },
+          {
+            "field": "attributes.granulation_pct",
+            "op": "gte",
+            "value": 75
+          },
+          {
+            "field": "attributes.exudate_amount",
+            "op": "in",
+            "value": [
+              "light",
+              "moderate"
+            ]
+          },
+          {
+            "field": "attributes.infection_signs",
+            "op": "eq",
+            "value": false
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Granulating wound bed with light to moderate exudate and no infection has a favorable trajectory. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "incomplete_follow_through",
+        "expected_action": "continue_moist_wound_healing",
+        "recommended_action": "Continue moist wound healing to protect the favorable trajectory.",
+        "alert_urgency": "routine",
+        "clinical_impact": "Disrupting a healing bed can reverse progress."
+      }
+    },
+    {
+      "rule_id": "CG-TIS-004",
+      "title": "Epithelializing wound with decreasing size shows healing progress",
+      "applies_to": {
+        "subject_types": [
+          "WoundAssessment"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "attributes.tissue",
+            "op": "eq",
+            "value": "epithelializing"
+          },
+          {
+            "field": "attributes.size_trend_pct",
+            "op": "pct_change_lte",
+            "value": -0.0001
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Epithelializing wound with decreasing size shows healing progress. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "incomplete_follow_through",
+        "expected_action": "protect_new_tissue",
+        "recommended_action": "Protect the new epithelial tissue.",
+        "alert_urgency": "routine",
+        "clinical_impact": "Fragile new epithelium is easily disrupted."
+      }
+    },
+    {
+      "rule_id": "CG-PW-001",
+      "title": "Heavy exudate with maceration risks moisture-associated skin damage",
+      "applies_to": {
+        "subject_types": [
+          "WoundAssessment"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "attributes.exudate_amount",
+            "op": "eq",
+            "value": "heavy"
+          },
+          {
+            "field": "attributes.periwound",
+            "op": "eq",
+            "value": "macerated"
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Heavy exudate with maceration risks moisture-associated skin damage. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "missing_action",
+        "expected_action": "barrier_film_more_absorbent_dressing",
+        "recommended_action": "Apply a barrier film and a more absorbent dressing.",
+        "alert_urgency": "routine",
+        "clinical_impact": "Moisture-associated damage enlarges the wound and delays healing."
+      }
+    },
+    {
+      "rule_id": "CG-PW-002",
+      "title": "Periwound erythema with adhesive injury indicates medical adhesive-related skin injury",
+      "applies_to": {
+        "subject_types": [
+          "WoundAssessment"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "attributes.periwound_erythema",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "field": "attributes.adhesive_injury",
+            "op": "eq",
+            "value": true
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Periwound erythema with adhesive injury indicates medical adhesive-related skin injury. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "missing_action",
+        "expected_action": "skin_friendly_securement",
+        "recommended_action": "Switch to skin-friendly securement.",
+        "alert_urgency": "routine",
+        "clinical_impact": "Repeated adhesive trauma degrades periwound skin integrity."
+      }
+    },
+    {
+      "rule_id": "CG-PW-003",
+      "title": "Indurated periwound with increasing pain and warmth raises concern for cellulitis",
+      "applies_to": {
+        "subject_types": [
+          "WoundAssessment"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "attributes.induration",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "field": "attributes.pain_trend",
+            "op": "eq",
+            "value": "increasing"
+          },
+          {
+            "field": "attributes.warmth",
+            "op": "eq",
+            "value": true
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Indurated periwound with increasing pain and warmth raises concern for cellulitis. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "missing_action",
+        "expected_action": "provider_evaluation",
+        "recommended_action": "Arrange provider evaluation for suspected cellulitis.",
+        "alert_urgency": "urgent",
+        "clinical_impact": "Cellulitis can progress to systemic infection if untreated."
+      }
+    },
+    {
+      "rule_id": "CG-PW-004",
+      "title": "Dry, cracked periwound with none or scant exudate risks periwound breakdown",
+      "applies_to": {
+        "subject_types": [
+          "WoundAssessment"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "attributes.periwound",
+            "op": "eq",
+            "value": "dry_cracked"
+          },
+          {
+            "field": "attributes.exudate_amount",
+            "op": "in",
+            "value": [
+              "none",
+              "scant"
+            ]
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Dry, cracked periwound with none or scant exudate risks periwound breakdown. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "missing_action",
+        "expected_action": "hydration_skin_protectant",
+        "recommended_action": "Apply hydration and a skin protectant.",
+        "alert_urgency": "routine",
+        "clinical_impact": "Dry, cracked periwound skin breaks down and enlarges the wound."
+      }
+    },
+    {
+      "rule_id": "CG-TUN-001",
+      "title": "Tunneling with depth of 2 cm or more indicates hidden dead space",
+      "applies_to": {
+        "subject_types": [
+          "WoundAssessment"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "attributes.tunneling",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "field": "attributes.tunnel_depth_cm",
+            "op": "gte",
+            "value": 2
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Tunneling with depth of 2 cm or more indicates hidden dead space. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "missing_action",
+        "expected_action": "measure_tunnel_direction_depth",
+        "recommended_action": "Measure the tunnel direction and depth.",
+        "alert_urgency": "routine",
+        "clinical_impact": "Unmeasured dead space conceals infection and impairs packing."
+      }
+    },
+    {
+      "rule_id": "CG-TUN-002",
+      "title": "Undermining with a rolled or epibole edge indicates stalled edge advancement",
+      "applies_to": {
+        "subject_types": [
+          "WoundAssessment"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "attributes.undermining",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "field": "attributes.edge",
+            "op": "in",
+            "value": [
+              "rolled",
+              "epibole"
+            ]
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Undermining with a rolled or epibole edge indicates stalled edge advancement. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "incomplete_follow_through",
+        "expected_action": "wound_edge_assessment",
+        "recommended_action": "Assess the wound edge for stalled advancement.",
+        "alert_urgency": "routine",
+        "clinical_impact": "Epibole prevents epithelial migration and stalls closure."
+      }
+    },
+    {
+      "rule_id": "CG-TUN-003",
+      "title": "Tunneling with purulent exudate suggests abscess or deep infection",
+      "applies_to": {
+        "subject_types": [
+          "WoundAssessment"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "attributes.tunneling",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "field": "attributes.exudate_type",
+            "op": "eq",
+            "value": "purulent"
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Tunneling with purulent exudate suggests abscess or deep infection. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "missing_action",
+        "expected_action": "urgent_clinical_evaluation",
+        "recommended_action": "Evaluate urgently for abscess or deep infection.",
+        "alert_urgency": "urgent",
+        "clinical_impact": "Purulent tunneling can indicate a deep collection needing drainage."
+      }
+    },
+    {
+      "rule_id": "CG-TUN-004",
+      "title": "Increasing undermining area with increasing wound size indicates wound deterioration",
+      "applies_to": {
+        "subject_types": [
+          "WoundAssessment"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "attributes.undermining_trend",
+            "op": "eq",
+            "value": "increasing"
+          },
+          {
+            "field": "attributes.size_trend_pct",
+            "op": "pct_change_gte",
+            "value": 0.0001
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Increasing undermining area with increasing wound size indicates wound deterioration. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "delayed_action",
+        "expected_action": "reassess_etiology_treatment",
+        "recommended_action": "Reassess the wound etiology and treatment plan.",
+        "alert_urgency": "same_day",
+        "clinical_impact": "Simultaneous expansion of undermining and size signals a failing plan."
+      }
+    },
+    {
+      "rule_id": "CG-DET-001",
+      "title": "Wound size increased by at least 20 percent within two weeks indicates deterioration",
+      "applies_to": {
+        "subject_types": [
+          "WoundAssessment"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "attributes.size_trend_pct",
+            "op": "pct_change_gte",
+            "value": 20
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Wound size increased by at least 20 percent within two weeks indicates deterioration. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "delayed_action",
+        "expected_action": "reassess_diagnosis_care_plan",
+        "recommended_action": "Reassess the diagnosis and care plan for a deteriorating wound.",
+        "alert_urgency": "same_day",
+        "clinical_impact": "Rapid enlargement indicates the current plan is failing.",
+        "timing_window_days": 14
+      }
+    },
+    {
+      "rule_id": "CG-DET-002",
+      "title": "New or increasing pain with worsening appearance signals complication risk",
+      "applies_to": {
+        "subject_types": [
+          "WoundAssessment"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "attributes.pain_trend",
+            "op": "in",
+            "value": [
+              "new",
+              "increasing"
+            ]
+          },
+          {
+            "field": "attributes.appearance_trend",
+            "op": "eq",
+            "value": "worsening"
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "New or increasing pain with worsening appearance signals complication risk. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "delayed_action",
+        "expected_action": "escalate_to_clinician",
+        "recommended_action": "Escalate to a clinician for a suspected complication.",
+        "alert_urgency": "same_day",
+        "clinical_impact": "Rising pain with worsening appearance often precedes infection or ischemia."
+      }
+    },
+    {
+      "rule_id": "CG-DET-003",
+      "title": "Fever or chills with wound infection signs indicates systemic infection risk",
+      "applies_to": {
+        "subject_types": [
+          "WoundAssessment"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "attributes.fever_or_chills",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "field": "attributes.infection_signs",
+            "op": "eq",
+            "value": true
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Fever or chills with wound infection signs indicates systemic infection risk. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "missing_action",
+        "expected_action": "urgent_medical_evaluation",
+        "recommended_action": "Arrange urgent medical evaluation for systemic infection.",
+        "alert_urgency": "emergent",
+        "clinical_impact": "Systemic signs with a wound source may indicate sepsis.",
+        "timing_window_days": 0
+      }
+    },
+    {
+      "rule_id": "CG-DET-004",
+      "title": "Any wound in an immunocompromised patient with mild infection signs is a high-risk presentation",
+      "applies_to": {
+        "subject_types": [
+          "WoundAssessment"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "attributes.immunocompromised",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "field": "attributes.infection_signs",
+            "op": "eq",
+            "value": true
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Any wound in an immunocompromised patient with mild infection signs is a high-risk presentation. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "missing_action",
+        "expected_action": "lower_threshold_escalation",
+        "recommended_action": "Lower the threshold to escalate given immunocompromise.",
+        "alert_urgency": "urgent",
+        "clinical_impact": "Immunocompromised patients decompensate quickly from minor infection."
+      }
+    },
+    {
+      "rule_id": "CG-CMP-01",
+      "title": "Plantar DFU with absent or diminished pulses, pain, and reduced sensation suggests peripheral arterial disease",
+      "applies_to": {
+        "subject_types": [
+          "DiabeticFootUlcer"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "present"
+          },
+          {
+            "field": "attributes.site",
+            "op": "eq",
+            "value": "plantar"
+          },
+          {
+            "field": "attributes.pulses",
+            "op": "in",
+            "value": [
+              "absent",
+              "diminished"
+            ]
+          },
+          {
+            "field": "attributes.pain_present",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "field": "attributes.reduced_sensation",
+            "op": "eq",
+            "value": true
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Plantar DFU with absent or diminished pulses, pain, and reduced sensation suggests peripheral arterial disease. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "missing_action",
+        "expected_action": "abi_test_vascular_surgery_referral",
+        "recommended_action": "Order an ABI test and refer to vascular surgery.",
+        "alert_urgency": "urgent",
+        "clinical_impact": "PAD in a diabetic foot markedly raises amputation risk."
+      }
+    },
+    {
+      "rule_id": "CG-CMP-02",
+      "title": "Venous ulcer at the medial malleolus present 12+ weeks with edema and stalled healing indicates chronicity",
+      "applies_to": {
+        "subject_types": [
+          "VenousLegUlcer"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "present"
+          },
+          {
+            "field": "attributes.site",
+            "op": "eq",
+            "value": "medial_malleolus"
+          },
+          {
+            "field": "attributes.duration_weeks",
+            "op": "gte",
+            "value": 12
+          },
+          {
+            "field": "attributes.edema",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "field": "attributes.healing_trend",
+            "op": "eq",
+            "value": "stalled"
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Venous ulcer at the medial malleolus present 12+ weeks with edema and stalled healing indicates chronicity. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "delayed_action",
+        "expected_action": "compression_review_biopsy",
+        "recommended_action": "Review compression and consider biopsy to rule out malignancy.",
+        "alert_urgency": "same_day",
+        "clinical_impact": "A non-healing chronic venous ulcer can mask malignancy.",
+        "timing_window_days": 84
+      }
+    },
+    {
+      "rule_id": "CG-CMP-03",
+      "title": "Surgical incision within 7 days post-op with increasing drainage, separating edges, and obesity or diabetes risks dehiscence",
+      "applies_to": {
+        "subject_types": [
+          "SurgicalWound"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "present"
+          },
+          {
+            "field": "attributes.days_post_op",
+            "op": "lte",
+            "value": 7
+          },
+          {
+            "field": "attributes.drainage_trend",
+            "op": "eq",
+            "value": "increasing"
+          },
+          {
+            "field": "attributes.edge",
+            "op": "eq",
+            "value": "separating"
+          },
+          {
+            "field": "attributes.obesity_or_diabetes",
+            "op": "eq",
+            "value": true
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Surgical incision within 7 days post-op with increasing drainage, separating edges, and obesity or diabetes risks dehiscence. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "missing_action",
+        "expected_action": "surgical_consult_wound_support",
+        "recommended_action": "Obtain a surgical consult and provide wound support.",
+        "alert_urgency": "urgent",
+        "clinical_impact": "Early post-op dehiscence risk warrants surgical review.",
+        "timing_window_days": 7
+      }
+    },
+    {
+      "rule_id": "CG-CMP-04",
+      "title": "Stage 2 pressure injury increasing in size across consecutive assessments with macerated periwound indicates deterioration",
+      "applies_to": {
+        "subject_types": [
+          "PressureInjury"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "present"
+          },
+          {
+            "field": "attributes.stage",
+            "op": "eq",
+            "value": 2
+          },
+          {
+            "field": "attributes.size_trend_pct",
+            "op": "pct_change_gte",
+            "value": 0.0001
+          },
+          {
+            "field": "attributes.consecutive_increases",
+            "op": "gte",
+            "value": 2
+          },
+          {
+            "field": "attributes.periwound",
+            "op": "eq",
+            "value": "macerated"
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Stage 2 pressure injury increasing in size across consecutive assessments with macerated periwound indicates deterioration. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "delayed_action",
+        "expected_action": "reassess_support_surface_increase_repositioning",
+        "recommended_action": "Reassess the support surface and increase repositioning.",
+        "alert_urgency": "same_day",
+        "clinical_impact": "A stage 2 injury enlarging over multiple assessments is deteriorating."
+      }
+    },
+    {
+      "rule_id": "CG-CMP-05",
+      "title": "Purulent wound with spreading erythema over 2 cm, fever, and elevated WBC suggests systemic infection or sepsis",
+      "applies_to": {
+        "subject_types": [
+          "WoundAssessment"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "attributes.exudate_type",
+            "op": "eq",
+            "value": "purulent"
+          },
+          {
+            "field": "attributes.spreading_erythema_cm",
+            "op": "gte",
+            "value": 2
+          },
+          {
+            "field": "attributes.temperature_c",
+            "op": "gte",
+            "value": 38
+          },
+          {
+            "field": "attributes.wbc_elevated",
+            "op": "eq",
+            "value": true
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Purulent wound with spreading erythema over 2 cm, fever, and elevated WBC suggests systemic infection or sepsis. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "missing_action",
+        "expected_action": "blood_cultures_antibiotics_physician_notification",
+        "recommended_action": "Obtain blood cultures, start broad-spectrum antibiotics, and notify the physician urgently.",
+        "alert_urgency": "emergent",
+        "clinical_impact": "This presentation may indicate sepsis and is immediately life-threatening.",
+        "timing_window_days": 0
+      }
+    },
+    {
+      "rule_id": "CG-CMP-06",
+      "title": "Full-thickness DFU with positive probe-to-bone present 6+ weeks suggests osteomyelitis",
+      "applies_to": {
+        "subject_types": [
+          "DiabeticFootUlcer"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "present"
+          },
+          {
+            "field": "attributes.depth",
+            "op": "eq",
+            "value": "full_thickness"
+          },
+          {
+            "field": "attributes.probe_to_bone",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "field": "attributes.duration_weeks",
+            "op": "gte",
+            "value": 6
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Full-thickness DFU with positive probe-to-bone present 6+ weeks suggests osteomyelitis. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "missing_action",
+        "expected_action": "imaging_bone_biopsy_consideration",
+        "recommended_action": "Order X-ray/MRI and consider bone biopsy for osteomyelitis.",
+        "alert_urgency": "urgent",
+        "clinical_impact": "Chronic full-thickness DFU with probe-to-bone strongly suggests osteomyelitis.",
+        "timing_window_days": 42
+      }
+    },
+    {
+      "rule_id": "CG-CMP-07",
+      "title": "Arterial ulcer on distal toes that is black or necrotic with severe pain worse on elevation suggests critical limb ischemia",
+      "applies_to": {
+        "subject_types": [
+          "ArterialUlcer"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "present"
+          },
+          {
+            "field": "attributes.site",
+            "op": "eq",
+            "value": "distal_toes"
+          },
+          {
+            "field": "attributes.tissue",
+            "op": "eq",
+            "value": "black_necrotic"
+          },
+          {
+            "field": "attributes.severe_pain_on_elevation",
+            "op": "eq",
+            "value": true
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Arterial ulcer on distal toes that is black or necrotic with severe pain worse on elevation suggests critical limb ischemia. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "missing_action",
+        "expected_action": "emergent_vascular_consult_avoid_debridement",
+        "recommended_action": "Obtain an emergent vascular consult and avoid debridement until perfusion is assessed.",
+        "alert_urgency": "emergent",
+        "clinical_impact": "Critical limb ischemia is a limb-threatening emergency.",
+        "timing_window_days": 0
+      }
+    },
+    {
+      "rule_id": "CG-CMP-08",
+      "title": "ISTAP Type 1 skin tear with controlled bleeding and viable tissue is low risk",
+      "applies_to": {
+        "subject_types": [
+          "SkinTear"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "present"
+          },
+          {
+            "field": "attributes.istap_type",
+            "op": "eq",
+            "value": "1"
+          },
+          {
+            "field": "attributes.bleeding",
+            "op": "eq",
+            "value": "controlled"
+          },
+          {
+            "field": "attributes.tissue_viable",
+            "op": "eq",
+            "value": true
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "ISTAP Type 1 skin tear with controlled bleeding and viable tissue is low risk. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "incomplete_follow_through",
+        "expected_action": "approximate_flap_nonadherent_dressing",
+        "recommended_action": "Approximate the skin flap and apply a non-adherent dressing.",
+        "alert_urgency": "routine",
+        "clinical_impact": "Low-risk skin tears heal well with flap approximation and atraumatic dressing."
+      }
+    },
+    {
+      "rule_id": "CG-CMP-09",
+      "title": "Chronic wound present 4+ weeks stalled despite standard care with persistent slough suggests biofilm",
+      "applies_to": {
+        "subject_types": [
+          "WoundAssessment"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "attributes.duration_weeks",
+            "op": "gte",
+            "value": 4
+          },
+          {
+            "field": "attributes.standard_care_documented",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "field": "attributes.healing_trend",
+            "op": "eq",
+            "value": "stalled"
+          },
+          {
+            "field": "attributes.persistent_slough",
+            "op": "eq",
+            "value": true
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Chronic wound present 4+ weeks stalled despite standard care with persistent slough suggests biofilm. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "delayed_action",
+        "expected_action": "sharp_debridement_antimicrobial_trial",
+        "recommended_action": "Perform sharp debridement and trial an antimicrobial dressing.",
+        "alert_urgency": "same_day",
+        "clinical_impact": "Suspected biofilm perpetuates chronic inflammation and stalls healing.",
+        "timing_window_days": 28
+      }
+    },
+    {
+      "rule_id": "CG-CMP-10",
+      "title": "Pressure injury with a wound bed obscured by eschar or slough and unknown depth is unstageable",
+      "applies_to": {
+        "subject_types": [
+          "PressureInjury"
+        ],
+        "include_subtypes": true
+      },
+      "when": {
+        "all": [
+          {
+            "field": "status",
+            "op": "eq",
+            "value": "present"
+          },
+          {
+            "field": "attributes.bed_obscured",
+            "op": "eq",
+            "value": true
+          },
+          {
+            "field": "attributes.depth",
+            "op": "eq",
+            "value": "unknown"
+          }
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Pressure injury with a wound bed obscured by eschar or slough and unknown depth is unstageable. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+        "gap_domain": "missing_action",
+        "expected_action": "debridement_to_reveal_base",
+        "recommended_action": "Debride (if perfusion is adequate) to reveal the wound base and stage.",
+        "alert_urgency": "same_day",
+        "clinical_impact": "An unstageable injury cannot be properly treated until the base is visible."
+      }
+    }
+  ]
+}

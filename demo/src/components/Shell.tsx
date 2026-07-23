@@ -4,10 +4,12 @@ import {
   Boxes,
   ChevronDown,
   DatabaseZap,
+  HeartPulse,
   LayoutDashboard,
   Menu,
   Play,
   ShieldCheck,
+  Waypoints,
   X,
 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
@@ -22,11 +24,21 @@ interface ShellProps {
   children: ReactNode
 }
 
-const navItems: Array<{ id: ViewId; label: string; icon: typeof Activity }> = [
+// Two lenses on one product. The revenue-integrity workspace reconciles the claim; the
+// clinical care-gaps workspace surfaces stalled follow-through. Governance spans both.
+const revenueNav: Array<{ id: ViewId; label: string; icon: typeof Activity }> = [
   { id: 'overview', label: 'Command center', icon: LayoutDashboard },
   { id: 'queue', label: 'Review queue', icon: BookOpenCheck },
   { id: 'case', label: 'Encounter graph', icon: Boxes },
   { id: 'ingestion', label: 'Data onboarding', icon: DatabaseZap },
+]
+
+const careGapNav: Array<{ id: ViewId; label: string; icon: typeof Activity }> = [
+  { id: 'care_gaps', label: 'Care gaps', icon: HeartPulse },
+  { id: 'episode', label: 'Episode drilldown', icon: Waypoints },
+]
+
+const governanceNav: Array<{ id: ViewId; label: string; icon: typeof Activity }> = [
   { id: 'governance', label: 'Governance', icon: ShieldCheck },
 ]
 
@@ -53,8 +65,8 @@ export function Shell({ activeView, onNavigate, onStartTour, reviewCount, childr
         </div>
 
         <nav className="primary-nav" aria-label="Product navigation">
-          <span className="nav-label">Workspace</span>
-          {navItems.map(({ id, label, icon: Icon }) => (
+          <span className="nav-label">Revenue integrity</span>
+          {revenueNav.map(({ id, label, icon: Icon }) => (
             <button
               className={activeView === id ? 'nav-item nav-item--active' : 'nav-item'}
               key={id}
@@ -64,6 +76,32 @@ export function Shell({ activeView, onNavigate, onStartTour, reviewCount, childr
               <Icon size={18} strokeWidth={1.8} />
               <span>{label}</span>
               {id === 'queue' && <b className="nav-count">{reviewCount}</b>}
+            </button>
+          ))}
+
+          <span className="nav-label nav-label--spaced">Clinical care gaps</span>
+          {careGapNav.map(({ id, label, icon: Icon }) => (
+            <button
+              className={activeView === id ? 'nav-item nav-item--active' : 'nav-item'}
+              key={id}
+              onClick={() => navigate(id)}
+              type="button"
+            >
+              <Icon size={18} strokeWidth={1.8} />
+              <span>{label}</span>
+            </button>
+          ))}
+
+          <span className="nav-label nav-label--spaced">Trust</span>
+          {governanceNav.map(({ id, label, icon: Icon }) => (
+            <button
+              className={activeView === id ? 'nav-item nav-item--active' : 'nav-item'}
+              key={id}
+              onClick={() => navigate(id)}
+              type="button"
+            >
+              <Icon size={18} strokeWidth={1.8} />
+              <span>{label}</span>
             </button>
           ))}
         </nav>

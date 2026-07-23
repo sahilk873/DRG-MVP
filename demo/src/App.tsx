@@ -3,13 +3,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import { GuidedTour } from './components/GuidedTour'
 import { Shell } from './components/Shell'
+import { CareGaps } from './views/CareGaps'
 import { CaseReview } from './views/CaseReview'
+import { EpisodeDrilldown } from './views/EpisodeDrilldown'
 import { Governance } from './views/Governance'
 import { Ingestion } from './views/Ingestion'
 import { Overview } from './views/Overview'
 import { ReviewQueue } from './views/ReviewQueue'
 import type { ViewId } from './types'
-import { humanOpportunities, primaryAutomationPlan, primaryReviewPacket } from './data'
+import { humanOpportunities, opportunities, packetCases, primaryReviewPacket, secondReviewPacket } from './data'
 import { BrowserDemoWorkflowGateway, type ReviewDecision, type ReviewerIdentity } from './workflow'
 
 export default function App() {
@@ -18,6 +20,7 @@ export default function App() {
   const [tourStep, setTourStep] = useState(0)
   const [toast, setToast] = useState('')
   const [decisions, setDecisions] = useState<ReviewDecision[]>([])
+  const [selectedCaseId, setSelectedCaseId] = useState<string>(opportunities[0]!.id)
   const workflowGateway = useMemo(() => new BrowserDemoWorkflowGateway(window.localStorage), [])
   const reviewer = useMemo<ReviewerIdentity>(() => ({
     actor_id: 'demo-coder-001',
@@ -30,11 +33,25 @@ export default function App() {
 
   useEffect(() => {
     let active = true
-    workflowGateway.list(primaryReviewPacket, reviewer)
-      .then(stored => { if (active) setDecisions(stored) })
+    Promise.all([
+      workflowGateway.list(primaryReviewPacket, reviewer),
+      workflowGateway.list(secondReviewPacket, reviewer),
+    ])
+      .then(([primary, second]) => {
+        if (!active) return
+        const merged = new Map<string, ReviewDecision>()
+        for (const item of [...primary, ...second]) merged.set(item.decision_id, item)
+        setDecisions([...merged.values()])
+      })
       .catch(error => notify(error instanceof Error ? error.message : 'Unable to load review decisions'))
     return () => { active = false }
   }, [workflowGateway, reviewer, notify])
+
+  const openCase = useCallback((opportunityId: string) => {
+    setSelectedCaseId(packetCases[opportunityId] ? opportunityId : opportunities[0]!.id)
+    setView('case')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [])
 
   useEffect(() => {
     if (!toast) return
@@ -72,10 +89,12 @@ export default function App() {
 
   return (
     <Shell activeView={view} onNavigate={navigate} onStartTour={startTour} reviewCount={pendingReviewCount}>
-      {view === 'overview' && <Overview onNavigate={navigate} onStartTour={startTour} notify={notify} decisions={decisions} />}
-      {view === 'queue' && <ReviewQueue onNavigate={navigate} notify={notify} decisions={decisions} onReset={resetDemoWorkflow} />}
-      {view === 'case' && <CaseReview onNavigate={navigate} notify={notify} workflowGateway={workflowGateway} reviewer={reviewer} automationPlan={primaryAutomationPlan} decisions={decisions} onDecisionRecorded={recordDecision} />}
+      {view === 'overview' && <Overview onNavigate={navigate} onOpenCase={openCase} onStartTour={startTour} notify={notify} decisions={decisions} />}
+      {view === 'queue' && <ReviewQueue onNavigate={navigate} onOpenCase={openCase} notify={notify} decisions={decisions} onReset={resetDemoWorkflow} />}
+      {view === 'case' && <CaseReview onNavigate={navigate} notify={notify} workflowGateway={workflowGateway} reviewer={reviewer} opportunityId={selectedCaseId} decisions={decisions} onDecisionRecorded={recordDecision} />}
       {view === 'ingestion' && <Ingestion notify={notify} />}
+      {view === 'care_gaps' && <CareGaps onNavigate={navigate} onOpenEpisode={() => navigate('episode')} />}
+      {view === 'episode' && <EpisodeDrilldown onNavigate={navigate} />}
       {view === 'governance' && <Governance />}
       {tourOpen && <GuidedTour step={tourStep} onClose={() => setTourOpen(false)} onStepChange={setTourStep} onNavigate={navigate} />}
       {toast && <div className="toast" role="status"><Check size={16} />{toast}</div>}

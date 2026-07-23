@@ -406,8 +406,42 @@ class OntologyDefinition:
 
 
 _BUILTIN_ONTOLOGIES: Mapping[tuple[str, str], str] = {
-    ("wound-care-encounter-ontology", "1.0.0-draft"): "data/wound_care_ontology_v1.json",
+    ("wound-care-encounter-ontology", "1.1.0-draft"): "data/wound_care_ontology_v1.json",
+    # v1.2 is an additive superset of v1.1 (adds the SizeMeasurement quantity + hasSize
+    # relation for longitudinal, dated wound-assessment measurements). v1.1 is retained
+    # unchanged so every existing case/rule/adapter/fixture keeps its digest and approval.
+    ("wound-care-encounter-ontology", "1.2.0-draft"): "data/wound_care_ontology_v2.json",
+    # v1.3 is an additive superset of v1.2 (adds clinical finding / perfusion / systemic
+    # marker classes + value sets, healing-trend & exudate-type value sets, and structural
+    # wiring for the clinical alert / recommended-action / urgency / contraindication
+    # relations) so the clinical_care_gap rule library can bind. v1.2 is retained unchanged.
+    ("wound-care-encounter-ontology", "1.3.0-draft"): "data/wound_care_ontology_v3.json",
+    ("denial-event-ontology", "1.0.0-draft"): "data/denial_ontology_v1.json",
+    ("sepsis-encounter-ontology", "1.0.0-draft"): "data/sepsis_ontology_v1.json",
 }
+
+
+# v3 (1.3.0-draft) is the single authoritative wound-care ontology going forward: it is the
+# additive v1 -> v2 -> v3 superset that both the revenue_integrity and clinical_care_gap peer
+# domains bind against. v1 and v2 are retained UNCHANGED (their digests and approvals are frozen)
+# so every legacy case/rule/adapter/fixture pinned to an earlier version keeps validating exactly
+# as before. This pointer is a wiring/lineage marker only — it does not change any ontology digest;
+# each artifact still declares and is validated against its own pinned ontology_id/version/digest.
+AUTHORITATIVE_WOUND_CARE_ONTOLOGY: tuple[str, str] = (
+    "wound-care-encounter-ontology",
+    "1.3.0-draft",
+)
+
+
+def load_authoritative_wound_care_ontology() -> OntologyDefinition:
+    """Load the current authoritative wound-care ontology (v3 / 1.3.0-draft).
+
+    Convenience wiring over :func:`load_builtin_ontology`; introduces no new digest and no
+    new trust surface. New wound-care artifacts should bind against this version, while older
+    artifacts remain valid against their own pinned earlier versions.
+    """
+
+    return load_builtin_ontology(*AUTHORITATIVE_WOUND_CARE_ONTOLOGY)
 
 
 def load_builtin_ontology(ontology_id: str, version: str) -> OntologyDefinition:

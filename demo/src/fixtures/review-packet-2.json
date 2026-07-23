@@ -1,0 +1,486 @@
+{
+  "review_packet_schema_version": "3.5.0",
+  "packet_id": "packet-9c9ff1a8c576018f85f8",
+  "environment": "synthetic",
+  "tenant": {
+    "tenant_id": "tenant-demo-alpha",
+    "workspace_id": "workspace-revenue-integrity"
+  },
+  "case": {
+    "schema_version": "2.0.0",
+    "case_id": "CASE-DEMO-002",
+    "patient_id": "PATIENT-DEIDENTIFIED-002",
+    "encounter_id": "ENC-DEMO-002",
+    "admitted_at": "2026-06-02T08:00:00Z",
+    "discharged_at": "2026-06-09T15:00:00Z",
+    "metadata": {
+      "payer": "demo",
+      "facility": "demo-hospital",
+      "poa_status": "N"
+    },
+    "claim": {
+      "diagnoses": [
+        "A41.9",
+        "E11.9"
+      ],
+      "procedures": [],
+      "charges": [
+        "ROOM-BOARD"
+      ],
+      "drg": "DEMO-292",
+      "allowed_amount_cents": 1000000
+    }
+  },
+  "evidence": [
+    {
+      "evidence_id": "EV-001",
+      "document_id": "ADMISSION-SKIN-001",
+      "author_role": "nurse",
+      "recorded_at": "2026-06-02T09:15:00Z",
+      "text": "Admission skin assessment: skin intact over the sacrum, no pressure injury present on admission.",
+      "source_locator": {
+        "kind": "clinical_note_excerpt",
+        "document_id": "ADMISSION-SKIN-001",
+        "char_start": 0,
+        "char_end": 96,
+        "length": 96,
+        "excerpt_sha256": "8b17a47de839d009e8f40019514831b2392be31e661bde9395e7548cb6336af9"
+      }
+    },
+    {
+      "evidence_id": "EV-002",
+      "document_id": "WOUND-CONSULT-002",
+      "author_role": "physician",
+      "recorded_at": "2026-06-05T14:30:00Z",
+      "text": "Stage 4 pressure injury of the sacral region with exposed muscle, newly identified on hospital day 3. Hospital-acquired.",
+      "source_locator": {
+        "kind": "clinical_note_excerpt",
+        "document_id": "WOUND-CONSULT-002",
+        "char_start": 0,
+        "char_end": 120,
+        "length": 120,
+        "excerpt_sha256": "877627a3983881a088eeb92760cf6a554a5d07dd1609910efb649e2a83676391"
+      }
+    }
+  ],
+  "ontology": {
+    "ontology_id": "wound-care-encounter-ontology",
+    "ontology_version": "1.1.0-draft",
+    "ontology_digest": "66da3211d53adaa7cffc4fd45e0a7ca86175f5a7774d5ce80d4a34a0a0786f52",
+    "entities": [
+      {
+        "entity_id": "root:patient",
+        "entity_type": "Patient",
+        "label": "Patient",
+        "properties": {}
+      },
+      {
+        "entity_id": "root:encounter",
+        "entity_type": "Encounter",
+        "label": "Encounter",
+        "properties": {}
+      },
+      {
+        "entity_id": "root:claim",
+        "entity_type": "Claim",
+        "label": "Submitted claim",
+        "properties": {}
+      },
+      {
+        "entity_id": "wound:1",
+        "entity_type": "PressureInjury",
+        "label": "Sacral pressure injury",
+        "concept": {
+          "system": "urn:kunal:wound-care",
+          "code": "pressure-injury",
+          "display": "Pressure injury"
+        },
+        "properties": {
+          "present_on_admission": false
+        }
+      },
+      {
+        "entity_id": "assessment:1",
+        "entity_type": "WoundAssessment",
+        "label": "Hospital day 3 wound assessment",
+        "properties": {}
+      },
+      {
+        "entity_id": "location:sacral",
+        "entity_type": "AnatomicalLocation",
+        "label": "Sacral region",
+        "properties": {}
+      },
+      {
+        "entity_id": "stage:4",
+        "entity_type": "PressureInjuryStage",
+        "label": "Stage 4",
+        "properties": {
+          "value": "4"
+        }
+      },
+      {
+        "entity_id": "finding:exposed-muscle",
+        "entity_type": "ClinicalFinding",
+        "label": "Exposed muscle",
+        "properties": {}
+      },
+      {
+        "entity_id": "poa:1",
+        "entity_type": "PresentOnAdmission",
+        "label": "Not present on admission",
+        "properties": {
+          "value": "N"
+        }
+      },
+      {
+        "entity_id": "condition:hapi",
+        "entity_type": "DiseaseCondition",
+        "label": "Hospital-acquired pressure injury",
+        "properties": {}
+      },
+      {
+        "entity_id": "severity:mcc",
+        "entity_type": "DRGSeverityTier",
+        "label": "Major complication or comorbidity",
+        "properties": {
+          "value": "mcc"
+        }
+      }
+    ],
+    "relations": [
+      {
+        "relation_id": "rel:patient-encounter",
+        "predicate": "hasEncounter",
+        "source_id": "root:patient",
+        "target_id": "root:encounter",
+        "assertion_status": "present",
+        "documentation_status": "explicit",
+        "confidence": 1.0,
+        "evidence_ids": []
+      },
+      {
+        "relation_id": "rel:encounter-claim",
+        "predicate": "hasClaim",
+        "source_id": "root:encounter",
+        "target_id": "root:claim",
+        "assertion_status": "present",
+        "documentation_status": "explicit",
+        "confidence": 1.0,
+        "evidence_ids": []
+      },
+      {
+        "relation_id": "rel:patient-wound",
+        "predicate": "hasWound",
+        "source_id": "root:patient",
+        "target_id": "wound:1",
+        "assertion_status": "present",
+        "documentation_status": "explicit",
+        "confidence": 0.97,
+        "evidence_ids": [
+          "EV-002"
+        ]
+      },
+      {
+        "relation_id": "rel:wound-encounter",
+        "predicate": "associatedWithEncounter",
+        "source_id": "wound:1",
+        "target_id": "root:encounter",
+        "assertion_status": "present",
+        "documentation_status": "explicit",
+        "confidence": 1.0,
+        "evidence_ids": []
+      },
+      {
+        "relation_id": "rel:wound-assessment",
+        "predicate": "hasAssessment",
+        "source_id": "wound:1",
+        "target_id": "assessment:1",
+        "assertion_status": "present",
+        "documentation_status": "explicit",
+        "confidence": 0.97,
+        "evidence_ids": [
+          "EV-002"
+        ]
+      },
+      {
+        "relation_id": "rel:wound-location",
+        "predicate": "hasLocation",
+        "source_id": "wound:1",
+        "target_id": "location:sacral",
+        "assertion_status": "present",
+        "documentation_status": "explicit",
+        "confidence": 0.97,
+        "evidence_ids": [
+          "EV-002"
+        ]
+      },
+      {
+        "relation_id": "rel:wound-stage",
+        "predicate": "hasStage",
+        "source_id": "wound:1",
+        "target_id": "stage:4",
+        "assertion_status": "present",
+        "documentation_status": "explicit",
+        "confidence": 0.97,
+        "evidence_ids": [
+          "EV-002"
+        ]
+      },
+      {
+        "relation_id": "rel:assessment-finding",
+        "predicate": "hasFinding",
+        "source_id": "assessment:1",
+        "target_id": "finding:exposed-muscle",
+        "assertion_status": "present",
+        "documentation_status": "explicit",
+        "confidence": 0.97,
+        "evidence_ids": [
+          "EV-002"
+        ]
+      },
+      {
+        "relation_id": "rel:wound-poa",
+        "predicate": "hasPOAStatus",
+        "source_id": "wound:1",
+        "target_id": "poa:1",
+        "assertion_status": "present",
+        "documentation_status": "explicit",
+        "confidence": 0.96,
+        "evidence_ids": [
+          "EV-001",
+          "EV-002"
+        ]
+      },
+      {
+        "relation_id": "rel:wound-condition",
+        "predicate": "hasCondition",
+        "source_id": "wound:1",
+        "target_id": "condition:hapi",
+        "assertion_status": "present",
+        "documentation_status": "explicit",
+        "confidence": 0.96,
+        "evidence_ids": [
+          "EV-002"
+        ]
+      },
+      {
+        "relation_id": "rel:condition-severity",
+        "predicate": "hasSeverityTier",
+        "source_id": "condition:hapi",
+        "target_id": "severity:mcc",
+        "assertion_status": "present",
+        "documentation_status": "inferred",
+        "confidence": 0.9,
+        "evidence_ids": [
+          "EV-002"
+        ]
+      }
+    ]
+  },
+  "assertions": [
+    {
+      "assertion_id": "AS-001",
+      "subject_id": "wound:1",
+      "concept": "pressure_injury",
+      "status": "present",
+      "documentation_status": "explicit",
+      "confidence": 0.97,
+      "attributes": {
+        "site": "sacral_region",
+        "stage": 4,
+        "poa": "N"
+      },
+      "evidence_ids": [
+        "EV-002"
+      ],
+      "contradicting_evidence_ids": []
+    }
+  ],
+  "findings": [
+    {
+      "finding_id": "finding-3cd04e5c697a91c6",
+      "rule_id": "WC-PI-SEVERITY-001",
+      "rule_package_id": "wound-care-severity-integrity",
+      "rule_package_version": "1.0.0-demo",
+      "title": "Grounded stage 3-4 pressure injury absent from claim raises DRG severity",
+      "disposition": "coding_review",
+      "confidence": 0.97,
+      "proposed_change": {
+        "add_diagnoses": [
+          "L89.154"
+        ]
+      },
+      "subject_ids": [
+        "wound:1"
+      ],
+      "assertion_ids": [
+        "AS-001"
+      ],
+      "evidence_ids": [
+        "EV-002"
+      ],
+      "contradicting_evidence_ids": [],
+      "rationale": "A high-confidence, uncontradicted stage 3-4 pressure injury is grounded in the evidence graph but the specific diagnosis is absent from the claim. Adding it raises the DRG severity tier. Confirm coding, sequencing, and POA before any claim change.",
+      "requires_human_review": true,
+      "submitted_drg": "DEMO-292",
+      "current_drg": "DEMO-292",
+      "simulated_drg": "DEMO-290",
+      "estimated_impact_cents": 842000,
+      "impact_status": "estimated",
+      "grouper_version": "demo-0.2-not-for-billing",
+      "derivation": {
+        "current": [
+          {
+            "step": "severity_resolution",
+            "value": "none",
+            "detail": "no severity-driving diagnosis"
+          },
+          {
+            "step": "tier_selection",
+            "value": "DEMO-292",
+            "detail": "none tier"
+          },
+          {
+            "step": "pricing",
+            "value": "1000000",
+            "detail": "base 1000000c x 1000000 micros"
+          }
+        ],
+        "simulated": [
+          {
+            "step": "severity_resolution",
+            "value": "mcc",
+            "detail": "L89.154"
+          },
+          {
+            "step": "tier_selection",
+            "value": "DEMO-290",
+            "detail": "mcc tier"
+          },
+          {
+            "step": "pricing",
+            "value": "1842000",
+            "detail": "base 1000000c x 1842000 micros"
+          }
+        ]
+      },
+      "charge_line_refs": [],
+      "narrative": "On CASE-DEMO-002, rule WC-PI-SEVERITY-001 flagged: Grounded stage 3-4 pressure injury absent from claim raises DRG severity. DRG would move from DEMO-292 to DEMO-290. Estimated upside of $8,420.00 (synthetic demo grouper, not for billing). Requires human review; route to coding review."
+    },
+    {
+      "finding_id": "finding-e62696b244a971cf",
+      "rule_id": "WC-PI-POA-002",
+      "rule_package_id": "wound-care-severity-integrity",
+      "rule_package_version": "1.0.0-demo",
+      "title": "Hospital-acquired pressure injury (not present on admission) requires compliance review",
+      "disposition": "compliance_review",
+      "confidence": 0.97,
+      "proposed_change": {},
+      "subject_ids": [
+        "wound:1"
+      ],
+      "assertion_ids": [
+        "AS-001"
+      ],
+      "evidence_ids": [
+        "EV-002"
+      ],
+      "contradicting_evidence_ids": [],
+      "rationale": "The pressure injury is documented as not present on admission (hospital-acquired). Route to compliance for POA validation and quality reporting; do not alter the claim.",
+      "requires_human_review": true,
+      "submitted_drg": "DEMO-292",
+      "current_drg": "DEMO-292",
+      "simulated_drg": "DEMO-292",
+      "estimated_impact_cents": 0,
+      "impact_status": "estimated",
+      "grouper_version": "demo-0.2-not-for-billing",
+      "derivation": {
+        "current": [
+          {
+            "step": "severity_resolution",
+            "value": "none",
+            "detail": "no severity-driving diagnosis"
+          },
+          {
+            "step": "tier_selection",
+            "value": "DEMO-292",
+            "detail": "none tier"
+          },
+          {
+            "step": "pricing",
+            "value": "1000000",
+            "detail": "base 1000000c x 1000000 micros"
+          }
+        ],
+        "simulated": [
+          {
+            "step": "severity_resolution",
+            "value": "none",
+            "detail": "no severity-driving diagnosis"
+          },
+          {
+            "step": "tier_selection",
+            "value": "DEMO-292",
+            "detail": "none tier"
+          },
+          {
+            "step": "pricing",
+            "value": "1000000",
+            "detail": "base 1000000c x 1000000 micros"
+          }
+        ]
+      },
+      "charge_line_refs": [],
+      "narrative": "On CASE-DEMO-002, rule WC-PI-POA-002 flagged: Hospital-acquired pressure injury (not present on admission) requires compliance review. DRG remains DEMO-292. Estimated upside of $0.00 (synthetic demo grouper, not for billing). Requires human review; route to compliance review."
+    }
+  ],
+  "impact_summary": {
+    "currency": "USD",
+    "net_estimated_impact_cents": 842000,
+    "positive_opportunity_cents": 842000,
+    "at_risk_cents": 0,
+    "estimated_finding_count": 2,
+    "unavailable_impact_count": 0,
+    "not_applicable_impact_count": 0,
+    "total_findings": 2,
+    "findings_requiring_review": 2,
+    "findings_by_disposition": {
+      "coding_review": 1,
+      "compliance_review": 1
+    },
+    "basis": "synthetic-demo-grouper-not-for-billing"
+  },
+  "denial_summary": {
+    "currency": "USD",
+    "denied_amount_cents": 0,
+    "denial_count": 0,
+    "at_risk_line_count": 0,
+    "at_risk_line_ids": []
+  },
+  "controls": {
+    "claim_mutation_allowed": false,
+    "human_review_required": true,
+    "permitted_actions": [
+      "route_to_coding",
+      "route_to_cdi",
+      "route_to_charge_review",
+      "route_to_compliance",
+      "dismiss_with_reason"
+    ]
+  },
+  "provenance": {
+    "evaluated_at": "2026-07-18T12:00:00Z",
+    "engine_version": "0.7.0",
+    "case_hash": "51b52813104f89536fe806cf2bb0f72857c58e32d1d2584e1dca203f38bc92ca",
+    "rule_package_id": "wound-care-severity-integrity",
+    "rule_package_version": "1.0.0-demo",
+    "rule_package_hash": "82952da4397e29e3afc00325acecbb3db21ef22465a56ff2cbde5f2c1c033f96",
+    "record_hash": "06916378ba97bfbdcc69707ed9fd396b8aace1089fbc794443356e3df41c8961",
+    "previous_record_hash": null,
+    "grouper_versions": [
+      "demo-0.2-not-for-billing"
+    ],
+    "packet_hash": "6d01f48a2884cf6fb307fe0d64884d8b6d47b20e8b7221e37f5c0d8c5f2501b7"
+  }
+}

@@ -14,7 +14,9 @@ import {
 } from './ontology.ts'
 import {
   createAgentExtractionSchema,
+  createGapExtractionSchema,
   encounterCaseSchema,
+  gapExtractionOutputSchema,
   ontologyDefinitionSchema,
   sourceBundleSchema,
 } from './schema.ts'
@@ -37,8 +39,8 @@ const extraction = {
   }],
   ontology: {
     ontology_id: 'wound-care-encounter-ontology',
-    ontology_version: '1.0.0-draft',
-    ontology_digest: 'eb2b6f6aa447825fa45012fd23a91fe0f572fe280cf776a239699d6230390779',
+    ontology_version: '1.1.0-draft',
+    ontology_digest: '66da3211d53adaa7cffc4fd45e0a7ca86175f5a7774d5ce80d4a34a0a0786f52',
     entities: [{
       entity_id: 'wound:1',
       entity_type: 'PressureInjury',
@@ -351,4 +353,98 @@ test('ontology extensions fail until the versioned contract supports them', () =
   const changed = structuredClone(DEFAULT_ONTOLOGY_DEFINITION) as unknown as Record<string, unknown>
   changed.unreviewed_semantics = true
   assert.throws(() => ontologyDefinitionSchema.parse(changed))
+})
+
+// --------------------------------------------------------------------------
+// Clinical-care-gap EXTRACTION-ONLY schema
+// --------------------------------------------------------------------------
+const gapExtraction = {
+  assessments: [
+    {
+      assessment_id: 'assessment:day0',
+      subject_id: 'assessment:day0',
+      observed_at: '2026-06-01T10:00:00Z',
+      measurement: { length_cm: 2.4, width_cm: 1.8, depth_cm: 0.3 },
+      evidence_ids: ['EV-DFU-DAY0'],
+    },
+    {
+      assessment_id: 'assessment:day14',
+      subject_id: 'assessment:day14',
+      observed_at: '2026-06-15T10:00:00Z',
+      measurement: { length_cm: 2.4, width_cm: 1.8 },
+      evidence_ids: ['EV-DFU-DAY14'],
+    },
+  ],
+  candidate_findings: [
+    {
+      candidate_id: 'cand:stalled-healing',
+      subject_id: 'assessment:day14',
+      concept: 'stalled_wound_healing',
+      status: 'present' as const,
+      documentation_status: 'explicit' as const,
+      confidence: 0.9,
+      observation: 'Ulcer unchanged at 2.4 x 1.8 cm after two weeks of standard care.',
+      evidence_ids: ['EV-DFU-DAY14'],
+      contradicting_evidence_ids: [],
+    },
+  ],
+}
+
+const gapEvidenceIds = ['EV-DFU-DAY0', 'EV-DFU-DAY14']
+
+test('valid dated wound assessments and candidate findings parse as extraction-only', () => {
+  const parsed = gapExtractionOutputSchema.parse(gapExtraction)
+  assert.equal(parsed.assessments.length, 2)
+  assert.equal(parsed.assessments[0].measurement.length_cm, 2.4)
+  assert.equal(parsed.assessments[0].measurement.depth_cm, 0.3)
+  assert.equal(parsed.candidate_findings[0].concept, 'stalled_wound_healing')
+  // Lineage-checked variant accepts citations that resolve to real evidence.
+  assert.doesNotThrow(() => createGapExtractionSchema(gapEvidenceIds).parse(gapExtraction))
+})
+
+test('gap extraction may not carry an authoritative gap DECISION field', () => {
+  // gap_domain is an authoritative engine output; a strict schema rejects it on the finding.
+  const withGapDomain = structuredClone(gapExtraction)
+  ;(withGapDomain.candidate_findings[0] as Record<string, unknown>).gap_domain = 'delayed_action'
+  assert.throws(() => gapExtractionOutputSchema.parse(withGapDomain))
+
+  // An urgency / alert level is likewise an engine decision, never an extraction.
+  const withUrgency = structuredClone(gapExtraction)
+  ;(withUrgency.candidate_findings[0] as Record<string, unknown>).alert_urgency = 'urgent'
+  assert.throws(() => gapExtractionOutputSchema.parse(withUrgency))
+
+  // A recommended clinical action is a decision the engine/clinician makes, not the model.
+  const withAction = structuredClone(gapExtraction)
+  ;(withAction.candidate_findings[0] as Record<string, unknown>).recommended_action = 'Reassess the wound.'
+  assert.throws(() => gapExtractionOutputSchema.parse(withAction))
+})
+
+test('gap extraction may not carry timing math or claim/DRG/payment fields', () => {
+  // Elapsed-day / trend math is derived deterministically by Python, never emitted here.
+  const withTiming = structuredClone(gapExtraction)
+  ;(withTiming.assessments[1] as Record<string, unknown>).days_since_baseline = 14
+  assert.throws(() => gapExtractionOutputSchema.parse(withTiming))
+
+  const withTrend = structuredClone(gapExtraction)
+  ;(withTrend.assessments[1] as Record<string, unknown>).size_trend_pct = 0
+  assert.throws(() => gapExtractionOutputSchema.parse(withTrend))
+
+  // No authoritative financial field may ride an extraction measurement.
+  const withPayment = structuredClone(gapExtraction)
+  ;(withPayment.assessments[0].measurement as Record<string, unknown>).allowed_amount_cents = 500000
+  assert.throws(() => gapExtractionOutputSchema.parse(withPayment))
+
+  const withDrg = structuredClone(gapExtraction)
+  ;(withDrg.candidate_findings[0] as Record<string, unknown>).drg = 'DEMO-292'
+  assert.throws(() => gapExtractionOutputSchema.parse(withDrg))
+})
+
+test('gap extraction rejects ungrounded citations and self-contradicting evidence', () => {
+  const unknownEvidence = structuredClone(gapExtraction)
+  unknownEvidence.candidate_findings[0].evidence_ids = ['EV-DOES-NOT-EXIST']
+  assert.throws(() => createGapExtractionSchema(gapEvidenceIds).parse(unknownEvidence))
+
+  const conflicting = structuredClone(gapExtraction)
+  ;(conflicting.candidate_findings[0] as Record<string, unknown>).contradicting_evidence_ids = ['EV-DFU-DAY14']
+  assert.throws(() => createGapExtractionSchema(gapEvidenceIds).parse(conflicting))
 })

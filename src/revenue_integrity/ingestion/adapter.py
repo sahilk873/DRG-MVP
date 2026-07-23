@@ -10,6 +10,7 @@ from ..ontology import OntologyDefinition, OntologyGraph
 from .models import (
     AdapterDefinition,
     CollectionBinding,
+    DegradationPolicy,
     Expression,
     IngestionPolicy,
     ResourceDefinition,
@@ -37,6 +38,7 @@ class AdapterRunReport:
     output_entities: int
     output_relations: int
     output_assertions: int
+    quarantined: tuple[Mapping[str, Any], ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -52,8 +54,34 @@ class AdapterRunReport:
             "output_entities": self.output_entities,
             "output_relations": self.output_relations,
             "output_assertions": self.output_assertions,
+            "quarantined": [dict(item) for item in self.quarantined],
+            "quarantined_count": len(self.quarantined),
             "status": "succeeded",
         }
+
+
+class _Quarantine:
+    """Collects recoverable per-row/per-encounter failures when degradation mode is 'quarantine'."""
+
+    def __init__(self, policy: DegradationPolicy) -> None:
+        self.active = policy.mode == "quarantine"
+        self._max = policy.max_quarantined
+        self.records: list[dict[str, Any]] = []
+        self.ids: set[str] = set()
+
+    def record(self, reason: str, location: str, encounter_id: str, detail: str) -> None:
+        self.records.append({"reason": reason, "location": location, "encounter_id": encounter_id, "detail": detail})
+        if len(self.records) > self._max:
+            raise ValueError(
+                f"quarantine circuit breaker tripped: {len(self.records)} rows exceeded max_quarantined {self._max}"
+            )
+
+    def quarantine_encounter(self, encounter_id: str, reason: str, location: str, detail: str) -> None:
+        self.ids.add(encounter_id)
+        self.record(reason, location, encounter_id, detail)
+
+    def is_quarantined(self, encounter_id: str) -> bool:
+        return encounter_id in self.ids
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,9 +98,11 @@ def run_adapter(
     policy: IngestionPolicy | None = None,
     registry: ReaderRegistry | None = None,
     now: Callable[[], datetime] | None = None,
+    degradation: DegradationPolicy | None = None,
 ) -> AdapterRunResult:
     """Execute an approved adapter without invoking a model or generated code."""
 
+    quarantine = _Quarantine(degradation or DegradationPolicy())
     if adapter.status not in {"approved-for-demo", "approved"}:
         raise ValueError("adapter must be approved before deterministic execution")
     if (
@@ -105,6 +135,9 @@ def run_adapter(
     for row in encounter_rows:
         encounter_id = evaluate_required_string(adapter.encounter.encounter_id, row, "encounter.encounter_id")
         if encounter_id in cases:
+            if quarantine.active:
+                quarantine.record("duplicate_encounter", "encounter", encounter_id, "duplicate encounter_id; first row kept")
+                continue
             raise ValueError(f"duplicate encounter ID produced by adapter: {encounter_id}")
         bundle = {
             "case_id": evaluate_required_string(adapter.encounter.case_id, row, "encounter.case_id"),
@@ -121,12 +154,18 @@ def run_adapter(
             "structured_extraction": _empty_extraction(ontology_definition),
         }
         if datetime.fromisoformat(bundle["admitted_at"]) > datetime.fromisoformat(bundle["discharged_at"]):
+            if quarantine.active:
+                quarantine.record("admission_after_discharge", "encounter", encounter_id, "admission occurs after discharge")
+                continue
             raise ValueError(f"encounter {encounter_id} admission occurs after discharge")
         cases[encounter_id] = bundle
 
-    _attach_documents(cases, adapter, cache)
-    _attach_claims(cases, adapter, cache)
-    _attach_structured_extractions(cases, adapter, cache, ontology_definition)
+    _attach_documents(cases, adapter, cache, quarantine)
+    _attach_claims(cases, adapter, cache, quarantine)
+    _attach_structured_extractions(cases, adapter, cache, ontology_definition, quarantine)
+
+    for quarantined_id in quarantine.ids:
+        cases.pop(quarantined_id, None)
 
     transformed = (now or (lambda: datetime.now(timezone.utc)))()
     if transformed.tzinfo is None:
@@ -156,6 +195,7 @@ def run_adapter(
         output_entities=sum(len(bundle["structured_extraction"]["ontology"]["entities"]) for bundle in bundles),
         output_relations=sum(len(bundle["structured_extraction"]["ontology"]["relations"]) for bundle in bundles),
         output_assertions=sum(len(bundle["structured_extraction"]["assertions"]) for bundle in bundles),
+        quarantined=tuple(quarantine.records),
     )
     return AdapterRunResult(bundles, report)
 
@@ -164,6 +204,7 @@ def _attach_documents(
     cases: Mapping[str, dict[str, Any]],
     adapter: AdapterDefinition,
     cache: Mapping[str, tuple[Mapping[str, Any], ...]],
+    quarantine: "_Quarantine",
 ) -> None:
     known_document_ids: dict[str, set[str]] = {encounter_id: set() for encounter_id in cases}
     for binding_index, binding in enumerate(adapter.documents):
@@ -172,9 +213,14 @@ def _attach_documents(
                 continue
             location = f"documents[{binding_index}]"
             encounter_id = evaluate_required_string(binding.encounter_id, row, f"{location}.encounter_id")
-            bundle = _known_case(cases, encounter_id, location)
+            bundle = _known_case(cases, encounter_id, location, quarantine)
+            if bundle is None:
+                continue
             document_id = evaluate_required_string(binding.document_id, row, f"{location}.document_id")
             if document_id in known_document_ids[encounter_id]:
+                if quarantine.active:
+                    quarantine.record("duplicate_document", location, encounter_id, f"duplicate document {document_id}")
+                    continue
                 raise ValueError(f"duplicate document ID for encounter {encounter_id}: {document_id}")
             known_document_ids[encounter_id].add(document_id)
             bundle["documents"].append({
@@ -189,14 +235,20 @@ def _attach_claims(
     cases: Mapping[str, dict[str, Any]],
     adapter: AdapterDefinition,
     cache: Mapping[str, tuple[Mapping[str, Any], ...]],
+    quarantine: "_Quarantine",
 ) -> None:
     claimed: set[str] = set()
     for row in cache[adapter.claim.resource]:
         if not _matches(row, adapter.claim.where):
             continue
         encounter_id = evaluate_required_string(adapter.claim.encounter_id, row, "claim.encounter_id")
-        bundle = _known_case(cases, encounter_id, "claim")
+        bundle = _known_case(cases, encounter_id, "claim", quarantine)
+        if bundle is None:
+            continue
         if encounter_id in claimed:
+            if quarantine.active:
+                quarantine.quarantine_encounter(encounter_id, "multiple_claims", "claim", "encounter has more than one claim row")
+                continue
             raise ValueError(f"multiple claim rows linked to encounter {encounter_id}")
         claimed.add(encounter_id)
         if adapter.claim.drg is not None:
@@ -206,12 +258,16 @@ def _attach_claims(
             if amount is not None and (isinstance(amount, bool) or not isinstance(amount, int) or amount < 0):
                 raise ValueError("claim.allowed_amount_cents must produce a non-negative integer or null")
             bundle["claim"]["allowed_amount_cents"] = amount
-    if missing := set(cases) - claimed:
-        raise ValueError(f"encounters without exactly one claim row: {sorted(missing)}")
+    if missing := set(cases) - claimed - quarantine.ids:
+        if quarantine.active:
+            for encounter_id in sorted(missing):
+                quarantine.quarantine_encounter(encounter_id, "no_claim", "claim", "encounter has no claim row")
+        else:
+            raise ValueError(f"encounters without exactly one claim row: {sorted(missing)}")
     for field_name in ("diagnoses", "procedures", "charges"):
         binding = getattr(adapter.claim, field_name)
         if binding is not None:
-            _attach_collection(cases, cache, binding, field_name)
+            _attach_collection(cases, cache, binding, field_name, quarantine)
 
 
 def _attach_collection(
@@ -219,12 +275,15 @@ def _attach_collection(
     cache: Mapping[str, tuple[Mapping[str, Any], ...]],
     binding: CollectionBinding,
     field_name: str,
+    quarantine: "_Quarantine",
 ) -> None:
     for row in cache[binding.resource]:
         if not _matches(row, binding.where):
             continue
         encounter_id = evaluate_required_string(binding.encounter_id, row, f"claim.{field_name}.encounter_id")
-        bundle = _known_case(cases, encounter_id, f"claim.{field_name}")
+        bundle = _known_case(cases, encounter_id, f"claim.{field_name}", quarantine)
+        if bundle is None:
+            continue
         value = evaluate_required_string(binding.value, row, f"claim.{field_name}.value")
         if value not in bundle["claim"][field_name]:
             bundle["claim"][field_name].append(value)
@@ -235,6 +294,7 @@ def _attach_structured_extractions(
     adapter: AdapterDefinition,
     cache: Mapping[str, tuple[Mapping[str, Any], ...]],
     ontology_definition: OntologyDefinition,
+    quarantine: "_Quarantine",
 ) -> None:
     for projection in adapter.structured_projections:
         resource = adapter.resources[projection.resource]
@@ -243,7 +303,9 @@ def _attach_structured_extractions(
                 continue
             location = f"projection {projection.projection_id} row {row['_row_number']}"
             encounter_id = evaluate_required_string(projection.encounter_id, row, f"{location}.encounter_id")
-            bundle = _known_case(cases, encounter_id, location)
+            bundle = _known_case(cases, encounter_id, location, quarantine)
+            if bundle is None:
+                continue
             extraction = bundle["structured_extraction"]
             source_record_id = evaluate_required_string(projection.source_record_id, row, f"{location}.source_record_id")
             evidence_id = evaluate_required_string(projection.evidence.evidence_id, row, f"{location}.evidence_id")
@@ -309,6 +371,8 @@ def _attach_structured_extractions(
                 _upsert(extraction["assertions"], assertion, "assertion_id", location)
 
     for encounter_id, bundle in cases.items():
+        if quarantine.is_quarantined(encounter_id):
+            continue
         extraction = bundle["structured_extraction"]
         full_graph = {
             **extraction["ontology"],
@@ -372,11 +436,21 @@ def _structural_relations(definition: OntologyDefinition) -> Iterable[dict[str, 
         }
 
 
-def _known_case(cases: Mapping[str, dict[str, Any]], encounter_id: str, location: str) -> dict[str, Any]:
-    try:
-        return cases[encounter_id]
-    except KeyError as error:
-        raise ValueError(f"{location} references unknown encounter {encounter_id}") from error
+def _known_case(
+    cases: Mapping[str, dict[str, Any]],
+    encounter_id: str,
+    location: str,
+    quarantine: "_Quarantine",
+) -> dict[str, Any] | None:
+    bundle = cases.get(encounter_id)
+    if bundle is not None and not quarantine.is_quarantined(encounter_id):
+        return bundle
+    if quarantine.active:
+        # Truly-unknown encounter -> record the orphan row; already-quarantined -> silently skip.
+        if encounter_id not in cases:
+            quarantine.record("unknown_encounter", location, encounter_id, "row references unknown encounter")
+        return None
+    raise ValueError(f"{location} references unknown encounter {encounter_id}")
 
 
 def _upsert(items: list[dict[str, Any]], item: dict[str, Any], key: str, location: str) -> None:

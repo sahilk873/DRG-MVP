@@ -1,12 +1,21 @@
 # Encounter Revenue Integrity
 
-An evidence-grounded reference implementation for reconstructing an inpatient encounter, comparing documentation with coding and billing, and routing only consequential exceptions to human reviewers. [Mastra](https://mastra.ai/) provides provider-agnostic semantic extraction; the revenue-integrity engine remains deterministic and model-independent.
+An evidence-grounded reference implementation that reconstructs a clinical encounter once and then reasons about it through **two governed lenses on one deterministic spine**: **revenue integrity** (comparing documentation with coding and billing and routing consequential exceptions to reviewers) and **clinical care gaps** (identifying gaps in guideline-expected care over a longitudinal episode and routing them to a clinician). [Mastra](https://mastra.ai/) provides provider-agnostic semantic extraction; both lenses run on the same deterministic, model-independent engine.
 
 > **Not for production billing or clinical use.** The included rules, codes, prices and demo grouper are synthetic integration artifacts that have not been clinically or operationally validated.
+
+> 📖 **New here?** Start with the [onboarding guide](docs/guide/README.md) — a ~30-minute tour covering purpose, how it works end-to-end (with the Diabetic Foot Ulcer worked example), the technical implementation, the clinical care-gap domain, a quickstart, and a glossary.
 
 ## Architecture
 
 Clinical records benefit from semantic extraction. Claim grouping, rule evaluation, payment simulation and audit records must remain reproducible. The agent therefore produces **schema-constrained evidence and hypotheses, never executable rules or authoritative financial fields**. Variable provider exports are handled by an adapter factory: Mastra proposes a draft declarative mapping from a bounded profile, while an approved deterministic runtime processes the full dataset.
+
+### One spine, two lenses
+
+The engine runs a single spine — **episode → ontology → detect → validate → route → close** — carrying two peer rule domains keyed by a `rule_domain` field:
+
+- **`revenue_integrity`** — proposes evidence-grounded *candidate* claim corrections for human review.
+- **`clinical_care_gap`** — surfaces gaps in expected care as analytics alerts for a clinician. A clinical rule carries an **empty** `proposed_change` and **must** require human review, so the domain is structurally walled off from ever mutating a claim, assigning a DRG, computing reimbursement, or bypassing review. Detection uses deterministic (LLM-free) temporal and co-occurrence operators (`elapsed_days_gte`/`_lte`, `absent_within_days`, `pct_change_gte`/`_lte`, bounded `co_occurs`). Both lenses share the same authoritative wound-care ontology (v3, `1.3.0-draft`). See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ```mermaid
 flowchart TD
@@ -37,12 +46,20 @@ The case model separates what happened clinically, what was explicitly documente
 - Claims, charges, DRGs and payment fields excluded from model generation
 - Exact-excerpt grounding against immutable source documents
 - Supporting and contradicting evidence lineage
+- A second governed peer rule domain — clinical care gaps (`rules/wound_care_gaps_v1.json`, 46 rules incl. a diabetic-foot-ulcer flagship) — on the same spine, structurally walled off from claim mutation (empty `proposed_change`, human review required) and detected with deterministic temporal/co-occurrence operators over a longitudinal episode
 - Strict, declarative JSON rules with no generated-code execution path
+- Expressive deterministic rule operators (`between`, `starts_with`, `count_gte`/`count_lte`) and Python-derived read-only fields (`evidence_count`, `has_contradicting_evidence`) so rules reason about severity and contradiction off the ontology
+- Data-driven, versioned deterministic DRG grouper (base rate + MCC/CC severity tiers) governed by a `demo_grouping_v1.json` artifact, with a hash-stable derivation trace surfaced on every finding and in the review packet (`3.2.0`) for reviewer explainability
+- Present-on-admission (POA) and DRG severity tier modeled as first-class ontology concepts (classes, value-sets, relations), and a second governed rule package (`wound_care_v2.json`) that exercises them end-to-end
+- Deterministic ontology-subgraph retrieval that sends the extraction agent only the relevant ontology slice, cutting prompt tokens without ever widening what the validators accept
 - Ontology-scoped rule targeting with explicit subtype semantics
 - Fail-closed package approval and action validation
 - Replaceable licensed DRG grouper/pricer interface
 - Integer-cent payment simulation
-- Deterministic finding IDs and hash-chained audit records
+- Deterministic finding IDs and hash-chained audit records, with a read-only chain-continuity verifier
+- Deterministic, hash-covered ROI/impact rollup and reviewer-effort estimate in the review handoff
+- Offline precision/recall/F1 accuracy harness and backtest over a labeled gold set (`revenue-integrity-eval`)
+- Golden-artifact conformance and executable core-invariant test suites that fail closed on governed-contract drift
 - Versioned human-review packets connecting engine output to reviewer applications
 - Deterministic exception orchestration with duplicate consolidation and effort budgets
 - Idempotent automatic-routing outbox that cannot mutate claims
@@ -109,7 +126,9 @@ revenue-integrity examples/case_pressure_injury.json rules/wound_care_v1.json \
   --output output/review-packet.json
 ```
 
-The v0.7 release uses encounter-case schema `2.0.0`, tenant-scoped review-packet schema `3.0.0`, automation-plan schema `1.0.0`, and review-decision schema `2.0.0`. Earlier payloads intentionally fail closed until they satisfy these trust boundaries. Revenue rule packages and bulk adapters must declare their compatible ontology ID, version and digest.
+The v0.7 release uses encounter-case schema `2.0.0`, tenant-scoped review-packet schema `3.1.0`, automation-plan schema `1.0.0`, and review-decision schema `2.0.0`. Earlier payloads intentionally fail closed until they satisfy these trust boundaries. Revenue rule packages and bulk adapters must declare their compatible ontology ID, version and digest.
+
+Review-packet `3.1.0` adds a deterministic, hash-covered `impact_summary` ROI rollup; the automation plan adds an itemized `priority_components` score (uncapped dollar weighting) and a `reviewer_effort` estimate. See [docs/REVIEW_PACKET.md](docs/REVIEW_PACKET.md) and [docs/AUTOMATION.md](docs/AUTOMATION.md).
 
 Reviewer actions pass through a role-aware workflow service and a tenant-scoped, hash-linked SQLite reference repository. A separately hashed automation plan suppresses only exact duplicates/no-opportunities, requests enrichment for insufficient evidence, automatically queues bounded operational work, and reserves people for quick confirmations or true exceptions. See [exception automation](docs/AUTOMATION.md), [the governed review workflow](docs/REVIEW_WORKFLOW.md), and [production integration boundaries](docs/PRODUCTION_INTEGRATIONS.md).
 
@@ -127,6 +146,18 @@ revenue-integrity-ingest run \
 ```
 
 The full provider folder is processed by deterministic readers and transforms. Only the bounded profile is suitable for the adapter-designer agent; narrative document text is sent separately to the evidence-extraction agent. Claims, charges, existing DRGs and payment fields remain outside model generation.
+
+## Measure discovery accuracy
+
+```bash
+make eval    # scores the shipped gold set and enforces its thresholds
+# or:
+revenue-integrity-eval examples/evaluation/gold_manifest.json --output output/eval-report.json
+```
+
+The harness runs the deterministic engine over a labeled gold manifest and emits a canonical,
+hash-signed precision/recall/F1 report. It is the honest source for any accuracy figure and never
+touches a claim, DRG, or payment. See [docs/EVALUATION.md](docs/EVALUATION.md).
 
 ## Run the Mastra extraction layer
 

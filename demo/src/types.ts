@@ -1,4 +1,4 @@
-export type ViewId = 'overview' | 'queue' | 'case' | 'ingestion' | 'governance'
+export type ViewId = 'overview' | 'queue' | 'case' | 'ingestion' | 'governance' | 'care_gaps' | 'episode'
 
 export type OpportunityStatus = 'Ready for review' | 'Needs documentation' | 'In review' | 'Cleared'
 export type OpportunityType = 'Coding' | 'CDI' | 'Charge capture' | 'Compliance'

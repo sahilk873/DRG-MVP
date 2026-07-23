@@ -1,20 +1,22 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.org/schemas/review-packet-v3.json",
-  "title": "Revenue Integrity Human Review Packet",
+  "title": "Encounter Human Review Packet v3.5.0 (revenue-integrity findings plus optional clinical-care-gap fields)",
   "type": "object",
   "additionalProperties": false,
-  "required": ["review_packet_schema_version", "packet_id", "environment", "tenant", "case", "evidence", "ontology", "assertions", "findings", "controls", "provenance"],
+  "required": ["review_packet_schema_version", "packet_id", "environment", "tenant", "case", "evidence", "ontology", "assertions", "findings", "impact_summary", "denial_summary", "controls", "provenance"],
   "properties": {
-    "review_packet_schema_version": {"const": "3.0.0"},
+    "review_packet_schema_version": {"const": "3.5.0"},
     "packet_id": {"type": "string", "pattern": "^packet-[0-9a-f]{20}$"},
     "environment": {"enum": ["development", "synthetic", "validation", "production"]},
     "tenant": {"$ref": "#/$defs/tenant"},
     "case": {"$ref": "#/$defs/caseSummary"},
-    "evidence": {"type": "array", "items": {"$ref": "https://example.org/schemas/encounter-case-v2.json#/$defs/evidence"}},
+    "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}},
     "ontology": {"$ref": "https://example.org/schemas/encounter-case-v2.json#/$defs/ontologyGraph"},
     "assertions": {"type": "array", "items": {"$ref": "https://example.org/schemas/encounter-case-v2.json#/$defs/assertion"}},
     "findings": {"type": "array", "items": {"$ref": "#/$defs/finding"}},
+    "impact_summary": {"$ref": "#/$defs/impactSummary"},
+    "denial_summary": {"$ref": "#/$defs/denialSummary"},
     "controls": {"$ref": "#/$defs/controls"},
     "provenance": {"$ref": "#/$defs/provenance"}
   },
@@ -22,6 +24,54 @@
     "nonEmptyString": {"type": "string", "minLength": 1},
     "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
     "uniqueStringArray": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/nonEmptyString"}},
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidence_id", "document_id", "author_role", "recorded_at", "text", "source_locator"],
+      "properties": {
+        "evidence_id": {"$ref": "#/$defs/nonEmptyString"},
+        "document_id": {"$ref": "#/$defs/nonEmptyString"},
+        "author_role": {"$ref": "#/$defs/nonEmptyString"},
+        "recorded_at": {"type": "string", "format": "date-time"},
+        "text": {"$ref": "#/$defs/nonEmptyString"},
+        "source_locator": {"$ref": "#/$defs/sourceLocator"}
+      }
+    },
+    "sourceLocator": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Deterministic deep-link to a clinical-note excerpt; derived purely from validated substring grounding.",
+          "required": ["kind", "document_id", "char_start", "char_end", "length", "excerpt_sha256"],
+          "properties": {
+            "kind": {"const": "clinical_note_excerpt"},
+            "document_id": {"$ref": "#/$defs/nonEmptyString"},
+            "char_start": {"type": "integer", "minimum": 0},
+            "char_end": {"type": "integer", "minimum": 0},
+            "length": {"type": "integer", "minimum": 1},
+            "excerpt_sha256": {"$ref": "#/$defs/digest"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Deterministic deep-link to a structured-adapter source row.",
+          "required": ["kind", "adapter_id", "adapter_version", "resource", "path", "row_number", "source_record_id", "field_names"],
+          "properties": {
+            "kind": {"const": "structured_source_record"},
+            "adapter_id": {"$ref": "#/$defs/nonEmptyString"},
+            "adapter_version": {"$ref": "#/$defs/nonEmptyString"},
+            "resource": {"$ref": "#/$defs/nonEmptyString"},
+            "path": {"$ref": "#/$defs/nonEmptyString"},
+            "row_number": {"type": "integer", "minimum": 1},
+            "source_record_id": {"$ref": "#/$defs/nonEmptyString"},
+            "field_names": {"$ref": "#/$defs/uniqueStringArray"},
+            "sheet": {"$ref": "#/$defs/nonEmptyString"}
+          }
+        }
+      ]
+    },
     "tenant": {
       "type": "object", "additionalProperties": false,
       "required": ["tenant_id", "workspace_id"],
@@ -48,7 +98,7 @@
     "finding": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["finding_id", "rule_id", "rule_package_id", "rule_package_version", "title", "disposition", "confidence", "proposed_change", "subject_ids", "assertion_ids", "evidence_ids", "contradicting_evidence_ids", "rationale", "requires_human_review", "submitted_drg", "current_drg", "simulated_drg", "estimated_impact_cents", "impact_status", "grouper_version"],
+      "required": ["finding_id", "rule_id", "rule_package_id", "rule_package_version", "title", "disposition", "confidence", "proposed_change", "subject_ids", "assertion_ids", "evidence_ids", "contradicting_evidence_ids", "rationale", "requires_human_review", "submitted_drg", "current_drg", "simulated_drg", "estimated_impact_cents", "impact_status", "grouper_version", "derivation", "charge_line_refs", "narrative"],
       "properties": {
         "finding_id": {"$ref": "#/$defs/nonEmptyString"},
         "rule_id": {"$ref": "#/$defs/nonEmptyString"},
@@ -69,15 +119,99 @@
         "simulated_drg": {"$ref": "#/$defs/nonEmptyString"},
         "estimated_impact_cents": {"type": ["integer", "null"]},
         "impact_status": {"enum": ["estimated", "not_applicable", "unavailable"]},
-        "grouper_version": {"$ref": "#/$defs/nonEmptyString"}
+        "grouper_version": {"$ref": "#/$defs/nonEmptyString"},
+        "derivation": {"$ref": "#/$defs/derivation"},
+        "charge_line_refs": {"$ref": "#/$defs/uniqueStringArray"},
+        "narrative": {"$ref": "#/$defs/nonEmptyString"},
+
+        "gap_domain": {"enum": ["missing_action", "delayed_action", "incomplete_follow_through"]},
+        "expected_action": {"$ref": "#/$defs/nonEmptyString"},
+        "actual_action": {"$ref": "#/$defs/nonEmptyString"},
+        "timing_window_days": {"type": "number", "minimum": 0},
+        "alert_urgency": {"enum": ["routine", "same_day", "urgent", "emergent"]},
+        "recommended_action": {"$ref": "#/$defs/nonEmptyString"},
+        "clinical_impact": {"$ref": "#/$defs/nonEmptyString"},
+        "exception_checks": {"type": "array", "items": {"$ref": "#/$defs/gapExceptionCheck"}},
+        "gap_status": {"enum": ["open", "routed", "closed", "exception", "withdrawn"]},
+        "closed_at": {"type": "string", "format": "date-time"},
+        "barrier_code": {"$ref": "#/$defs/nonEmptyString"}
       },
       "allOf": [
         {
           "if": {"properties": {"impact_status": {"const": "estimated"}}, "required": ["impact_status"]},
           "then": {"properties": {"estimated_impact_cents": {"type": "integer"}}},
           "else": {"properties": {"estimated_impact_cents": {"type": "null"}}}
+        },
+        {
+          "$comment": "The clinical_care_gap wall: a finding carrying gap_domain must require human review and carry no claim mutation.",
+          "if": {"properties": {"gap_domain": {"type": "string"}}, "required": ["gap_domain"]},
+          "then": {
+            "properties": {
+              "proposed_change": {"type": "object", "maxProperties": 0},
+              "requires_human_review": {"const": true}
+            }
+          }
         }
       ]
+    },
+    "gapExceptionCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["exception_type", "evidence_id", "status"],
+      "properties": {
+        "exception_type": {"enum": ["patient_refusal", "contraindication", "transfer", "hospice", "outside_care", "documented_judgment"]},
+        "evidence_id": {"$ref": "#/$defs/nonEmptyString"},
+        "status": {"$ref": "#/$defs/nonEmptyString"}
+      }
+    },
+    "derivationStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["step", "value", "detail"],
+      "properties": {
+        "step": {"$ref": "#/$defs/nonEmptyString"},
+        "value": {"$ref": "#/$defs/nonEmptyString"},
+        "detail": {"type": "string"}
+      }
+    },
+    "derivation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["current", "simulated"],
+      "properties": {
+        "current": {"type": "array", "items": {"$ref": "#/$defs/derivationStep"}},
+        "simulated": {"type": "array", "items": {"$ref": "#/$defs/derivationStep"}}
+      }
+    },
+    "impactSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["currency", "net_estimated_impact_cents", "positive_opportunity_cents", "at_risk_cents", "estimated_finding_count", "unavailable_impact_count", "not_applicable_impact_count", "total_findings", "findings_requiring_review", "findings_by_disposition", "basis"],
+      "properties": {
+        "currency": {"const": "USD"},
+        "net_estimated_impact_cents": {"type": "integer"},
+        "positive_opportunity_cents": {"type": "integer", "minimum": 0},
+        "at_risk_cents": {"type": "integer", "minimum": 0},
+        "estimated_finding_count": {"type": "integer", "minimum": 0},
+        "unavailable_impact_count": {"type": "integer", "minimum": 0},
+        "not_applicable_impact_count": {"type": "integer", "minimum": 0},
+        "total_findings": {"type": "integer", "minimum": 0},
+        "findings_requiring_review": {"type": "integer", "minimum": 0},
+        "findings_by_disposition": {"type": "object", "additionalProperties": {"type": "integer", "minimum": 0}},
+        "basis": {"$ref": "#/$defs/nonEmptyString"}
+      }
+    },
+    "denialSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["currency", "denied_amount_cents", "denial_count", "at_risk_line_count", "at_risk_line_ids"],
+      "properties": {
+        "currency": {"const": "USD"},
+        "denied_amount_cents": {"type": "integer", "minimum": 0},
+        "denial_count": {"type": "integer", "minimum": 0},
+        "at_risk_line_count": {"type": "integer", "minimum": 0},
+        "at_risk_line_ids": {"$ref": "#/$defs/uniqueStringArray"}
+      }
     },
     "controls": {
       "type": "object",
@@ -89,7 +223,7 @@
         "permitted_actions": {
           "type": "array",
           "uniqueItems": true,
-          "items": {"enum": ["route_to_coding", "route_to_cdi", "route_to_charge_review", "route_to_compliance", "dismiss_with_reason"]}
+          "items": {"enum": ["route_to_coding", "route_to_cdi", "route_to_charge_review", "route_to_compliance", "dismiss_with_reason", "route_to_care_team", "close_gap_with_evidence"]}
         }
       }
     },

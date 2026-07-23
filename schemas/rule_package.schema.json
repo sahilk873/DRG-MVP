@@ -1,14 +1,15 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.org/schemas/revenue-integrity-rule-package-v2.json",
-  "title": "Revenue Integrity Rule Package",
+  "title": "Governed Rule Package (dual-lens: revenue integrity and clinical care gaps)",
+  "description": "A versioned, effective-dated declarative rule package for one of two governed peer domains keyed by rule_domain: revenue_integrity (candidate claim corrections) or clinical_care_gap (analytics alerts that never mutate a claim). Both bind an authoritative ontology version and digest.",
   "type": "object",
   "additionalProperties": false,
   "required": ["package_id", "version", "rule_domain", "ontology", "status", "effective_from", "rules"],
   "properties": {
     "package_id": {"type": "string", "minLength": 1},
     "version": {"type": "string", "minLength": 1},
-    "rule_domain": {"const": "revenue_integrity"},
+    "rule_domain": {"enum": ["revenue_integrity", "clinical_care_gap"]},
     "ontology": {
       "type": "object",
       "additionalProperties": false,
@@ -26,6 +27,63 @@
       "items": {"$ref": "#/$defs/rule"}
     }
   },
+  "allOf": [
+    {
+      "$comment": "Domain wall (finding #9): a clinical_care_gap package's rules must never mutate a claim (empty proposed_change) and must require human review; a revenue_integrity package's rules must never carry clinical-care-gap fields. This mirrors the Python parse-time wall in rules.py so schema-only tooling enforces the same invariant.",
+      "if": {
+        "properties": {"rule_domain": {"const": "clinical_care_gap"}},
+        "required": ["rule_domain"]
+      },
+      "then": {
+        "properties": {
+          "rules": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "then": {
+                  "type": "object",
+                  "properties": {
+                    "proposed_change": {"type": "object", "maxProperties": 0},
+                    "requires_human_review": {"const": true}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"rule_domain": {"const": "revenue_integrity"}},
+        "required": ["rule_domain"]
+      },
+      "then": {
+        "properties": {
+          "rules": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "then": {
+                  "type": "object",
+                  "properties": {
+                    "gap_domain": false,
+                    "alert_urgency": false,
+                    "recommended_action": false,
+                    "expected_action": false,
+                    "timing_window_days": false,
+                    "clinical_impact": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
   "$defs": {
     "stringArray": {
       "type": "array",
@@ -59,10 +117,19 @@
         {
           "type": "object",
           "additionalProperties": false,
+          "required": ["co_occurs"],
+          "properties": {
+            "co_occurs": {"type": "array", "minItems": 2, "maxItems": 5, "items": {"$ref": "#/$defs/condition"}},
+            "window_days": {"type": "number", "minimum": 0}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
           "required": ["field", "op"],
           "properties": {
             "field": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)*$"},
-            "op": {"enum": ["eq", "ne", "gte", "lte", "in", "contains", "not_contains", "exists"]},
+            "op": {"enum": ["eq", "ne", "gte", "lte", "in", "contains", "not_contains", "exists", "between", "starts_with", "count_gte", "count_lte", "subsumed_by", "elapsed_days_gte", "elapsed_days_lte", "absent_within_days", "pct_change_gte", "pct_change_lte"]},
             "value": true
           }
         }
@@ -88,7 +155,13 @@
         "disposition": {"enum": ["coding_review", "cdi_query", "charge_review", "compliance_review", "insufficient_evidence", "no_opportunity"]},
         "requires_human_review": {"type": "boolean"},
         "proposed_change": {"$ref": "#/$defs/proposedChange"},
-        "rationale": {"type": "string", "minLength": 1}
+        "rationale": {"type": "string", "minLength": 1},
+        "gap_domain": {"enum": ["missing_action", "delayed_action", "incomplete_follow_through"]},
+        "expected_action": {"type": "string", "minLength": 1},
+        "timing_window_days": {"type": "number", "minimum": 0},
+        "recommended_action": {"type": "string", "minLength": 1},
+        "alert_urgency": {"enum": ["routine", "same_day", "urgent", "emergent"]},
+        "clinical_impact": {"type": "string", "minLength": 1}
       }
     },
     "ruleScope": {

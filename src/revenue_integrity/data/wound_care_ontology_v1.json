@@ -1,6 +1,6 @@
 {
   "ontology_id": "wound-care-encounter-ontology",
-  "version": "1.0.0-draft",
+  "version": "1.1.0-draft",
   "status": "clinical-review-required",
   "purpose": "Represent patient-specific wound-care evidence, clinical actions, coding artifacts, and claim reconciliation without treating clinical inference as coding authority.",
   "sources": [
@@ -75,7 +75,9 @@
     {"class_id": "DiagnosisCode", "label": "Diagnosis code", "parent": "FinancialEntity"},
     {"class_id": "ProcedureCode", "label": "Procedure code", "parent": "FinancialEntity"},
     {"class_id": "Charge", "label": "Charge", "parent": "FinancialEntity"},
-    {"class_id": "GroupingResult", "label": "Grouping result", "parent": "FinancialEntity"}
+    {"class_id": "GroupingResult", "label": "Grouping result", "parent": "FinancialEntity"},
+    {"class_id": "PresentOnAdmission", "label": "Present on admission status", "parent": "ClinicalEntity", "value_set": "poa_status"},
+    {"class_id": "DRGSeverityTier", "label": "DRG severity tier", "parent": "FinancialEntity", "value_set": "severity_tier"}
   ],
   "relations": [
     {"relation_id": "hasEncounter", "domain": ["Patient"], "range": ["Encounter"], "requires_evidence": false},
@@ -111,7 +113,9 @@
     {"relation_id": "containsProcedure", "domain": ["Claim"], "range": ["ProcedureCode"], "requires_evidence": false},
     {"relation_id": "containsCharge", "domain": ["Claim"], "range": ["Charge"], "requires_evidence": false},
     {"relation_id": "groupedAs", "domain": ["Claim"], "range": ["GroupingResult"], "requires_evidence": false},
-    {"relation_id": "encodedBy", "domain": ["Wound", "Condition", "Procedure"], "range": ["DiagnosisCode", "ProcedureCode"], "requires_evidence": true}
+    {"relation_id": "encodedBy", "domain": ["Wound", "Condition", "Procedure"], "range": ["DiagnosisCode", "ProcedureCode"], "requires_evidence": true},
+    {"relation_id": "hasPOAStatus", "domain": ["Condition", "Wound"], "range": ["PresentOnAdmission"], "requires_evidence": true},
+    {"relation_id": "hasSeverityTier", "domain": ["Condition", "DiagnosisCode"], "range": ["DRGSeverityTier"], "requires_evidence": true}
   ],
   "value_sets": {
     "assertion_status": ["present", "absent", "uncertain", "historical"],
@@ -119,6 +123,8 @@
     "modality": ["asserted", "possible", "probable", "unlikely", "negated"],
     "pressure_injury_stage": ["1", "2", "3", "4", "unstageable", "deep_tissue_pressure_injury"],
     "exudate_amount": ["none", "scant", "minimal", "moderate", "heavy", "copious"],
-    "urgency": ["none", "routine", "same_day", "urgent", "emergent"]
+    "urgency": ["none", "routine", "same_day", "urgent", "emergent"],
+    "poa_status": ["Y", "N", "U", "W"],
+    "severity_tier": ["mcc", "cc", "none"]
   }
 }

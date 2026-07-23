@@ -1,0 +1,781 @@
+{
+  "ontology_id": "wound-care-encounter-ontology",
+  "version": "1.2.0-draft",
+  "status": "clinical-review-required",
+  "purpose": "Represent patient-specific wound-care evidence, clinical actions, coding artifacts, and claim reconciliation without treating clinical inference as coding authority. Version 1.2 adds a longitudinal SizeMeasurement quantity so dated wound assessments can carry structured dimensions for deterministic temporal analytics.",
+  "sources": [
+    {
+      "source_id": "wound-care-clinical-rules-workbook",
+      "title": "Wound Care Clinical Rules Raw file",
+      "contribution": "46 candidate clinical rules, 55 condition fields, and 19 core relationships"
+    },
+    {
+      "source_id": "khoo-2011-disease-treatment-ontology",
+      "title": "Developing an Ontology for Encoding Disease Treatment Information in Medical Abstracts",
+      "contribution": "Disease, treatment, condition, effect, evidence, quantity, temporality, modality, and saturation methodology"
+    }
+  ],
+  "structural_graph": {
+    "entities": [
+      {
+        "entity_id": "root:patient",
+        "entity_type": "Patient",
+        "label": "Patient",
+        "properties": {}
+      },
+      {
+        "entity_id": "root:encounter",
+        "entity_type": "Encounter",
+        "label": "Encounter",
+        "properties": {}
+      },
+      {
+        "entity_id": "root:claim",
+        "entity_type": "Claim",
+        "label": "Submitted claim",
+        "properties": {}
+      }
+    ],
+    "relations": [
+      {
+        "relation_id": "rel:patient-encounter",
+        "predicate": "hasEncounter",
+        "source_id": "root:patient",
+        "target_id": "root:encounter",
+        "assertion_status": "present",
+        "documentation_status": "explicit",
+        "confidence": 1.0,
+        "evidence_ids": [],
+        "contradicting_evidence_ids": []
+      },
+      {
+        "relation_id": "rel:encounter-claim",
+        "predicate": "hasClaim",
+        "source_id": "root:encounter",
+        "target_id": "root:claim",
+        "assertion_status": "present",
+        "documentation_status": "explicit",
+        "confidence": 1.0,
+        "evidence_ids": [],
+        "contradicting_evidence_ids": []
+      }
+    ]
+  },
+  "classes": [
+    {
+      "class_id": "Entity",
+      "label": "Entity",
+      "abstract": true
+    },
+    {
+      "class_id": "ClinicalEntity",
+      "label": "Clinical entity",
+      "parent": "Entity",
+      "abstract": true
+    },
+    {
+      "class_id": "FinancialEntity",
+      "label": "Financial entity",
+      "parent": "Entity",
+      "abstract": true
+    },
+    {
+      "class_id": "KnowledgeArtifact",
+      "label": "Knowledge artifact",
+      "parent": "Entity",
+      "abstract": true
+    },
+    {
+      "class_id": "Patient",
+      "label": "Patient",
+      "parent": "ClinicalEntity"
+    },
+    {
+      "class_id": "Encounter",
+      "label": "Encounter",
+      "parent": "ClinicalEntity"
+    },
+    {
+      "class_id": "Wound",
+      "label": "Wound",
+      "parent": "ClinicalEntity"
+    },
+    {
+      "class_id": "PressureInjury",
+      "label": "Pressure injury",
+      "parent": "Wound"
+    },
+    {
+      "class_id": "DiabeticFootUlcer",
+      "label": "Diabetic foot ulcer",
+      "parent": "Wound"
+    },
+    {
+      "class_id": "VenousLegUlcer",
+      "label": "Venous leg ulcer",
+      "parent": "Wound"
+    },
+    {
+      "class_id": "ArterialUlcer",
+      "label": "Arterial ulcer",
+      "parent": "Wound"
+    },
+    {
+      "class_id": "MixedEtiologyLegUlcer",
+      "label": "Mixed etiology leg ulcer",
+      "parent": "Wound"
+    },
+    {
+      "class_id": "SurgicalWound",
+      "label": "Surgical wound",
+      "parent": "Wound"
+    },
+    {
+      "class_id": "SkinTear",
+      "label": "Skin tear",
+      "parent": "Wound"
+    },
+    {
+      "class_id": "WoundAssessment",
+      "label": "Wound assessment",
+      "parent": "ClinicalEntity"
+    },
+    {
+      "class_id": "ClinicalFinding",
+      "label": "Clinical finding",
+      "parent": "ClinicalEntity"
+    },
+    {
+      "class_id": "PeriwoundFinding",
+      "label": "Periwound finding",
+      "parent": "ClinicalFinding"
+    },
+    {
+      "class_id": "RiskFactor",
+      "label": "Risk factor",
+      "parent": "ClinicalEntity"
+    },
+    {
+      "class_id": "Condition",
+      "label": "Condition",
+      "parent": "ClinicalEntity"
+    },
+    {
+      "class_id": "PatientCondition",
+      "label": "Patient condition",
+      "parent": "Condition"
+    },
+    {
+      "class_id": "DiseaseCondition",
+      "label": "Disease condition",
+      "parent": "Condition"
+    },
+    {
+      "class_id": "TreatmentCondition",
+      "label": "Treatment condition",
+      "parent": "Condition"
+    },
+    {
+      "class_id": "AnatomicalLocation",
+      "label": "Anatomical location",
+      "parent": "ClinicalEntity"
+    },
+    {
+      "class_id": "WoundEtiology",
+      "label": "Wound etiology",
+      "parent": "ClinicalEntity"
+    },
+    {
+      "class_id": "PressureInjuryStage",
+      "label": "Pressure injury stage",
+      "parent": "ClinicalEntity",
+      "value_set": "pressure_injury_stage"
+    },
+    {
+      "class_id": "ExudateType",
+      "label": "Exudate type",
+      "parent": "ClinicalEntity"
+    },
+    {
+      "class_id": "ExudateAmount",
+      "label": "Exudate amount",
+      "parent": "ClinicalEntity",
+      "value_set": "exudate_amount"
+    },
+    {
+      "class_id": "HealingTrend",
+      "label": "Healing trend",
+      "parent": "ClinicalEntity"
+    },
+    {
+      "class_id": "Quantity",
+      "label": "Quantity",
+      "parent": "ClinicalEntity"
+    },
+    {
+      "class_id": "TemporalQuantity",
+      "label": "Temporal quantity",
+      "parent": "Quantity"
+    },
+    {
+      "class_id": "SizeMeasurement",
+      "label": "Size measurement",
+      "parent": "Quantity"
+    },
+    {
+      "class_id": "Modality",
+      "label": "Modality",
+      "parent": "ClinicalEntity",
+      "value_set": "modality"
+    },
+    {
+      "class_id": "Treatment",
+      "label": "Treatment",
+      "parent": "ClinicalEntity"
+    },
+    {
+      "class_id": "Procedure",
+      "label": "Procedure",
+      "parent": "Treatment"
+    },
+    {
+      "class_id": "Effect",
+      "label": "Effect",
+      "parent": "ClinicalEntity"
+    },
+    {
+      "class_id": "DiseaseEffect",
+      "label": "Disease effect",
+      "parent": "Effect"
+    },
+    {
+      "class_id": "PatientEffect",
+      "label": "Patient effect",
+      "parent": "Effect"
+    },
+    {
+      "class_id": "SideEffect",
+      "label": "Side effect",
+      "parent": "Effect"
+    },
+    {
+      "class_id": "ComparisonEffect",
+      "label": "Comparison effect",
+      "parent": "Effect"
+    },
+    {
+      "class_id": "Evidence",
+      "label": "Evidence",
+      "parent": "ClinicalEntity"
+    },
+    {
+      "class_id": "ClinicalRule",
+      "label": "Clinical rule",
+      "parent": "KnowledgeArtifact"
+    },
+    {
+      "class_id": "ClinicalAlert",
+      "label": "Clinical alert",
+      "parent": "ClinicalEntity"
+    },
+    {
+      "class_id": "RecommendedAction",
+      "label": "Recommended action",
+      "parent": "ClinicalEntity"
+    },
+    {
+      "class_id": "ClinicalRole",
+      "label": "Clinical role",
+      "parent": "ClinicalEntity"
+    },
+    {
+      "class_id": "UrgencyLevel",
+      "label": "Urgency level",
+      "parent": "ClinicalEntity",
+      "value_set": "urgency"
+    },
+    {
+      "class_id": "Claim",
+      "label": "Claim",
+      "parent": "FinancialEntity"
+    },
+    {
+      "class_id": "DiagnosisCode",
+      "label": "Diagnosis code",
+      "parent": "FinancialEntity"
+    },
+    {
+      "class_id": "ProcedureCode",
+      "label": "Procedure code",
+      "parent": "FinancialEntity"
+    },
+    {
+      "class_id": "Charge",
+      "label": "Charge",
+      "parent": "FinancialEntity"
+    },
+    {
+      "class_id": "GroupingResult",
+      "label": "Grouping result",
+      "parent": "FinancialEntity"
+    },
+    {
+      "class_id": "PresentOnAdmission",
+      "label": "Present on admission status",
+      "parent": "ClinicalEntity",
+      "value_set": "poa_status"
+    },
+    {
+      "class_id": "DRGSeverityTier",
+      "label": "DRG severity tier",
+      "parent": "FinancialEntity",
+      "value_set": "severity_tier"
+    }
+  ],
+  "relations": [
+    {
+      "relation_id": "hasEncounter",
+      "domain": [
+        "Patient"
+      ],
+      "range": [
+        "Encounter"
+      ],
+      "requires_evidence": false
+    },
+    {
+      "relation_id": "hasWound",
+      "domain": [
+        "Patient"
+      ],
+      "range": [
+        "Wound"
+      ],
+      "requires_evidence": true
+    },
+    {
+      "relation_id": "associatedWithEncounter",
+      "domain": [
+        "Wound"
+      ],
+      "range": [
+        "Encounter"
+      ],
+      "requires_evidence": false
+    },
+    {
+      "relation_id": "hasAssessment",
+      "domain": [
+        "Wound"
+      ],
+      "range": [
+        "WoundAssessment"
+      ],
+      "requires_evidence": true
+    },
+    {
+      "relation_id": "hasFinding",
+      "domain": [
+        "WoundAssessment"
+      ],
+      "range": [
+        "ClinicalFinding"
+      ],
+      "requires_evidence": true
+    },
+    {
+      "relation_id": "hasRiskFactor",
+      "domain": [
+        "Patient",
+        "Wound"
+      ],
+      "range": [
+        "RiskFactor"
+      ],
+      "requires_evidence": true
+    },
+    {
+      "relation_id": "hasLocation",
+      "domain": [
+        "Wound"
+      ],
+      "range": [
+        "AnatomicalLocation"
+      ],
+      "requires_evidence": true
+    },
+    {
+      "relation_id": "hasEtiology",
+      "domain": [
+        "Wound"
+      ],
+      "range": [
+        "WoundEtiology"
+      ],
+      "requires_evidence": true
+    },
+    {
+      "relation_id": "hasStage",
+      "domain": [
+        "PressureInjury"
+      ],
+      "range": [
+        "PressureInjuryStage"
+      ],
+      "requires_evidence": true
+    },
+    {
+      "relation_id": "hasExudateType",
+      "domain": [
+        "WoundAssessment"
+      ],
+      "range": [
+        "ExudateType"
+      ],
+      "requires_evidence": true
+    },
+    {
+      "relation_id": "hasExudateAmount",
+      "domain": [
+        "WoundAssessment"
+      ],
+      "range": [
+        "ExudateAmount"
+      ],
+      "requires_evidence": true
+    },
+    {
+      "relation_id": "hasPeriwoundFinding",
+      "domain": [
+        "WoundAssessment"
+      ],
+      "range": [
+        "PeriwoundFinding"
+      ],
+      "requires_evidence": true
+    },
+    {
+      "relation_id": "hasSize",
+      "domain": [
+        "WoundAssessment"
+      ],
+      "range": [
+        "SizeMeasurement"
+      ],
+      "requires_evidence": true
+    },
+    {
+      "relation_id": "hasHealingTrend",
+      "domain": [
+        "Wound"
+      ],
+      "range": [
+        "HealingTrend"
+      ],
+      "requires_evidence": true
+    },
+    {
+      "relation_id": "comparedWith",
+      "domain": [
+        "WoundAssessment"
+      ],
+      "range": [
+        "WoundAssessment"
+      ],
+      "requires_evidence": true
+    },
+    {
+      "relation_id": "hasCondition",
+      "domain": [
+        "Patient",
+        "Encounter",
+        "Wound"
+      ],
+      "range": [
+        "Condition"
+      ],
+      "requires_evidence": true
+    },
+    {
+      "relation_id": "hasTreatment",
+      "domain": [
+        "Encounter",
+        "Wound"
+      ],
+      "range": [
+        "Treatment"
+      ],
+      "requires_evidence": true
+    },
+    {
+      "relation_id": "hasEffect",
+      "domain": [
+        "Treatment"
+      ],
+      "range": [
+        "Effect"
+      ],
+      "requires_evidence": true
+    },
+    {
+      "relation_id": "hasEvidence",
+      "domain": [
+        "ClinicalFinding",
+        "Condition",
+        "Effect"
+      ],
+      "range": [
+        "Evidence"
+      ],
+      "requires_evidence": false
+    },
+    {
+      "relation_id": "hasQuantity",
+      "domain": [
+        "ClinicalFinding",
+        "Treatment",
+        "Effect"
+      ],
+      "range": [
+        "Quantity"
+      ],
+      "requires_evidence": true
+    },
+    {
+      "relation_id": "hasModality",
+      "domain": [
+        "ClinicalFinding",
+        "Condition",
+        "Effect"
+      ],
+      "range": [
+        "Modality"
+      ],
+      "requires_evidence": true
+    },
+    {
+      "relation_id": "atTime",
+      "domain": [
+        "WoundAssessment",
+        "ClinicalFinding",
+        "Treatment",
+        "Effect"
+      ],
+      "range": [
+        "TemporalQuantity"
+      ],
+      "requires_evidence": true
+    },
+    {
+      "relation_id": "triggersAlert",
+      "domain": [
+        "ClinicalRule"
+      ],
+      "range": [
+        "ClinicalAlert"
+      ],
+      "requires_evidence": false
+    },
+    {
+      "relation_id": "recommendsAction",
+      "domain": [
+        "ClinicalRule"
+      ],
+      "range": [
+        "RecommendedAction"
+      ],
+      "requires_evidence": false
+    },
+    {
+      "relation_id": "requiresAuthorizationBy",
+      "domain": [
+        "RecommendedAction"
+      ],
+      "range": [
+        "ClinicalRole"
+      ],
+      "requires_evidence": false
+    },
+    {
+      "relation_id": "hasUrgency",
+      "domain": [
+        "ClinicalAlert",
+        "RecommendedAction"
+      ],
+      "range": [
+        "UrgencyLevel"
+      ],
+      "requires_evidence": false
+    },
+    {
+      "relation_id": "contraindicatedBy",
+      "domain": [
+        "RecommendedAction"
+      ],
+      "range": [
+        "ClinicalFinding"
+      ],
+      "requires_evidence": false
+    },
+    {
+      "relation_id": "supportedBy",
+      "domain": [
+        "ClinicalAlert"
+      ],
+      "range": [
+        "ClinicalFinding"
+      ],
+      "requires_evidence": false
+    },
+    {
+      "relation_id": "overrides",
+      "domain": [
+        "ClinicalRule"
+      ],
+      "range": [
+        "ClinicalRule"
+      ],
+      "requires_evidence": false
+    },
+    {
+      "relation_id": "hasClaim",
+      "domain": [
+        "Encounter"
+      ],
+      "range": [
+        "Claim"
+      ],
+      "requires_evidence": false
+    },
+    {
+      "relation_id": "containsDiagnosis",
+      "domain": [
+        "Claim"
+      ],
+      "range": [
+        "DiagnosisCode"
+      ],
+      "requires_evidence": false
+    },
+    {
+      "relation_id": "containsProcedure",
+      "domain": [
+        "Claim"
+      ],
+      "range": [
+        "ProcedureCode"
+      ],
+      "requires_evidence": false
+    },
+    {
+      "relation_id": "containsCharge",
+      "domain": [
+        "Claim"
+      ],
+      "range": [
+        "Charge"
+      ],
+      "requires_evidence": false
+    },
+    {
+      "relation_id": "groupedAs",
+      "domain": [
+        "Claim"
+      ],
+      "range": [
+        "GroupingResult"
+      ],
+      "requires_evidence": false
+    },
+    {
+      "relation_id": "encodedBy",
+      "domain": [
+        "Wound",
+        "Condition",
+        "Procedure"
+      ],
+      "range": [
+        "DiagnosisCode",
+        "ProcedureCode"
+      ],
+      "requires_evidence": true
+    },
+    {
+      "relation_id": "hasPOAStatus",
+      "domain": [
+        "Condition",
+        "Wound"
+      ],
+      "range": [
+        "PresentOnAdmission"
+      ],
+      "requires_evidence": true
+    },
+    {
+      "relation_id": "hasSeverityTier",
+      "domain": [
+        "Condition",
+        "DiagnosisCode"
+      ],
+      "range": [
+        "DRGSeverityTier"
+      ],
+      "requires_evidence": true
+    }
+  ],
+  "value_sets": {
+    "assertion_status": [
+      "present",
+      "absent",
+      "uncertain",
+      "historical"
+    ],
+    "documentation_status": [
+      "explicit",
+      "inferred",
+      "conflicted",
+      "absent"
+    ],
+    "modality": [
+      "asserted",
+      "possible",
+      "probable",
+      "unlikely",
+      "negated"
+    ],
+    "pressure_injury_stage": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "unstageable",
+      "deep_tissue_pressure_injury"
+    ],
+    "exudate_amount": [
+      "none",
+      "scant",
+      "minimal",
+      "moderate",
+      "heavy",
+      "copious"
+    ],
+    "urgency": [
+      "none",
+      "routine",
+      "same_day",
+      "urgent",
+      "emergent"
+    ],
+    "poa_status": [
+      "Y",
+      "N",
+      "U",
+      "W"
+    ],
+    "severity_tier": [
+      "mcc",
+      "cc",
+      "none"
+    ]
+  }
+}

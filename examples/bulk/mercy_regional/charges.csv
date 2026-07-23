@@ -1,0 +1,9 @@
+encounter_id,rev_code,hcpcs,cpt_desc,units,charge_amt_cents,service_date
+ENC-MR-2001,0200,,Intensive care room and board,7,4900000,2026-06-01
+ENC-MR-2001,0450,99283,Emergency department visit,1,180000,2026-06-01
+ENC-MR-2002,0110,,Room and board semiprivate,5,1750000,2026-06-02
+ENC-MR-2003,0110,,Room and board semiprivate,3,1050000,2026-06-03
+ENC-MR-2004,0200,,Intensive care room and board,5,3500000,2026-06-04
+ENC-MR-2005,0110,,Room and board semiprivate,7,2450000,2026-06-05
+ENC-MR-2005,0360,15275,Application of skin substitute,1,320000,2026-06-08
+ENC-MR-2006,0200,,Intensive care room and board,8,5600000,2026-06-06

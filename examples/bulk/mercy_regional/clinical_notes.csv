@@ -1,0 +1,7 @@
+encounter_id,doc_id,doc_type,author_role,auth_dttm,note_text
+ENC-MR-2001,DOC-MR-3001,Consult,physician,2026-06-03 15:20,"Wound care consult. Stage 4 pressure injury of the sacral region with exposed muscle, newly identified on hospital day 3. Not present on admission per admission skin survey."
+ENC-MR-2002,DOC-MR-3002,Progress Note,physician,2026-06-02 18:00,"Stage 3 sacral pressure injury noted on admission exam. Documented as present on admission."
+ENC-MR-2003,DOC-MR-3003,Nursing Note,nurse,2026-06-03 11:00,"Stage 2 pressure injury to the coccyx observed on admission. Barrier cream applied."
+ENC-MR-2004,DOC-MR-3004,History and Physical,physician,2026-06-04 23:10,"Admitted with severe sepsis and acute kidney injury. Skin intact, no pressure injury on full-body survey."
+ENC-MR-2005,DOC-MR-3005,Consult,physician,2026-06-08 10:15,"Stage 4 pressure injury of the right heel with exposed bone, hospital-acquired. Skin substitute applied."
+ENC-MR-2006,DOC-MR-3006,Consult,physician,2026-06-10 08:40,"Unstageable pressure injury of the sacral region with eschar, not present on admission."

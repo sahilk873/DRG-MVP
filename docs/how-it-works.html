@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Encounter Revenue Integrity — How It Works</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600;9..144,900&family=Newsreader:opsz,wght@6..72,300;6..72,400;6..72,500&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#ECE6D6;
+    --paper-2:#F4EFE2;
+    --card:#F8F4EA;
+    --ink:#1B1813;
+    --ink-soft:#5C5749;
+    --ink-faint:#8A8474;
+    --line:#CFC6AF;
+    --line-strong:#B6AB8E;
+    /* semantic trust-boundary palette */
+    --det:#13574A;      /* deterministic / verified */
+    --det-bg:#E0EBE4;
+    --model:#4B3F6B;    /* language model / probabilistic */
+    --model-bg:#E9E4EF;
+    --human:#A9481B;    /* human / fail-closed / caution */
+    --human-bg:#F1E3D6;
+    --shadow:0 1px 0 rgba(0,0,0,.04), 0 18px 40px -28px rgba(27,24,19,.55);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"Newsreader",Georgia,serif;
+    font-size:19px;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    position:relative;
+  }
+  /* paper grain */
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.05;mix-blend-mode:multiply;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  ::selection{background:var(--det);color:var(--paper-2)}
+  a{color:inherit}
+
+  .mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-feature-settings:"ss01"}
+  .tag{
+    font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    padding:3px 9px;border:1px solid var(--line-strong);border-radius:2px;color:var(--ink-soft);white-space:nowrap;
+  }
+  .tag.det{color:var(--det);border-color:var(--det);background:var(--det-bg)}
+  .tag.model{color:var(--model);border-color:var(--model);background:var(--model-bg)}
+  .tag.human{color:var(--human);border-color:var(--human);background:var(--human-bg)}
+
+  /* ---------- layout shell ---------- */
+  .wrap{display:grid;grid-template-columns:255px minmax(0,1fr);max-width:1320px;margin:0 auto}
+  aside{
+    position:sticky;top:0;align-self:start;height:100vh;padding:38px 26px;
+    border-right:1px solid var(--line);display:flex;flex-direction:column;gap:26px;
+  }
+  .brandmark{font-family:"Fraunces",serif;font-weight:900;font-size:23px;line-height:1.05;letter-spacing:-.01em}
+  .brandmark span{display:block;color:var(--det);font-size:12px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;font-family:"IBM Plex Mono",monospace;margin-top:8px}
+  nav{display:flex;flex-direction:column;gap:2px;font-family:"IBM Plex Mono",monospace;font-size:12.5px}
+  nav a{
+    text-decoration:none;color:var(--ink-soft);padding:7px 10px;border-radius:3px;display:flex;gap:11px;align-items:baseline;
+    transition:background .2s,color .2s;
+  }
+  nav a .num{color:var(--ink-faint);font-size:11px}
+  nav a:hover{background:var(--paper-2);color:var(--ink)}
+  nav a.active{background:var(--ink);color:var(--paper-2)}
+  nav a.active .num{color:var(--paper-2);opacity:.6}
+  .aside-foot{margin-top:auto;font-family:"IBM Plex Mono",monospace;font-size:11px;color:var(--ink-faint);line-height:1.7}
+
+  main{padding:0 clamp(24px,5vw,88px) 140px;min-width:0}
+  section{padding:88px 0 20px;border-bottom:1px solid var(--line);scroll-margin-top:20px}
+  section:last-of-type{border-bottom:none}
+  .kicker{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--det);display:flex;gap:14px;align-items:center;margin-bottom:22px}
+  .kicker .idx{color:var(--ink-faint)}
+  .kicker::after{content:"";flex:1;height:1px;background:var(--line)}
+  h1{font-family:"Fraunces",serif;font-weight:400;font-size:clamp(40px,6.4vw,86px);line-height:.98;letter-spacing:-.02em;margin:0}
+  h2{font-family:"Fraunces",serif;font-weight:400;font-size:clamp(30px,4.2vw,48px);line-height:1.02;letter-spacing:-.02em;margin:0 0 22px}
+  h3{font-family:"Fraunces",serif;font-weight:500;font-size:23px;margin:0 0 8px;letter-spacing:-.01em}
+  p{margin:0 0 20px;max-width:64ch;color:#2b271f}
+  .lead{font-size:23px;line-height:1.5;color:var(--ink);max-width:62ch}
+  em{font-style:italic}
+  strong{font-weight:500}
+  .u-det{color:var(--det);font-weight:500}
+  .u-model{color:var(--model);font-weight:500}
+  .u-human{color:var(--human);font-weight:500}
+
+  /* ---------- hero ---------- */
+  .hero{padding-top:min(15vh,150px);border-bottom:1px solid var(--line)}
+  .hero .eyebrow{font-family:"IBM Plex Mono",monospace;font-size:12.5px;letter-spacing:.24em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:34px;display:flex;flex-wrap:wrap;gap:10px 20px}
+  .hero h1{margin-bottom:30px}
+  .hero .sub{font-size:24px;line-height:1.45;max-width:60ch;color:#33302a;margin-bottom:40px}
+  .invariant{
+    border:1px solid var(--det);border-left:5px solid var(--det);background:var(--det-bg);
+    padding:24px 28px;border-radius:4px;max-width:64ch;position:relative;
+  }
+  .invariant .label{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--det);margin-bottom:10px}
+  .invariant p{margin:0;font-size:20px;line-height:1.5;color:#1f2b26}
+
+  .hero-meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:38px}
+
+  /* ---------- reveal ---------- */
+  .reveal{opacity:0;transform:translateY(18px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)}
+  .reveal.in{opacity:1;transform:none}
+
+  /* ---------- pipeline ---------- */
+  .legend{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 34px}
+  .flow{position:relative;margin-left:6px}
+  .flow::before{content:"";position:absolute;left:15px;top:14px;bottom:14px;width:2px;background:linear-gradient(var(--line-strong),var(--line-strong));}
+  .stage{position:relative;padding:0 0 14px 56px;margin-bottom:6px}
+  .stage .dot{
+    position:absolute;left:6px;top:8px;width:20px;height:20px;border-radius:50%;
+    border:2px solid var(--ink);background:var(--paper);z-index:2;transition:transform .25s,background .25s,border-color .25s
+  }
+  .stage[data-owner="det"] .dot{border-color:var(--det)}
+  .stage[data-owner="model"] .dot{border-color:var(--model)}
+  .stage[data-owner="human"] .dot{border-color:var(--human)}
+  .stage[data-owner="input"] .dot{border-color:var(--ink-faint);border-style:dashed}
+  .stage-head{
+    display:flex;align-items:center;gap:14px;cursor:pointer;user-select:none;
+    background:var(--card);border:1px solid var(--line);border-radius:5px;padding:14px 18px;transition:border-color .2s,box-shadow .2s,transform .2s;
+  }
+  .stage-head:hover{border-color:var(--line-strong);box-shadow:var(--shadow);transform:translateX(2px)}
+  .stage.open .stage-head{border-color:var(--ink)}
+  .stage.open .dot{background:var(--ink);transform:scale(1.15)}
+  .stage[data-owner="det"].open .dot{background:var(--det);border-color:var(--det)}
+  .stage[data-owner="model"].open .dot{background:var(--model);border-color:var(--model)}
+  .stage[data-owner="human"].open .dot{background:var(--human);border-color:var(--human)}
+  .stage-n{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-faint);width:26px}
+  .stage-title{font-family:"Fraunces",serif;font-size:21px;font-weight:500;flex:1;letter-spacing:-.01em}
+  .stage-chev{font-family:"IBM Plex Mono",monospace;color:var(--ink-faint);transition:transform .25s}
+  .stage.open .stage-chev{transform:rotate(90deg)}
+  .stage-body{max-height:0;overflow:hidden;transition:max-height .4s ease}
+  .stage-body-inner{padding:16px 18px 6px 4px}
+  .stage-body p{font-size:17px;margin:0 0 10px;color:#3a362d}
+  .stage-body .io{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+
+  /* ---------- trust split ---------- */
+  .split{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:14px}
+  .split .col{border:1px solid var(--line);border-radius:6px;padding:24px;background:var(--card)}
+  .split .col.sees{border-top:4px solid var(--model)}
+  .split .col.never{border-top:4px solid var(--human)}
+  .split h3{display:flex;align-items:center;gap:10px}
+  .split ul{list-style:none;padding:0;margin:6px 0 0}
+  .split li{font-family:"IBM Plex Mono",monospace;font-size:14px;padding:9px 0;border-bottom:1px dashed var(--line);display:flex;gap:10px;align-items:baseline;color:#33302a}
+  .split li:last-child{border-bottom:none}
+  .split li::before{content:"›";color:var(--model);font-weight:600}
+  .split .never li::before{content:"✕";color:var(--human);font-size:12px}
+
+  /* ---------- layer table ---------- */
+  .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--card)}
+  table{border-collapse:collapse;width:100%;min-width:640px;font-size:15px}
+  th,td{text-align:left;padding:13px 18px;border-bottom:1px solid var(--line)}
+  thead th{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);background:var(--paper-2)}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr:hover{background:var(--paper-2)}
+  td.layer{font-weight:500;font-family:"Newsreader",serif}
+  .pill{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.04em;padding:3px 9px;border-radius:20px;white-space:nowrap;display:inline-block}
+  .pill.yes{background:var(--model-bg);color:var(--model)}
+  .pill.draft{background:var(--model-bg);color:var(--model);opacity:.85}
+  .pill.no{background:var(--det-bg);color:var(--det)}
+  .pill.sim{background:var(--human-bg);color:var(--human)}
+
+  /* ---------- gates (fail-closed steps) ---------- */
+  .gates{counter-reset:g;display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;margin-top:10px}
+  .gate{position:relative;border:1px solid var(--line);border-left:4px solid var(--det);border-radius:5px;padding:18px 18px 18px 20px;background:var(--card)}
+  .gate::before{counter-increment:g;content:counter(g,decimal-leading-zero);position:absolute;top:12px;right:14px;font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-faint)}
+  .gate p{font-size:15px;margin:0;color:#33302a;line-height:1.45}
+  .failclosed{margin-top:22px;font-family:"IBM Plex Mono",monospace;font-size:13.5px;color:var(--human);border:1px dashed var(--human);background:var(--human-bg);padding:14px 18px;border-radius:5px}
+
+  /* ---------- worked example ---------- */
+  .packet{border:1px solid var(--ink);border-radius:8px;background:var(--card);overflow:hidden;box-shadow:var(--shadow);max-width:none}
+  .packet-top{background:var(--ink);color:var(--paper-2);padding:16px 22px;display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;align-items:center}
+  .packet-top .t{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.14em;text-transform:uppercase}
+  .packet-top .v{font-family:"IBM Plex Mono",monospace;font-size:11px;opacity:.7}
+  .packet-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}
+  .pcell{padding:20px 22px;border-bottom:1px solid var(--line);border-right:1px solid var(--line)}
+  .pcell:nth-child(even){border-right:none}
+  .pcell .k{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:7px}
+  .pcell .val{font-size:17px;color:#2b271f;line-height:1.4}
+  .drgshift{display:flex;align-items:center;gap:14px;font-family:"IBM Plex Mono",monospace}
+  .drgshift .from{color:var(--ink-soft);text-decoration:line-through}
+  .drgshift .arrow{color:var(--det)}
+  .drgshift .to{color:var(--det);font-weight:600;font-size:19px}
+  .delta{font-family:"Fraunces",serif;font-size:30px;color:var(--det);font-weight:500}
+  .excerpt{font-style:italic;border-left:3px solid var(--model);padding-left:14px;color:#3a362d;font-size:16px}
+  .packet-foot{padding:16px 22px;background:var(--paper-2);font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-soft);display:flex;flex-wrap:wrap;gap:8px 20px;align-items:center}
+
+  /* ---------- automation tiers ---------- */
+  .tiers{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+  .tier{display:grid;grid-template-columns:190px 1fr;gap:18px;align-items:center;border:1px solid var(--line);border-radius:5px;padding:14px 18px;background:var(--card);transition:transform .2s,border-color .2s}
+  .tier:hover{transform:translateX(3px);border-color:var(--line-strong)}
+  .tier .name{font-family:"IBM Plex Mono",monospace;font-size:13px;letter-spacing:.04em;display:flex;align-items:center;gap:10px}
+  .tier .name::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--ink-faint);flex:none}
+  .tier .desc{font-size:15.5px;color:#33302a}
+  .tier[data-k="auto"] .name::before,.tier[data-k="suppress"] .name::before,.tier[data-k="enrich"] .name::before{background:var(--det)}
+  .tier[data-k="confirm"] .name::before,.tier[data-k="review"] .name::before{background:var(--human)}
+  .tier[data-k="escalate"] .name::before{background:var(--human);box-shadow:0 0 0 3px var(--human-bg)}
+
+  /* ---------- capabilities ---------- */
+  .caps{columns:2;column-gap:40px;margin-top:6px}
+  .caps .cap{break-inside:avoid;padding:11px 0;border-bottom:1px solid var(--line);font-size:16px;display:flex;gap:12px;align-items:baseline;color:#2f2b23}
+  .caps .cap .mk{font-family:"IBM Plex Mono",monospace;color:var(--det);font-size:12px;flex:none}
+
+  /* ---------- callout / not-for ---------- */
+  .notfor{border:1px solid var(--human);border-radius:6px;background:var(--human-bg);padding:26px 30px;max-width:70ch}
+  .notfor h3{color:var(--human)}
+  .notfor p{color:#4a3222;margin-bottom:0}
+
+  .cmd{font-family:"IBM Plex Mono",monospace;font-size:14px;background:var(--ink);color:#e9e2cf;padding:16px 20px;border-radius:6px;overflow-x:auto;line-height:1.7;margin:8px 0 0}
+  .cmd .c{color:#8ab4a6}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+
+  footer{padding:60px clamp(24px,5vw,88px);font-family:"IBM Plex Mono",monospace;font-size:12.5px;color:var(--ink-faint);line-height:1.8;max-width:1320px;margin:0 auto}
+
+  @media (max-width:960px){
+    .wrap{grid-template-columns:1fr}
+    aside{position:static;height:auto;border-right:none;border-bottom:1px solid var(--line);flex-direction:row;flex-wrap:wrap;align-items:center;gap:14px 22px}
+    aside nav{flex-direction:row;flex-wrap:wrap}
+    .aside-foot{display:none}
+    .split,.grid2,.packet-grid{grid-template-columns:1fr}
+    .caps{columns:1}
+    .tier{grid-template-columns:1fr;gap:6px}
+    .pcell{border-right:none}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <!-- ============ SIDE RAIL ============ -->
+  <aside>
+    <div class="brandmark">Encounter<br>Revenue Integrity<span>Deterministic Reconciliation Engine</span></div>
+    <nav id="nav">
+      <a href="#overview"><span class="num">00</span> Overview</a>
+      <a href="#invariant"><span class="num">01</span> The core invariant</a>
+      <a href="#pipeline"><span class="num">02</span> End-to-end flow</a>
+      <a href="#boundary"><span class="num">03</span> What the model sees</a>
+      <a href="#layers"><span class="num">04</span> Layer responsibilities</a>
+      <a href="#gates"><span class="num">05</span> The fail-closed gate</a>
+      <a href="#example"><span class="num">06</span> A worked case</a>
+      <a href="#automation"><span class="num">07</span> Exception automation</a>
+      <a href="#capabilities"><span class="num">08</span> What it can do</a>
+      <a href="#run"><span class="num">09</span> Running it</a>
+    </nav>
+    <div class="aside-foot">
+      engine v0.7.0<br>
+      case-schema 2.0.0<br>
+      review-packet 3.0.0<br>
+      automation-plan 1.0.0<br>
+      <br>Apache-2.0 · synthetic data
+    </div>
+  </aside>
+
+  <main>
+    <!-- ============ HERO ============ -->
+    <section id="overview" class="hero">
+      <div class="eyebrow reveal">
+        <span>Clinical Coding &amp; Billing</span><span>·</span><span>Python engine + Mastra agent + React demo</span>
+      </div>
+      <h1 class="reveal">Evidence in.<br>Governed decisions out.<br>Nothing in between guesses.</h1>
+      <p class="sub reveal">A reference system that reconstructs an inpatient encounter, compares what was <em>documented</em> against what was <em>coded and billed</em>, and routes only the consequential exceptions to a human — while a language model is kept strictly on the outside of every authoritative decision.</p>
+
+      <div class="invariant reveal">
+        <div class="label">Core invariant</div>
+        <p>No language-model output can execute code, create or change a claim, assign a DRG, calculate reimbursement, or bypass required review. The model emits <strong>evidence and hypotheses</strong>; deterministic software decides everything else.</p>
+      </div>
+
+      <div class="hero-meta reveal">
+        <span class="tag det">Deterministic engine</span>
+        <span class="tag model">Language model (bounded)</span>
+        <span class="tag human">Human review</span>
+      </div>
+    </section>
+
+    <!-- ============ 01 INVARIANT ============ -->
+    <section id="invariant">
+      <div class="kicker reveal"><span class="idx">01 / 09</span> Why this is built the way it is</div>
+      <h2 class="reveal">Clinical text wants a model.<br>Money wants a machine.</h2>
+      <div class="grid2">
+        <div class="reveal">
+          <p>Reading a messy clinical note — inferring that a wound is a <span class="mono">stage-4 pressure injury</span> — is exactly what a language model is good at. Deciding a DRG, simulating a payment, or altering a claim is exactly what a model must <em>never</em> do unsupervised.</p>
+          <p>So the two jobs are physically separated. The <span class="u-model">Mastra agent</span> only produces schema-constrained evidence excerpts and hypotheses. The <span class="u-det">Python engine</span> stays reproducible and model-independent: same input, same output, forever auditable.</p>
+        </div>
+        <div class="reveal">
+          <p>The model is <strong>provider-agnostic</strong> — selected by a single <span class="mono">provider/model</span> string (<span class="mono">MODEL_ID</span>). The application imports no vendor SDK. Swapping the model changes the extraction quality and <em>nothing else</em>: not the ontology, not the rules, not the numbers.</p>
+          <p>Every production assertion also records the model, prompt, extraction policy, and terminology versions — so any accepted result can be reproduced under the exact boundary that produced it.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 02 PIPELINE ============ -->
+    <section id="pipeline">
+      <div class="kicker reveal"><span class="idx">02 / 09</span> The end-to-end flow</div>
+      <h2 class="reveal">From a provider's raw export to a governed human decision</h2>
+      <p class="reveal">Ten stages. Click any stage to see what happens and who is allowed to touch it. Notice how the language model appears exactly <strong>once</strong> in the authoritative path — and never near the claim.</p>
+
+      <div class="legend reveal">
+        <span class="tag" style="border-style:dashed">Input</span>
+        <span class="tag det">Deterministic</span>
+        <span class="tag model">Language model</span>
+        <span class="tag human">Human</span>
+      </div>
+
+      <div class="flow reveal" id="flow">
+        <!-- stages injected by JS -->
+      </div>
+    </section>
+
+    <!-- ============ 03 TRUST BOUNDARY ============ -->
+    <section id="boundary">
+      <div class="kicker reveal"><span class="idx">03 / 09</span> The trust boundary, concretely</div>
+      <h2 class="reveal">What the model is handed — and what it is never allowed near</h2>
+      <p class="reveal">During evidence extraction, the agent receives encounter timing, an ontology contract, and the source documents. It returns excerpts, a patient-specific ontology fragment, and clinical assertions. It is structurally blind to the claim.</p>
+      <div class="split reveal">
+        <div class="col sees">
+          <h3><span class="tag model">In</span> What the model receives &amp; returns</h3>
+          <ul>
+            <li>Encounter timing window</li>
+            <li>Ontology contract (classes, relations, digest)</li>
+            <li>Source documents (notes, narrative text)</li>
+            <li>A bounded profile — for adapter design only</li>
+            <li>→ returns exact evidence excerpts</li>
+            <li>→ returns a patient ontology fragment</li>
+            <li>→ returns clinical assertions + confidence</li>
+          </ul>
+        </div>
+        <div class="col never">
+          <h3><span class="tag human">Never</span> What the model cannot see or emit</h3>
+          <ul>
+            <li>The claim, charges, or existing DRG</li>
+            <li>Any payment or reimbursement field</li>
+            <li>Executable rules or generated code</li>
+            <li>Source locators / provenance (attached by software)</li>
+            <li>Authoritative financial fields</li>
+            <li>Structural patient / encounter / claim nodes</li>
+            <li>Any path that mutates or submits a claim</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 04 LAYER TABLE ============ -->
+    <section id="layers">
+      <div class="kicker reveal"><span class="idx">04 / 09</span> Responsibility split</div>
+      <h2 class="reveal">Who may use a model — and who is allowed to be authoritative</h2>
+      <p class="reveal">Read this table as the system's constitution. A model may <em>draft</em> and <em>extract</em>; only deterministic, licensed, or human components produce anything binding.</p>
+      <div class="tablewrap reveal">
+        <table>
+          <thead>
+            <tr><th>Layer</th><th>Implementation</th><th>May use an LLM?</th><th>Authoritative result?</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="layer">Source discovery</td><td>Bounded profiler + adapter designer</td><td><span class="pill draft">Draft mapping only</span></td><td><span class="pill no">No</span></td></tr>
+            <tr><td class="layer">Source ingestion</td><td>Approved declarative adapters</td><td><span class="pill no">No</span></td><td><span class="pill no">No</span></td></tr>
+            <tr><td class="layer">Semantic extraction</td><td>Mastra agents · documents only</td><td><span class="pill yes">Yes</span></td><td><span class="pill no">No</span></td></tr>
+            <tr><td class="layer">Ontology validation</td><td>Versioned class/relation defs</td><td><span class="pill no">No</span></td><td><span class="pill no">No</span></td></tr>
+            <tr><td class="layer">Evidence validation</td><td>Zod + Python domain checks</td><td><span class="pill no">No</span></td><td><span class="pill no">No</span></td></tr>
+            <tr><td class="layer">Reconciliation</td><td>Versioned declarative rules</td><td><span class="pill no">No</span></td><td><span class="pill sim">Candidate only</span></td></tr>
+            <tr><td class="layer">Grouping &amp; pricing</td><td>Licensed grouper/pricer adapter</td><td><span class="pill no">No</span></td><td><span class="pill sim">Simulation</span></td></tr>
+            <tr><td class="layer">Review-packet assembly</td><td>Deterministic projection</td><td><span class="pill no">No</span></td><td><span class="pill sim">Candidate only</span></td></tr>
+            <tr><td class="layer">Exception automation</td><td>Deterministic policy + outbox</td><td><span class="pill no">No</span></td><td><span class="pill sim">Route only</span></td></tr>
+            <tr><td class="layer">Compliance criticism</td><td>Mastra agent + deterministic checks</td><td><span class="pill yes">Yes</span></td><td><span class="pill no">No</span></td></tr>
+            <tr><td class="layer">Final disposition</td><td>Threshold policy + reviewer</td><td><span class="pill no">No</span></td><td><span class="pill sim">Institution-defined</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ 05 GATES ============ -->
+    <section id="gates">
+      <div class="kicker reveal"><span class="idx">05 / 09</span> The fail-closed gate</div>
+      <h2 class="reveal">Eight checks stand between the model and the engine</h2>
+      <p class="reveal">When the agent returns, the orchestrator does not trust a single field. It verifies grounding, merges immutable data outside the model, and runs an independent Python validator before anything is evaluated.</p>
+      <div class="gates reveal">
+        <div class="gate"><p>Validate the source bundle.</p></div>
+        <div class="gate"><p>Verify every excerpt is an <em>exact</em> literal substring of its source.</p></div>
+        <div class="gate"><p>Verify document ID, author role, and timestamp are unchanged.</p></div>
+        <div class="gate"><p>Validate entity types, relation domain/range, evidence requirements, lineage, and contradictions.</p></div>
+        <div class="gate"><p>Attach structural patient, encounter, and claim nodes — <em>outside</em> the model.</p></div>
+        <div class="gate"><p>Attach model and schema provenance — <em>outside</em> the model.</p></div>
+        <div class="gate"><p>Merge immutable encounter and claim fields.</p></div>
+        <div class="gate"><p>Pass the completed case through an independent Python validator.</p></div>
+      </div>
+      <div class="failclosed reveal">FAIL-CLOSED → invalid confidence · unknown fields · duplicate IDs · naive timestamps · dangling citations · overlapping supporting/contradicting evidence · schema-version mismatch — all reject the payload. Any proposed claim change requires human review.</div>
+    </section>
+
+    <!-- ============ 06 WORKED EXAMPLE ============ -->
+    <section id="example">
+      <div class="kicker reveal"><span class="idx">06 / 09</span> A worked case</div>
+      <h2 class="reveal">One encounter, start to finish</h2>
+      <p class="reveal">The deterministic demo runs a synthetic pressure-injury encounter. A note documents a stage-4 pressure injury that the coded claim does not fully reflect. Here is the governed packet the engine produces — it creates a finding, links exact evidence, proposes a code change, and simulates a regrouping. It <strong>never</strong> modifies or submits the claim.</p>
+
+      <div class="packet reveal">
+        <div class="packet-top">
+          <span class="t">Review Packet · Finding</span>
+          <span class="v">schema 3.0.0 · env: synthetic · claim_mutation_allowed: false</span>
+        </div>
+        <div class="packet-grid">
+          <div class="pcell">
+            <div class="k">Opportunity category</div>
+            <div class="val">Coding specificity → DRG discrepancy</div>
+          </div>
+          <div class="pcell">
+            <div class="k">Disposition</div>
+            <div class="val">Coding review</div>
+          </div>
+          <div class="pcell" style="grid-column:1/-1;border-right:none">
+            <div class="k">Supporting evidence · exact excerpt</div>
+            <div class="val excerpt">“…full-thickness tissue loss with exposed muscle at the sacrum, consistent with a stage 4 pressure injury…”</div>
+          </div>
+          <div class="pcell">
+            <div class="k">Proposed change (candidate)</div>
+            <div class="val mono" style="color:var(--det)">+ add_diagnoses: L89.-- (stage 4)</div>
+          </div>
+          <div class="pcell">
+            <div class="k">Demo regrouping</div>
+            <div class="val drgshift"><span class="from">DEMO-292</span><span class="arrow">→</span><span class="to">DEMO-290</span></div>
+          </div>
+          <div class="pcell">
+            <div class="k">Payment delta · integer-cent simulation</div>
+            <div class="val"><span class="delta">+ synthetic Δ</span><br><span class="mono" style="font-size:12px;color:var(--ink-faint)">grouper demo-0.2-not-for-billing</span></div>
+          </div>
+          <div class="pcell">
+            <div class="k">Decision required</div>
+            <div class="val"><span class="tag human">Human confirmation</span></div>
+          </div>
+        </div>
+        <div class="packet-foot">
+          <span>deterministic finding ID</span><span>·</span><span>hash-chained audit record</span><span>·</span><span>immutable claim snapshot</span>
+        </div>
+      </div>
+
+      <p class="reveal" style="margin-top:26px">Everything a reviewer sees is a <em>candidate</em> traceable to an exact source substring and a versioned rule package. The claim snapshot is immutable; acting on the packet is a separate, authenticated workflow that emits its own audit events.</p>
+    </section>
+
+    <!-- ============ 07 AUTOMATION ============ -->
+    <section id="automation">
+      <div class="kicker reveal"><span class="idx">07 / 09</span> Exception automation</div>
+      <h2 class="reveal">People decide only what is worth deciding</h2>
+      <p class="reveal">A separately hashed automation plan binds the exact packet and assigns each finding a tier. Duplicates and disproven hypotheses never reach a human; genuine, ambiguous, or compliance-sensitive exceptions do.</p>
+      <div class="tiers reveal">
+        <div class="tier" data-k="suppress"><div class="name">suppressed</div><div class="desc">Exact duplicate or no supported opportunity — cleared automatically, no human touch.</div></div>
+        <div class="tier" data-k="enrich"><div class="name">needs_enrichment</div><div class="desc">Evidence is insufficient — the system requests more before anyone reviews.</div></div>
+        <div class="tier" data-k="auto"><div class="name">auto_routed</div><div class="desc">Bounded operational work is queued via an idempotent outbox that cannot mutate claims.</div></div>
+        <div class="tier" data-k="confirm"><div class="name">quick_confirm</div><div class="desc">A person makes a fast, low-ambiguity confirmation.</div></div>
+        <div class="tier" data-k="review"><div class="name">focused_review</div><div class="desc">A true exception — material, ambiguous, or institutionally controlled — gets a full packet.</div></div>
+        <div class="tier" data-k="escalate"><div class="name">escalated</div><div class="desc">Conflict or compliance sensitivity raises priority rather than authorizing a code.</div></div>
+      </div>
+      <p class="reveal" style="margin-top:22px">Routing targets are ordinary work queues — <span class="mono">coding · cdi · charge · compliance</span>. Agent disagreement is treated as <em>supporting evidence that increases escalation priority</em>, never as consensus truth.</p>
+    </section>
+
+    <!-- ============ 08 CAPABILITIES ============ -->
+    <section id="capabilities">
+      <div class="kicker reveal"><span class="idx">08 / 09</span> What it can do today</div>
+      <h2 class="reveal">Current capabilities</h2>
+      <div class="caps reveal">
+        <div class="cap"><span class="mk">01</span> Canonical source-bundle &amp; encounter-case JSON Schemas</div>
+        <div class="cap"><span class="mk">02</span> Bounded CSV/JSON/JSONL/XLSX bulk profiling with schema-drift fingerprints</div>
+        <div class="cap"><span class="mk">03</span> Versioned declarative adapters: row filters, composite keys, safe transforms</div>
+        <div class="cap"><span class="mk">04</span> Mastra adapter designer with bounded repair — no code-generation path</div>
+        <div class="cap"><span class="mk">05</span> Row-level provenance linking facts to files, records, and fields</div>
+        <div class="cap"><span class="mk">06</span> Data-driven ontology with inheritance &amp; relation domain/range validation</div>
+        <div class="cap"><span class="mk">07</span> Cross-runtime ontology digests that reject unversioned drift</div>
+        <div class="cap"><span class="mk">08</span> Patient graphs linking assertions to typed subjects and exact evidence</div>
+        <div class="cap"><span class="mk">09</span> Exact-excerpt grounding against immutable source documents</div>
+        <div class="cap"><span class="mk">10</span> Supporting &amp; contradicting evidence lineage</div>
+        <div class="cap"><span class="mk">11</span> Strict declarative JSON rules — no generated-code execution</div>
+        <div class="cap"><span class="mk">12</span> Ontology-scoped rule targeting with explicit subtype semantics</div>
+        <div class="cap"><span class="mk">13</span> Fail-closed package approval and action validation</div>
+        <div class="cap"><span class="mk">14</span> Replaceable licensed DRG grouper / pricer interface</div>
+        <div class="cap"><span class="mk">15</span> Integer-cent payment simulation</div>
+        <div class="cap"><span class="mk">16</span> Deterministic finding IDs and hash-chained audit records</div>
+        <div class="cap"><span class="mk">17</span> Versioned, tenant-scoped human-review packets</div>
+        <div class="cap"><span class="mk">18</span> Deterministic exception orchestration with duplicate consolidation</div>
+        <div class="cap"><span class="mk">19</span> Idempotent auto-routing outbox that cannot mutate claims</div>
+        <div class="cap"><span class="mk">20</span> One-click, policy-bound reviewer actions with structured feedback</div>
+      </div>
+    </section>
+
+    <!-- ============ 09 RUN ============ -->
+    <section id="run">
+      <div class="kicker reveal"><span class="idx">09 / 09</span> Running it yourself</div>
+      <h2 class="reveal">Three toolchains, one gate</h2>
+      <div class="grid2">
+        <div class="reveal">
+          <h3>The deterministic demo</h3>
+          <p style="font-size:16px">No model credential needed. Builds a finding, evidence, a proposed change, a demo regrouping and payment delta — without touching a claim.</p>
+          <div class="cmd"><span class="c"># full local gate: tests + typecheck + demo</span><br>make verify<br>make demo</div>
+        </div>
+        <div class="reveal">
+          <h3>The model layer</h3>
+          <p style="font-size:16px">Provider-agnostic. Change the model with an env var; the ontology and engine are untouched.</p>
+          <div class="cmd"><span class="c"># pick any Mastra-supported provider/model</span><br>MODEL_ID=anthropic/&lt;model&gt; \<br>&nbsp;&nbsp;npm run extract -- bundle.json out.json ontology.json</div>
+        </div>
+      </div>
+      <div class="reveal" style="margin-top:26px">
+        <h3>Bulk onboarding</h3>
+        <p style="font-size:16px">Profile a provider folder, then run an <em>approved</em> deterministic adapter over the full dataset. Only the bounded profile ever reaches the adapter-designer agent.</p>
+        <div class="cmd">revenue-integrity-ingest profile examples/bulk/clinic_alpha --output profile.json<br>revenue-integrity-ingest run examples/bulk/clinic_alpha adapter.json --output-directory bundles/</div>
+      </div>
+
+      <div class="notfor reveal" style="margin-top:38px">
+        <h3>What this is not</h3>
+        <p>Not for production billing or clinical use. Every rule, code, price, patient, facility, and the demo grouper is <strong>synthetic and unvalidated</strong>. Real deployment still requires licensed terminology and grouping components, FHIR/HL7 and claim adapters, institution-approved rules, representative validation data, model evaluations, a reviewer application, and the documented security controls.</p>
+      </div>
+    </section>
+  </main>
+</div>
+
+<footer>
+  Encounter Revenue Integrity · evidence-grounded, deterministic encounter reconciliation · Apache-2.0<br>
+  This page is an explainer generated from the repository README, docs/ARCHITECTURE.md, and the source modules. All figures shown are synthetic or illustrative.
+</footer>
+
+<script>
+  /* ---------- pipeline data ---------- */
+  const STAGES = [
+    {owner:"input", t:"Provider bulk export", d:"A provider's raw, variable data lands — CSVs, JSON, spreadsheets, free-text notes. Nothing is trusted yet.", io:[["in","raw files"]]},
+    {owner:"det", t:"Approved deterministic adapter", d:"A versioned, fingerprint-checked declarative adapter reads the full dataset. Readers and safe transforms only — no generated code runs here.", io:[["det","readers + transforms"],["det","row provenance"]]},
+    {owner:"det", t:"Source bundle + structured fragment", d:"Output is a canonical source bundle plus a structured fragment, each fact carrying a source locator: adapter, resource, row, record ID, and fields.", io:[["det","canonical bundle"]]},
+    {owner:"model", t:"Mastra note extraction", d:"The language model reads the narrative documents and proposes evidence excerpts, a patient ontology fragment, and clinical assertions with confidence. It cannot see the claim.", io:[["model","excerpts + assertions"]]},
+    {owner:"det", t:"Ontology & evidence gate", d:"Every excerpt is checked as an exact substring; entity types, relation domain/range, lineage, and contradictions are validated. Provenance and structural nodes are attached outside the model.", io:[["det","exact-substring check"],["det","fail-closed"]]},
+    {owner:"det", t:"Rules & grouper boundary", d:"Versioned declarative rules evaluate the validated case and emit candidate findings. A licensed grouper/pricer boundary simulates DRG and payment in integer cents.", io:[["det","candidate findings"],["det","grouping simulation"]]},
+    {owner:"det", t:"Integrity-bound review packet", d:"A versioned, tenant-scoped packet bundles the exact evidence graph, immutable claim snapshot, findings, component versions, and audit hashes. claim_mutation_allowed = false.", io:[["det","review packet 3.0.0"]]},
+    {owner:"det", t:"Deterministic exception policy", d:"A separately hashed automation plan classifies each finding — suppress, enrich, auto-route, confirm, review, or escalate.", io:[["det","automation plan 1.0.0"]]},
+    {owner:"det", t:"Auto-route · enrich · consolidate · review", d:"Duplicates consolidate, disproven hypotheses drop, safe operational work routes via an idempotent outbox that cannot mutate claims.", io:[["det","routing outbox"]]},
+    {owner:"human", t:"Minimal governed human decision", d:"A reviewer receives a completed packet only when an action is material, ambiguous, or compliance-sensitive — and acts through a separate authenticated, audited workflow.", io:[["human","confirm / query / escalate"]]},
+  ];
+  const ownerTag = {det:"det",model:"model",human:"human",input:""};
+  const ownerLabel = {det:"Deterministic",model:"Language model",human:"Human",input:"Input"};
+  const flow = document.getElementById("flow");
+  STAGES.forEach((s,i)=>{
+    const el=document.createElement("div");
+    el.className="stage";el.dataset.owner=s.owner;
+    const io=s.io.map(([o,txt])=>`<span class="tag ${ownerTag[o]}">${txt}</span>`).join("");
+    el.innerHTML=`
+      <span class="dot"></span>
+      <div class="stage-head">
+        <span class="stage-n">${String(i).padStart(2,"0")}</span>
+        <span class="stage-title">${s.t}</span>
+        <span class="tag ${ownerTag[s.owner]}">${ownerLabel[s.owner]}</span>
+        <span class="stage-chev">▸</span>
+      </div>
+      <div class="stage-body"><div class="stage-body-inner">
+        <p>${s.d}</p><div class="io">${io}</div>
+      </div></div>`;
+    flow.appendChild(el);
+  });
+  flow.addEventListener("click",e=>{
+    const head=e.target.closest(".stage-head");if(!head)return;
+    const stage=head.parentElement;const body=stage.querySelector(".stage-body");
+    const open=stage.classList.toggle("open");
+    body.style.maxHeight=open?(body.firstElementChild.scrollHeight+24)+"px":0;
+  });
+
+  /* ---------- scroll reveal ---------- */
+  const io=new IntersectionObserver((es)=>{
+    es.forEach(e=>{if(e.isIntersecting){e.target.classList.add("in");io.unobserve(e.target)}});
+  },{threshold:.12,rootMargin:"0px 0px -8% 0px"});
+  document.querySelectorAll(".reveal").forEach((el,i)=>{
+    el.style.transitionDelay=Math.min(i%6*60,300)+"ms";io.observe(el);
+  });
+
+  /* ---------- scroll spy ---------- */
+  const links=[...document.querySelectorAll("#nav a")];
+  const map=new Map(links.map(a=>[a.getAttribute("href").slice(1),a]));
+  const spy=new IntersectionObserver((es)=>{
+    es.forEach(e=>{
+      if(e.isIntersecting){
+        links.forEach(a=>a.classList.remove("active"));
+        map.get(e.target.id)?.classList.add("active");
+      }
+    });
+  },{rootMargin:"-45% 0px -50% 0px"});
+  document.querySelectorAll("section[id]").forEach(s=>spy.observe(s));
+</script>
+</body>
+</html>

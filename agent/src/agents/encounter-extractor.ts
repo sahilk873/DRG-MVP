@@ -14,10 +14,12 @@ import {
 import {
   DEFAULT_ONTOLOGY_DEFINITION,
   mergeWithStructuralGraph,
+  ontologyDigest,
   ontologyPromptContract,
   validateOntologyDefinition,
   validateOntologyGraph,
 } from '../ontology.ts'
+import { projectOntologyContract, selectOntologySubgraph } from '../ontology-subgraph.ts'
 import {
   policyAuditRecord,
   policyPromptContract,
@@ -77,6 +79,7 @@ export async function extractEncounterCase(
     now?: () => Date
     ontologyDefinition?: unknown
     extractionPolicy?: Partial<ExtractionPolicy>
+    ontologyScope?: 'full' | 'documents'
   } = {},
 ): Promise<EncounterCase> {
   const extractionPolicy = resolveExtractionPolicy(options.extractionPolicy)
@@ -88,12 +91,25 @@ export async function extractEncounterCase(
   validateOntologyDefinition(ontologyDefinition)
   const modelId = options.modelId ?? resolveModelId()
   const agent = options.agent ?? createEncounterExtractionAgent(modelId)
+  // Token-efficiency: when opted in, send only the ontology slice relevant to the documents
+  // instead of the full contract. This is a prompt hint only — validateOntologyGraph below
+  // still validates against the full definition, so retrieval can never widen what validates.
+  const ontologyContract = options.ontologyScope === 'documents'
+    ? projectOntologyContract(
+        ontologyDefinition,
+        selectOntologySubgraph(
+          ontologyDefinition,
+          sourceBundle.documents.map(document => document.text),
+        ),
+        ontologyDigest(ontologyDefinition),
+      )
+    : ontologyPromptContract(ontologyDefinition)
   const agentInput = {
     encounter: {
       admitted_at: sourceBundle.admitted_at,
       discharged_at: sourceBundle.discharged_at,
     },
-    ontology_contract: ontologyPromptContract(ontologyDefinition),
+    ontology_contract: ontologyContract,
     operational_limits: policyPromptContract(extractionPolicy),
     documents: sourceBundle.documents,
   }

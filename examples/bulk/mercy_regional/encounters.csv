@@ -1,0 +1,7 @@
+case_id,mrn,encounter_id,admit_dttm,disch_dttm,facility,patient_class,admit_source,disch_disposition,primary_payer
+CASE-MR-2001,MRN-88213,ENC-MR-2001,2026-06-01 07:45,2026-06-08 14:10,Mercy Regional Medical Center,Inpatient,Emergency Room,Home or Self Care,Medicare
+CASE-MR-2002,MRN-88240,ENC-MR-2002,2026-06-02 12:30,2026-06-07 10:05,Mercy Regional Medical Center,Inpatient,Physician Referral,Skilled Nursing Facility,Medicare
+CASE-MR-2003,MRN-88301,ENC-MR-2003,2026-06-03 09:15,2026-06-06 16:40,Mercy Regional Medical Center,Inpatient,Emergency Room,Home or Self Care,Commercial
+CASE-MR-2004,MRN-88355,ENC-MR-2004,2026-06-04 22:05,2026-06-09 11:20,Mercy Regional Medical Center,Inpatient,Emergency Room,Home Health Service,Medicaid
+CASE-MR-2005,MRN-88402,ENC-MR-2005,2026-06-05 06:50,2026-06-12 13:30,Mercy Regional Medical Center,Inpatient,Transfer from Hospital,Home or Self Care,Medicare
+CASE-MR-2006,MRN-88477,ENC-MR-2006,2026-06-06 18:25,2026-06-14 09:00,Mercy Regional Medical Center,Inpatient,Emergency Room,Expired,Medicare

@@ -1,0 +1,56 @@
+{
+  "package_id": "sepsis-revenue-integrity",
+  "version": "1.0.0-demo",
+  "rule_domain": "revenue_integrity",
+  "ontology": {
+    "ontology_id": "sepsis-encounter-ontology",
+    "version": "1.0.0-draft",
+    "digest": "8e4f774cbf47f3fff9c680672b07a251091b94ae8b666553cde51b4ef6df0617"
+  },
+  "status": "approved-for-demo",
+  "effective_from": "2026-01-01",
+  "rules": [
+    {
+      "rule_id": "SEP-SOI-ROM-001",
+      "title": "Documented severe sepsis with major/extreme SOI-ROM absent from claim",
+      "applies_to": {"subject_types": ["SepsisCondition"], "include_subtypes": true},
+      "when": {
+        "all": [
+          {"field": "concept", "op": "eq", "value": "severe_sepsis"},
+          {"field": "status", "op": "eq", "value": "present"},
+          {"field": "documentation_status", "op": "eq", "value": "explicit"},
+          {"field": "confidence", "op": "gte", "value": 0.9},
+          {"field": "attributes.severity_of_illness", "op": "in", "value": ["major", "extreme"]},
+          {"field": "attributes.risk_of_mortality", "op": "in", "value": ["major", "extreme"]}
+        ]
+      },
+      "case_conditions": [
+        {"field": "claim.diagnoses", "op": "not_contains", "value": "R65.20"}
+      ],
+      "then": {
+        "disposition": "coding_review",
+        "requires_human_review": true,
+        "proposed_change": {"add_diagnoses": ["R65.20"]},
+        "rationale": "The structured evidence graph contains an explicit, high-confidence severe-sepsis assertion with major/extreme Severity of Illness and Risk of Mortality, while the corresponding severe-sepsis diagnosis is absent from the claim. Confirm coding and POA before claim modification."
+      }
+    },
+    {
+      "rule_id": "SEP-QUERY-002",
+      "title": "Sepsis indicators require physician clarification",
+      "applies_to": {"subject_types": ["SepsisCondition"], "include_subtypes": true},
+      "when": {
+        "all": [
+          {"field": "status", "op": "eq", "value": "present"},
+          {"field": "documentation_status", "op": "in", "value": ["inferred", "conflicted"]},
+          {"field": "confidence", "op": "gte", "value": 0.75}
+        ]
+      },
+      "then": {
+        "disposition": "cdi_query",
+        "requires_human_review": true,
+        "proposed_change": {},
+        "rationale": "Clinical indicators of sepsis and organ dysfunction are present, but the documentation does not independently support direct coding of the severity subclass. Review a compliant, non-leading CDI query before assigning SOI/ROM-driving codes."
+      }
+    }
+  ]
+}
