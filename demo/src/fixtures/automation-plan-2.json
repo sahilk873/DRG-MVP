@@ -1,0 +1,128 @@
+{
+  "automation_schema_version": "1.3.0",
+  "tenant": {
+    "tenant_id": "tenant-demo-alpha",
+    "workspace_id": "workspace-revenue-integrity"
+  },
+  "packet": {
+    "packet_id": "packet-9c9ff1a8c576018f85f8",
+    "packet_hash": "6d01f48a2884cf6fb307fe0d64884d8b6d47b20e8b7221e37f5c0d8c5f2501b7",
+    "case_id": "CASE-DEMO-002",
+    "encounter_id": "ENC-DEMO-002"
+  },
+  "policy": {
+    "policy_id": "exception-orchestration",
+    "version": "1.0.0",
+    "quick_confirm_confidence": 0.95,
+    "auto_route_confidence": 0.93,
+    "auto_route_max_impact_cents": 250000,
+    "max_review_cases": 25,
+    "max_review_seconds": 1800,
+    "digest": "5e681af4f91886a20be095ffda5e370a031f59c7f26df23fa479ef6643c2e9a6"
+  },
+  "findings": [
+    {
+      "automation_id": "automation-8c1a35bf3cad100d62a1",
+      "finding_id": "finding-3cd04e5c697a91c6",
+      "finding_hash": "43d019e016f2772c6ff87f1bae139c25f84f08599e77bbc2c46a39ed7617a39b",
+      "semantic_fingerprint": "9967343a2db6b7f5c934ad9c87e40e7d5020d9c3263e63b7a675d5cff7ce4c2b",
+      "tier": "quick_confirm",
+      "queue": "coding",
+      "reason_codes": [
+        "material_drg_change"
+      ],
+      "recommended_action": "route_to_coding",
+      "allowed_actions": [
+        "route_to_coding",
+        "dismiss_with_reason"
+      ],
+      "draft": {
+        "kind": "workflow_note",
+        "title": "Evidence-supported revenue integrity recommendation",
+        "body": "A high-confidence, uncontradicted stage 3-4 pressure injury is grounded in the evidence graph but the specific diagnosis is absent from the claim. Adding it raises the DRG severity tier. Confirm coding, sequencing, and POA before any claim change.",
+        "action": "route_to_coding",
+        "editable": false
+      },
+      "priority_score": 51920,
+      "priority_components": {
+        "tier_weight": 30000,
+        "confidence_weight": 9700,
+        "impact_weight": 8420,
+        "urgency_weight": 3800
+      },
+      "estimated_review_seconds": 30,
+      "duplicate_of": null,
+      "related_finding_ids": []
+    },
+    {
+      "automation_id": "automation-ba0860ca81d045d9c324",
+      "finding_id": "finding-e62696b244a971cf",
+      "finding_hash": "9cd374f82a948bdb50cd3f1b121cc3e6d8a17b37d450221bff96caefba8d2206",
+      "semantic_fingerprint": "286902ca5035349390bbe054597ec01ec7d068635da8ef0d4ff36fe9a5a8aa1d",
+      "tier": "escalated",
+      "queue": "compliance",
+      "reason_codes": [
+        "compliance_sensitive"
+      ],
+      "recommended_action": "route_to_compliance",
+      "allowed_actions": [
+        "route_to_compliance",
+        "dismiss_with_reason"
+      ],
+      "draft": {
+        "kind": "workflow_note",
+        "title": "Evidence-supported revenue integrity recommendation",
+        "body": "The pressure injury is documented as not present on admission (hospital-acquired). Route to compliance for POA validation and quality reporting; do not alter the claim.",
+        "action": "route_to_compliance",
+        "editable": false
+      },
+      "priority_score": 63700,
+      "priority_components": {
+        "tier_weight": 50000,
+        "confidence_weight": 9700,
+        "impact_weight": 0,
+        "urgency_weight": 4000
+      },
+      "estimated_review_seconds": 240,
+      "duplicate_of": null,
+      "related_finding_ids": []
+    }
+  ],
+  "review_now_finding_ids": [
+    "finding-e62696b244a971cf",
+    "finding-3cd04e5c697a91c6"
+  ],
+  "deferred_finding_ids": [],
+  "metrics": {
+    "input_findings": 2,
+    "consolidated_findings": 2,
+    "review_now": 2,
+    "deferred": 0,
+    "estimated_review_seconds": 270,
+    "reviewer_effort": {
+      "estimated_review_seconds": 270,
+      "seconds_avoided_estimate": 0,
+      "no_touch_rate": 0.0,
+      "no_touch_finding_count": 0,
+      "consolidated_duplicate_count": 0,
+      "is_estimate": true
+    },
+    "gap_worklist": {
+      "open_high_risk_gaps": 0,
+      "avg_expected_window_days": 0.0,
+      "top_alert_reason": null,
+      "gaps_closed_pct": 0.0,
+      "median_closure_days": 0,
+      "top_barrier": null,
+      "total_gaps": 0,
+      "is_estimate": true
+    },
+    "suppressed": 0,
+    "needs_enrichment": 0,
+    "auto_routed": 0,
+    "quick_confirm": 1,
+    "focused_review": 0,
+    "escalated": 1
+  },
+  "plan_hash": "11c20aec68e6fdfa60bd995ab1a4e97555fb2e5af84982f4933aaabaf2edfd11"
+}

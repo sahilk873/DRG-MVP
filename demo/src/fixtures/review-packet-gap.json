@@ -1,0 +1,809 @@
+{
+  "review_packet_schema_version": "3.5.0",
+  "packet_id": "packet-e165ef2c40b10e52763b",
+  "environment": "synthetic",
+  "tenant": {
+    "tenant_id": "tenant-demo-alpha",
+    "workspace_id": "workspace-clinical-care-gap"
+  },
+  "case": {
+    "schema_version": "2.0.0",
+    "case_id": "CASE-DFU-EPISODE-001",
+    "patient_id": "PATIENT-DEIDENTIFIED-DFU-001",
+    "encounter_id": "ENC-DFU-001",
+    "admitted_at": "2026-06-01T09:00:00Z",
+    "discharged_at": "2026-06-29T15:00:00Z",
+    "metadata": {
+      "payer": "demo",
+      "facility": "demo-clinic",
+      "wound_type": "diabetic_foot_ulcer"
+    },
+    "claim": {
+      "diagnoses": [
+        "E11.621"
+      ],
+      "procedures": [],
+      "charges": [
+        "WOUND-CARE-VISIT"
+      ],
+      "drg": "DEMO-292",
+      "allowed_amount_cents": 1000000
+    }
+  },
+  "evidence": [
+    {
+      "evidence_id": "EV-DFU-DAY0",
+      "document_id": "DFU-EVAL-DAY0",
+      "author_role": "physician",
+      "recorded_at": "2026-06-01T10:00:00Z",
+      "text": "2.4 x 1.8 cm",
+      "source_locator": {
+        "kind": "clinical_note_excerpt",
+        "document_id": "DFU-EVAL-DAY0",
+        "char_start": 0,
+        "char_end": 12,
+        "length": 12,
+        "excerpt_sha256": "091fb0ccaf8875c858f77cd9d5edd854c2a895a057d1f9b7416422075092f263"
+      }
+    },
+    {
+      "evidence_id": "EV-DFU-DAY7",
+      "document_id": "DFU-VISIT-DAY7",
+      "author_role": "physician",
+      "recorded_at": "2026-06-08T10:00:00Z",
+      "text": "Offloading boot provided",
+      "source_locator": {
+        "kind": "clinical_note_excerpt",
+        "document_id": "DFU-VISIT-DAY7",
+        "char_start": 0,
+        "char_end": 24,
+        "length": 24,
+        "excerpt_sha256": "9a1524c387723380325aa5fca6a5db52a380f9975af9502f966805b770233a93"
+      }
+    },
+    {
+      "evidence_id": "EV-DFU-DAY14",
+      "document_id": "DFU-VISIT-DAY14",
+      "author_role": "physician",
+      "recorded_at": "2026-06-15T10:00:00Z",
+      "text": "Ulcer remains 2.4 x 1.8 cm",
+      "source_locator": {
+        "kind": "clinical_note_excerpt",
+        "document_id": "DFU-VISIT-DAY14",
+        "char_start": 0,
+        "char_end": 26,
+        "length": 26,
+        "excerpt_sha256": "09970ce6cedb279856360a5e53f0158e8d8160c031de9badd485be4906d90ebf"
+      }
+    },
+    {
+      "evidence_id": "EV-DFU-DAY28",
+      "document_id": "DFU-VISIT-DAY28",
+      "author_role": "physician",
+      "recorded_at": "2026-06-29T10:00:00Z",
+      "text": "Purulent drainage, warm periwound",
+      "source_locator": {
+        "kind": "clinical_note_excerpt",
+        "document_id": "DFU-VISIT-DAY28",
+        "char_start": 0,
+        "char_end": 33,
+        "length": 33,
+        "excerpt_sha256": "0a41fe2d2856abb78a827e7f67b50f9caa2018ad0863be070638bdbfc3b881ea"
+      }
+    }
+  ],
+  "ontology": {
+    "ontology_id": "wound-care-encounter-ontology",
+    "ontology_version": "1.3.0-draft",
+    "ontology_digest": "aed1542929b5a845f4ec7b23169a815d255aadf2a21bcfbaffef590f5c4fd10e",
+    "entities": [
+      {
+        "entity_id": "root:patient",
+        "entity_type": "Patient",
+        "label": "Patient",
+        "properties": {}
+      },
+      {
+        "entity_id": "root:encounter",
+        "entity_type": "Encounter",
+        "label": "Encounter",
+        "properties": {}
+      },
+      {
+        "entity_id": "root:claim",
+        "entity_type": "Claim",
+        "label": "Submitted claim",
+        "properties": {}
+      },
+      {
+        "entity_id": "wound:dfu",
+        "entity_type": "DiabeticFootUlcer",
+        "label": "Right plantar forefoot DFU",
+        "concept": {
+          "system": "urn:kunal:wound-care",
+          "code": "diabetic-foot-ulcer",
+          "display": "Diabetic foot ulcer"
+        },
+        "properties": {}
+      },
+      {
+        "entity_id": "location:plantar-forefoot",
+        "entity_type": "AnatomicalLocation",
+        "label": "Right plantar forefoot",
+        "properties": {}
+      },
+      {
+        "entity_id": "assessment:day0",
+        "entity_type": "WoundAssessment",
+        "label": "DFU assessment 2026-06-01",
+        "properties": {}
+      },
+      {
+        "entity_id": "size:day0",
+        "entity_type": "SizeMeasurement",
+        "label": "2.4 x 1.8 cm",
+        "properties": {}
+      },
+      {
+        "entity_id": "assessment:day7",
+        "entity_type": "WoundAssessment",
+        "label": "DFU assessment 2026-06-08",
+        "properties": {}
+      },
+      {
+        "entity_id": "size:day7",
+        "entity_type": "SizeMeasurement",
+        "label": "2.4 x 1.8 cm",
+        "properties": {}
+      },
+      {
+        "entity_id": "assessment:day14",
+        "entity_type": "WoundAssessment",
+        "label": "DFU assessment 2026-06-15",
+        "properties": {}
+      },
+      {
+        "entity_id": "size:day14",
+        "entity_type": "SizeMeasurement",
+        "label": "2.4 x 1.8 cm",
+        "properties": {}
+      },
+      {
+        "entity_id": "assessment:day28",
+        "entity_type": "WoundAssessment",
+        "label": "DFU assessment 2026-06-29",
+        "properties": {}
+      },
+      {
+        "entity_id": "size:day28",
+        "entity_type": "SizeMeasurement",
+        "label": "3.1 x 2.6 cm",
+        "properties": {}
+      }
+    ],
+    "relations": [
+      {
+        "relation_id": "rel:patient-encounter",
+        "predicate": "hasEncounter",
+        "source_id": "root:patient",
+        "target_id": "root:encounter",
+        "assertion_status": "present",
+        "documentation_status": "explicit",
+        "confidence": 1.0,
+        "evidence_ids": []
+      },
+      {
+        "relation_id": "rel:encounter-claim",
+        "predicate": "hasClaim",
+        "source_id": "root:encounter",
+        "target_id": "root:claim",
+        "assertion_status": "present",
+        "documentation_status": "explicit",
+        "confidence": 1.0,
+        "evidence_ids": []
+      },
+      {
+        "relation_id": "rel:patient-wound",
+        "predicate": "hasWound",
+        "source_id": "root:patient",
+        "target_id": "wound:dfu",
+        "assertion_status": "present",
+        "documentation_status": "explicit",
+        "confidence": 0.98,
+        "evidence_ids": [
+          "EV-DFU-DAY0"
+        ]
+      },
+      {
+        "relation_id": "rel:wound-encounter",
+        "predicate": "associatedWithEncounter",
+        "source_id": "wound:dfu",
+        "target_id": "root:encounter",
+        "assertion_status": "present",
+        "documentation_status": "explicit",
+        "confidence": 1.0,
+        "evidence_ids": []
+      },
+      {
+        "relation_id": "rel:wound-location",
+        "predicate": "hasLocation",
+        "source_id": "wound:dfu",
+        "target_id": "location:plantar-forefoot",
+        "assertion_status": "present",
+        "documentation_status": "explicit",
+        "confidence": 0.98,
+        "evidence_ids": [
+          "EV-DFU-DAY0"
+        ]
+      },
+      {
+        "relation_id": "rel:wound-assessment:day0",
+        "predicate": "hasAssessment",
+        "source_id": "wound:dfu",
+        "target_id": "assessment:day0",
+        "assertion_status": "present",
+        "documentation_status": "explicit",
+        "confidence": 0.97,
+        "evidence_ids": [
+          "EV-DFU-DAY0"
+        ]
+      },
+      {
+        "relation_id": "rel:assessment:day0-size",
+        "predicate": "hasSize",
+        "source_id": "assessment:day0",
+        "target_id": "size:day0",
+        "assertion_status": "present",
+        "documentation_status": "explicit",
+        "confidence": 0.97,
+        "evidence_ids": [
+          "EV-DFU-DAY0"
+        ]
+      },
+      {
+        "relation_id": "rel:wound-assessment:day7",
+        "predicate": "hasAssessment",
+        "source_id": "wound:dfu",
+        "target_id": "assessment:day7",
+        "assertion_status": "present",
+        "documentation_status": "explicit",
+        "confidence": 0.97,
+        "evidence_ids": [
+          "EV-DFU-DAY7"
+        ]
+      },
+      {
+        "relation_id": "rel:assessment:day7-size",
+        "predicate": "hasSize",
+        "source_id": "assessment:day7",
+        "target_id": "size:day7",
+        "assertion_status": "present",
+        "documentation_status": "explicit",
+        "confidence": 0.97,
+        "evidence_ids": [
+          "EV-DFU-DAY7"
+        ]
+      },
+      {
+        "relation_id": "rel:assessment:day7-cmp",
+        "predicate": "comparedWith",
+        "source_id": "assessment:day7",
+        "target_id": "assessment:day0",
+        "assertion_status": "present",
+        "documentation_status": "explicit",
+        "confidence": 0.95,
+        "evidence_ids": [
+          "EV-DFU-DAY7"
+        ]
+      },
+      {
+        "relation_id": "rel:wound-assessment:day14",
+        "predicate": "hasAssessment",
+        "source_id": "wound:dfu",
+        "target_id": "assessment:day14",
+        "assertion_status": "present",
+        "documentation_status": "explicit",
+        "confidence": 0.97,
+        "evidence_ids": [
+          "EV-DFU-DAY14"
+        ]
+      },
+      {
+        "relation_id": "rel:assessment:day14-size",
+        "predicate": "hasSize",
+        "source_id": "assessment:day14",
+        "target_id": "size:day14",
+        "assertion_status": "present",
+        "documentation_status": "explicit",
+        "confidence": 0.97,
+        "evidence_ids": [
+          "EV-DFU-DAY14"
+        ]
+      },
+      {
+        "relation_id": "rel:assessment:day14-cmp",
+        "predicate": "comparedWith",
+        "source_id": "assessment:day14",
+        "target_id": "assessment:day7",
+        "assertion_status": "present",
+        "documentation_status": "explicit",
+        "confidence": 0.95,
+        "evidence_ids": [
+          "EV-DFU-DAY14"
+        ]
+      },
+      {
+        "relation_id": "rel:wound-assessment:day28",
+        "predicate": "hasAssessment",
+        "source_id": "wound:dfu",
+        "target_id": "assessment:day28",
+        "assertion_status": "present",
+        "documentation_status": "explicit",
+        "confidence": 0.97,
+        "evidence_ids": [
+          "EV-DFU-DAY28"
+        ]
+      },
+      {
+        "relation_id": "rel:assessment:day28-size",
+        "predicate": "hasSize",
+        "source_id": "assessment:day28",
+        "target_id": "size:day28",
+        "assertion_status": "present",
+        "documentation_status": "explicit",
+        "confidence": 0.97,
+        "evidence_ids": [
+          "EV-DFU-DAY28"
+        ]
+      },
+      {
+        "relation_id": "rel:assessment:day28-cmp",
+        "predicate": "comparedWith",
+        "source_id": "assessment:day28",
+        "target_id": "assessment:day14",
+        "assertion_status": "present",
+        "documentation_status": "explicit",
+        "confidence": 0.95,
+        "evidence_ids": [
+          "EV-DFU-DAY28"
+        ]
+      }
+    ]
+  },
+  "assertions": [
+    {
+      "assertion_id": "AS-DFU-DAY0",
+      "subject_id": "assessment:day0",
+      "concept": "wound_assessment",
+      "status": "present",
+      "documentation_status": "explicit",
+      "confidence": 0.97,
+      "attributes": {
+        "length_cm": 2.4,
+        "width_cm": 1.8
+      },
+      "evidence_ids": [
+        "EV-DFU-DAY0"
+      ],
+      "contradicting_evidence_ids": []
+    },
+    {
+      "assertion_id": "AS-DFU-DAY7",
+      "subject_id": "assessment:day7",
+      "concept": "wound_assessment",
+      "status": "present",
+      "documentation_status": "explicit",
+      "confidence": 0.97,
+      "attributes": {
+        "length_cm": 2.4,
+        "width_cm": 1.8
+      },
+      "evidence_ids": [
+        "EV-DFU-DAY7"
+      ],
+      "contradicting_evidence_ids": []
+    },
+    {
+      "assertion_id": "AS-DFU-DAY14",
+      "subject_id": "assessment:day14",
+      "concept": "wound_assessment",
+      "status": "present",
+      "documentation_status": "explicit",
+      "confidence": 0.97,
+      "attributes": {
+        "length_cm": 2.4,
+        "width_cm": 1.8
+      },
+      "evidence_ids": [
+        "EV-DFU-DAY14"
+      ],
+      "contradicting_evidence_ids": []
+    },
+    {
+      "assertion_id": "AS-DFU-DAY28",
+      "subject_id": "assessment:day28",
+      "concept": "wound_assessment",
+      "status": "present",
+      "documentation_status": "explicit",
+      "confidence": 0.97,
+      "attributes": {
+        "length_cm": 3.1,
+        "width_cm": 2.6
+      },
+      "evidence_ids": [
+        "EV-DFU-DAY28"
+      ],
+      "contradicting_evidence_ids": []
+    },
+    {
+      "assertion_id": "AS-DFU-WOUND",
+      "subject_id": "wound:dfu",
+      "concept": "diabetic_foot_ulcer",
+      "status": "present",
+      "documentation_status": "explicit",
+      "confidence": 0.96,
+      "attributes": {
+        "site": "plantar",
+        "reduced_sensation": true,
+        "probe_to_bone": true
+      },
+      "evidence_ids": [
+        "EV-DFU-DAY0"
+      ],
+      "contradicting_evidence_ids": []
+    }
+  ],
+  "findings": [
+    {
+      "finding_id": "finding-618d8d36a5e9d346",
+      "rule_id": "CG-INF-002",
+      "rule_package_id": "wound-care-clinical-care-gap",
+      "rule_package_version": "1.0.0-demo",
+      "title": "Chronic wound with no size reduction after two weeks of standard care needs clinician reassessment",
+      "disposition": "cdi_query",
+      "confidence": 0.97,
+      "proposed_change": {},
+      "subject_ids": [
+        "assessment:day14",
+        "assessment:day28"
+      ],
+      "assertion_ids": [
+        "AS-DFU-DAY14",
+        "AS-DFU-DAY28"
+      ],
+      "evidence_ids": [
+        "EV-DFU-DAY14",
+        "EV-DFU-DAY28"
+      ],
+      "contradicting_evidence_ids": [],
+      "rationale": "Chronic wound with no size reduction after two weeks of standard care needs clinician reassessment. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+      "requires_human_review": true,
+      "submitted_drg": "DEMO-292",
+      "current_drg": "DEMO-292",
+      "simulated_drg": "DEMO-292",
+      "estimated_impact_cents": null,
+      "impact_status": "not_applicable",
+      "grouper_version": "demo-0.2-not-for-billing",
+      "derivation": {
+        "current": [
+          {
+            "step": "severity_resolution",
+            "value": "none",
+            "detail": "no severity-driving diagnosis"
+          },
+          {
+            "step": "tier_selection",
+            "value": "DEMO-292",
+            "detail": "none tier"
+          },
+          {
+            "step": "pricing",
+            "value": "1000000",
+            "detail": "base 1000000c x 1000000 micros"
+          }
+        ],
+        "simulated": [
+          {
+            "step": "severity_resolution",
+            "value": "none",
+            "detail": "no severity-driving diagnosis"
+          },
+          {
+            "step": "tier_selection",
+            "value": "DEMO-292",
+            "detail": "none tier"
+          },
+          {
+            "step": "pricing",
+            "value": "1000000",
+            "detail": "base 1000000c x 1000000 micros"
+          }
+        ]
+      },
+      "charge_line_refs": [],
+      "gap_domain": "delayed_action",
+      "expected_action": "clinician_reassessment",
+      "timing_window_days": 2,
+      "alert_urgency": "urgent",
+      "recommended_action": "Reassess the wound and evaluate for chronic wound infection or advanced therapy.",
+      "clinical_impact": "A chronic wound failing to reduce despite standard care may harbor infection or biofilm; delayed reassessment lets it deteriorate.",
+      "gap_status": "open",
+      "narrative": "On CASE-DFU-EPISODE-001, care-gap rule CG-INF-002 identified a delayed action: Chronic wound with no size reduction after two weeks of standard care needs clinician reassessment. Grounded in evidence EV-DFU-DAY14, EV-DFU-DAY28. Expected action: clinician reassessment within 2 days. Recommended: Reassess the wound and evaluate for chronic wound infection or advanced therapy. Alert urgency: urgent. Resolution status: open — analytics identify the gap; a clinician decides (no claim change, review required)."
+    },
+    {
+      "finding_id": "finding-8d18b2f300de1da9",
+      "rule_id": "CG-DFU-001",
+      "rule_package_id": "wound-care-clinical-care-gap",
+      "rule_package_version": "1.0.0-demo",
+      "title": "Diabetic foot ulcer with reduced sensation on the plantar surface fits a neuropathic pattern",
+      "disposition": "cdi_query",
+      "confidence": 0.96,
+      "proposed_change": {},
+      "subject_ids": [
+        "wound:dfu"
+      ],
+      "assertion_ids": [
+        "AS-DFU-WOUND"
+      ],
+      "evidence_ids": [
+        "EV-DFU-DAY0"
+      ],
+      "contradicting_evidence_ids": [],
+      "rationale": "Diabetic foot ulcer with reduced sensation on the plantar surface fits a neuropathic pattern. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+      "requires_human_review": true,
+      "submitted_drg": "DEMO-292",
+      "current_drg": "DEMO-292",
+      "simulated_drg": "DEMO-292",
+      "estimated_impact_cents": null,
+      "impact_status": "not_applicable",
+      "grouper_version": "demo-0.2-not-for-billing",
+      "derivation": {
+        "current": [
+          {
+            "step": "severity_resolution",
+            "value": "none",
+            "detail": "no severity-driving diagnosis"
+          },
+          {
+            "step": "tier_selection",
+            "value": "DEMO-292",
+            "detail": "none tier"
+          },
+          {
+            "step": "pricing",
+            "value": "1000000",
+            "detail": "base 1000000c x 1000000 micros"
+          }
+        ],
+        "simulated": [
+          {
+            "step": "severity_resolution",
+            "value": "none",
+            "detail": "no severity-driving diagnosis"
+          },
+          {
+            "step": "tier_selection",
+            "value": "DEMO-292",
+            "detail": "none tier"
+          },
+          {
+            "step": "pricing",
+            "value": "1000000",
+            "detail": "base 1000000c x 1000000 micros"
+          }
+        ]
+      },
+      "charge_line_refs": [],
+      "gap_domain": "missing_action",
+      "expected_action": "offloading_device_evaluation",
+      "alert_urgency": "routine",
+      "recommended_action": "Evaluate for an offloading device.",
+      "clinical_impact": "Neuropathic plantar ulcers worsen without pressure offloading.",
+      "gap_status": "open",
+      "narrative": "On CASE-DFU-EPISODE-001, care-gap rule CG-DFU-001 identified a missing action: Diabetic foot ulcer with reduced sensation on the plantar surface fits a neuropathic pattern. Grounded in evidence EV-DFU-DAY0. Expected action: offloading device evaluation. Recommended: Evaluate for an offloading device. Alert urgency: routine. Resolution status: open — analytics identify the gap; a clinician decides (no claim change, review required)."
+    },
+    {
+      "finding_id": "finding-df3a2e9c1795cc57",
+      "rule_id": "CG-DFU-002",
+      "rule_package_id": "wound-care-clinical-care-gap",
+      "rule_package_version": "1.0.0-demo",
+      "title": "Diabetic foot ulcer with a positive probe-to-bone test suggests osteomyelitis risk",
+      "disposition": "cdi_query",
+      "confidence": 0.96,
+      "proposed_change": {},
+      "subject_ids": [
+        "wound:dfu"
+      ],
+      "assertion_ids": [
+        "AS-DFU-WOUND"
+      ],
+      "evidence_ids": [
+        "EV-DFU-DAY0"
+      ],
+      "contradicting_evidence_ids": [],
+      "rationale": "Diabetic foot ulcer with a positive probe-to-bone test suggests osteomyelitis risk. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+      "requires_human_review": true,
+      "submitted_drg": "DEMO-292",
+      "current_drg": "DEMO-292",
+      "simulated_drg": "DEMO-292",
+      "estimated_impact_cents": null,
+      "impact_status": "not_applicable",
+      "grouper_version": "demo-0.2-not-for-billing",
+      "derivation": {
+        "current": [
+          {
+            "step": "severity_resolution",
+            "value": "none",
+            "detail": "no severity-driving diagnosis"
+          },
+          {
+            "step": "tier_selection",
+            "value": "DEMO-292",
+            "detail": "none tier"
+          },
+          {
+            "step": "pricing",
+            "value": "1000000",
+            "detail": "base 1000000c x 1000000 micros"
+          }
+        ],
+        "simulated": [
+          {
+            "step": "severity_resolution",
+            "value": "none",
+            "detail": "no severity-driving diagnosis"
+          },
+          {
+            "step": "tier_selection",
+            "value": "DEMO-292",
+            "detail": "none tier"
+          },
+          {
+            "step": "pricing",
+            "value": "1000000",
+            "detail": "base 1000000c x 1000000 micros"
+          }
+        ]
+      },
+      "charge_line_refs": [],
+      "gap_domain": "missing_action",
+      "expected_action": "imaging_specialist_referral",
+      "alert_urgency": "same_day",
+      "recommended_action": "Order imaging and refer to a specialist for osteomyelitis workup.",
+      "clinical_impact": "Probe-to-bone positivity substantially raises osteomyelitis likelihood.",
+      "exception_checks": [
+        {
+          "exception_type": "outside_care",
+          "evidence_id": "EV-DFU-DAY0",
+          "status": "confirmed"
+        }
+      ],
+      "gap_status": "exception",
+      "closed_at": "2026-06-30T00:00:00Z",
+      "barrier_code": "BARRIER-OUTSIDE-CARE",
+      "narrative": "On CASE-DFU-EPISODE-001, care-gap rule CG-DFU-002 identified a missing action: Diabetic foot ulcer with a positive probe-to-bone test suggests osteomyelitis risk. Grounded in evidence EV-DFU-DAY0. Expected action: imaging specialist referral. Recommended: Order imaging and refer to a specialist for osteomyelitis workup. Alert urgency: same-day. Documented exception confirmed: outside care. Resolution status: exception — analytics identify the gap; a clinician decides (no claim change, review required)."
+    },
+    {
+      "finding_id": "finding-789e68a6f1bc22fe",
+      "rule_id": "CG-DET-001",
+      "rule_package_id": "wound-care-clinical-care-gap",
+      "rule_package_version": "1.0.0-demo",
+      "title": "Wound size increased by at least 20 percent within two weeks indicates deterioration",
+      "disposition": "cdi_query",
+      "confidence": 0.97,
+      "proposed_change": {},
+      "subject_ids": [
+        "assessment:day28"
+      ],
+      "assertion_ids": [
+        "AS-DFU-DAY28"
+      ],
+      "evidence_ids": [
+        "EV-DFU-DAY28"
+      ],
+      "contradicting_evidence_ids": [],
+      "rationale": "Wound size increased by at least 20 percent within two weeks indicates deterioration. Analytics identify this care gap from grounded evidence; a clinician decides. No claim change is proposed and human review is required.",
+      "requires_human_review": true,
+      "submitted_drg": "DEMO-292",
+      "current_drg": "DEMO-292",
+      "simulated_drg": "DEMO-292",
+      "estimated_impact_cents": null,
+      "impact_status": "not_applicable",
+      "grouper_version": "demo-0.2-not-for-billing",
+      "derivation": {
+        "current": [
+          {
+            "step": "severity_resolution",
+            "value": "none",
+            "detail": "no severity-driving diagnosis"
+          },
+          {
+            "step": "tier_selection",
+            "value": "DEMO-292",
+            "detail": "none tier"
+          },
+          {
+            "step": "pricing",
+            "value": "1000000",
+            "detail": "base 1000000c x 1000000 micros"
+          }
+        ],
+        "simulated": [
+          {
+            "step": "severity_resolution",
+            "value": "none",
+            "detail": "no severity-driving diagnosis"
+          },
+          {
+            "step": "tier_selection",
+            "value": "DEMO-292",
+            "detail": "none tier"
+          },
+          {
+            "step": "pricing",
+            "value": "1000000",
+            "detail": "base 1000000c x 1000000 micros"
+          }
+        ]
+      },
+      "charge_line_refs": [],
+      "gap_domain": "delayed_action",
+      "expected_action": "reassess_diagnosis_care_plan",
+      "timing_window_days": 14,
+      "alert_urgency": "same_day",
+      "recommended_action": "Reassess the diagnosis and care plan for a deteriorating wound.",
+      "clinical_impact": "Rapid enlargement indicates the current plan is failing.",
+      "gap_status": "open",
+      "narrative": "On CASE-DFU-EPISODE-001, care-gap rule CG-DET-001 identified a delayed action: Wound size increased by at least 20 percent within two weeks indicates deterioration. Grounded in evidence EV-DFU-DAY28. Expected action: reassess diagnosis care plan within 14 days. Recommended: Reassess the diagnosis and care plan for a deteriorating wound. Alert urgency: same-day. Resolution status: open — analytics identify the gap; a clinician decides (no claim change, review required)."
+    }
+  ],
+  "impact_summary": {
+    "currency": "USD",
+    "net_estimated_impact_cents": 0,
+    "positive_opportunity_cents": 0,
+    "at_risk_cents": 0,
+    "estimated_finding_count": 0,
+    "unavailable_impact_count": 0,
+    "not_applicable_impact_count": 4,
+    "total_findings": 4,
+    "findings_requiring_review": 4,
+    "findings_by_disposition": {
+      "cdi_query": 4
+    },
+    "basis": "synthetic-demo-grouper-not-for-billing"
+  },
+  "denial_summary": {
+    "currency": "USD",
+    "denied_amount_cents": 0,
+    "denial_count": 0,
+    "at_risk_line_count": 0,
+    "at_risk_line_ids": []
+  },
+  "controls": {
+    "claim_mutation_allowed": false,
+    "human_review_required": true,
+    "permitted_actions": [
+      "route_to_coding",
+      "route_to_cdi",
+      "route_to_charge_review",
+      "route_to_compliance",
+      "dismiss_with_reason",
+      "route_to_care_team",
+      "close_gap_with_evidence"
+    ]
+  },
+  "provenance": {
+    "evaluated_at": "2026-07-19T12:00:00Z",
+    "engine_version": "0.7.0",
+    "case_hash": "34eeeb94a102261a57243b0a81f314b3b25f0afae2a0dc9209fc48e9f337fba3",
+    "rule_package_id": "wound-care-clinical-care-gap",
+    "rule_package_version": "1.0.0-demo",
+    "rule_package_hash": "3b9d10cd1de21d779d6353784973722cc1c80c3672d38ccc42732d27466fb42a",
+    "record_hash": "36f0977a63c1fcbf1b25d875cb864e60153cf25bfa5f104409b5469f1fd50518",
+    "previous_record_hash": null,
+    "grouper_versions": [
+      "demo-0.2-not-for-billing"
+    ],
+    "packet_hash": "5d11bf27d138b9cc08ed2ec90609954566707e45b8c637ac2ea83dd83aef5753"
+  }
+}

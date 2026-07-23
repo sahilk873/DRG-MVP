@@ -11,6 +11,14 @@ import {
 export const DEFAULT_ONTOLOGY_DEFINITION = ontologyDefinitionSchema.parse(woundCareOntology)
 validateOntologyDefinition(DEFAULT_ONTOLOGY_DEFINITION)
 
+// Sort by Unicode code point to match Python's `sorted()` / `json.dumps(sort_keys=True)`.
+// JS's localeCompare is locale-aware and can disagree with code-point order (e.g. across a
+// mixed-case boundary like "DRGSeverityTier" vs "DiabeticFootUlcer"), which would silently
+// break the cross-language ontology digest. This keeps the two implementations identical.
+function byCodePoint(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0
+}
+
 export function ontologyDigest(definition: OntologyDefinition): string {
   const material = {
     ontology_id: definition.ontology_id,
@@ -18,7 +26,7 @@ export function ontologyDigest(definition: OntologyDefinition): string {
     status: definition.status,
     structural_graph: {
       entities: [...definition.structural_graph.entities]
-        .sort((left, right) => left.entity_id.localeCompare(right.entity_id))
+        .sort((left, right) => byCodePoint(left.entity_id, right.entity_id))
         .map(item => ({
           entity_id: item.entity_id,
           entity_type: item.entity_type,
@@ -27,7 +35,7 @@ export function ontologyDigest(definition: OntologyDefinition): string {
           properties: item.properties,
         })),
       relations: [...definition.structural_graph.relations]
-        .sort((left, right) => left.relation_id.localeCompare(right.relation_id))
+        .sort((left, right) => byCodePoint(left.relation_id, right.relation_id))
         .map(item => ({
           relation_id: item.relation_id,
           predicate: item.predicate,
@@ -41,7 +49,7 @@ export function ontologyDigest(definition: OntologyDefinition): string {
         })),
     },
     classes: [...definition.classes]
-      .sort((left, right) => left.class_id.localeCompare(right.class_id))
+      .sort((left, right) => byCodePoint(left.class_id, right.class_id))
       .map(item => ({
         class_id: item.class_id,
         label: item.label,
@@ -50,7 +58,7 @@ export function ontologyDigest(definition: OntologyDefinition): string {
         value_set: item.value_set ?? null,
       })),
     relations: [...definition.relations]
-      .sort((left, right) => left.relation_id.localeCompare(right.relation_id))
+      .sort((left, right) => byCodePoint(left.relation_id, right.relation_id))
       .map(item => ({
         relation_id: item.relation_id,
         domain: [...item.domain].sort(),
@@ -59,7 +67,7 @@ export function ontologyDigest(definition: OntologyDefinition): string {
       })),
     value_sets: Object.fromEntries(
       Object.entries(definition.value_sets ?? {})
-        .sort(([left], [right]) => left.localeCompare(right))
+        .sort(([left], [right]) => byCodePoint(left, right))
         .map(([key, values]) => [key, [...values].sort()]),
     ),
   }
@@ -235,7 +243,7 @@ function stableStringify(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`
   if (value !== null && typeof value === 'object') {
     const entries = Object.entries(value as Record<string, unknown>)
-      .sort(([left], [right]) => left.localeCompare(right))
+      .sort(([left], [right]) => byCodePoint(left, right))
       .map(([key, item]) => `${JSON.stringify(key)}:${stableStringify(item)}`)
     return `{${entries.join(',')}}`
   }

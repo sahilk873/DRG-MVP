@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "encounter-revenue-integrity"
 version = "0.7.0"
-description = "Evidence-grounded, deterministic encounter reconciliation for clinical coding and billing"
+description = "Evidence-grounded, deterministic encounter platform: two governed lenses (revenue integrity and clinical care gaps) on one spine"
 readme = "README.md"
 requires-python = ">=3.11"
 license = {text = "Apache-2.0"}
@@ -15,6 +15,7 @@ dependencies = []
 [project.scripts]
 revenue-integrity = "revenue_integrity.cli:main"
 revenue-integrity-ingest = "revenue_integrity.ingestion.cli:main"
+revenue-integrity-eval = "revenue_integrity.eval_cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

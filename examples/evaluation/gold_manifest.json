@@ -1,0 +1,45 @@
+{
+  "eval_schema_version": "1.0.0",
+  "description": "Engine-runnable gold set for opportunity-discovery accuracy. Synthetic; not for billing.",
+  "cases": [
+    {
+      "name": "pressure-injury-omitted-diagnosis",
+      "case": "../case_pressure_injury.json",
+      "rules": "../../rules/wound_care_v1.json",
+      "expected": [
+        {"category": "missed_diagnosis", "key": "L89.154", "valid": true}
+      ]
+    },
+    {
+      "name": "hospital-acquired-severity-and-poa",
+      "case": "../case_pressure_injury_v2.json",
+      "rules": "../../rules/wound_care_v2.json",
+      "expected": [
+        {"category": "missed_diagnosis", "key": "L89.154", "valid": true},
+        {"category": "unsupported_billing", "key": "WC-PI-POA-002", "valid": true}
+      ]
+    },
+    {
+      "name": "hac-poa-exclusion-and-drg-sequencing",
+      "case": "../case_pressure_injury_hac_sequencing.json",
+      "rules": "../../rules/wound_care_v2.json",
+      "expected": [
+        {"category": "coding_specificity", "key": "SYSTEM-DRG-REPRODUCTION", "valid": true},
+        {"category": "coding_specificity", "key": "SYSTEM-DRG-SEQUENCING", "valid": true},
+        {"category": "unsupported_billing", "key": "WC-PI-POA-002", "valid": true}
+      ]
+    },
+    {
+      "name": "sepsis-severe-soi-rom-missed-diagnosis",
+      "case": "../case_sepsis.json",
+      "rules": "../../rules/sepsis_v1.json",
+      "expected": [
+        {"category": "missed_diagnosis", "key": "R65.20", "valid": true}
+      ]
+    }
+  ],
+  "thresholds": {
+    "min_precision": 0.95,
+    "min_recall": 0.95
+  }
+}

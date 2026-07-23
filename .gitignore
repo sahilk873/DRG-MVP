@@ -10,3 +10,14 @@ output/
 node_modules/
 *.tsbuildinfo
 agent/.mastra/
+
+# Local developer tooling and transient tool output (not product)
+.code-review-graph/
+code-review-graph/
+.playwright-mcp/
+.mcp.json
+.claude/settings.local.json
+
+# Loose root-level scratch copies (governed originals live under knowledge/)
+/pdfhandler.pdf
+/Wound Care Clinical Rules Raw file.xlsx

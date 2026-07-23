@@ -1,0 +1,18 @@
+{
+  "grouper_id": "deterministic-demo-grouper-sepsis",
+  "version": "demo-sepsis-0.1-not-for-billing",
+  "status": "approved-for-demo",
+  "description": "SYNTHETIC data-driven demo grouping definition for the sepsis vertical. Models a single sepsis base DRG whose severity tier (MCC/CC/none) tracks the documented Severity of Illness / Risk of Mortality escalation: septic shock (extreme SOI/ROM) reaches MCC, severe sepsis with acute organ dysfunction (major SOI/ROM) reaches CC, and uncomplicated sepsis stays at the base tier. Selected by the specialty-agnostic GroupingRegistry for cases bound to the sepsis ontology. NOT a licensed grouper and NOT for real coding or billing.",
+  "base_rate_cents": 1000000,
+  "tiers": [
+    {"severity": "mcc", "drg": "DEMO-871", "title": "Septic shock, extreme SOI/ROM (synthetic)", "relative_weight_micros": 1980000},
+    {"severity": "cc", "drg": "DEMO-872", "title": "Severe sepsis with acute organ dysfunction, major SOI/ROM (synthetic)", "relative_weight_micros": 1350000},
+    {"severity": "none", "drg": "DEMO-873", "title": "Sepsis without severe SOI/ROM escalation (synthetic)", "relative_weight_micros": 1000000}
+  ],
+  "diagnosis_severity": {
+    "codes": {"R65.21": "mcc", "R65.20": "cc"},
+    "prefixes": {}
+  },
+  "hac_codes": [],
+  "applies_to": {"ontology_ids": ["sepsis-encounter-ontology"]}
+}

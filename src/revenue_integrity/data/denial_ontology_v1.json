@@ -1,0 +1,47 @@
+{
+  "ontology_id": "denial-event-ontology",
+  "version": "1.0.0-draft",
+  "status": "clinical-review-required",
+  "purpose": "Model an already-received payer denial as a first-class, governed DenialEvent subject so that deterministic denial root-cause findings can carry subject lineage pointing at a governed denial subject. Additive to the encounter ontology; it never creates or changes a claim, assigns a DRG, computes reimbursement, or bypasses review.",
+  "sources": [
+    {
+      "source_id": "x12-835-remittance",
+      "title": "X12 835 Health Care Claim Payment/Advice (structure reference)",
+      "contribution": "Claim adjustment reason code (CARC) and remittance advice remark code (RARC) semantics used to model denial reason systems."
+    }
+  ],
+  "structural_graph": {
+    "entities": [
+      {"entity_id": "root:patient", "entity_type": "Patient", "label": "Patient", "properties": {}},
+      {"entity_id": "root:encounter", "entity_type": "Encounter", "label": "Encounter", "properties": {}},
+      {"entity_id": "root:claim", "entity_type": "Claim", "label": "Submitted claim", "properties": {}}
+    ],
+    "relations": [
+      {"relation_id": "rel:patient-encounter", "predicate": "hasEncounter", "source_id": "root:patient", "target_id": "root:encounter", "assertion_status": "present", "documentation_status": "explicit", "confidence": 1.0, "evidence_ids": [], "contradicting_evidence_ids": []},
+      {"relation_id": "rel:encounter-claim", "predicate": "hasClaim", "source_id": "root:encounter", "target_id": "root:claim", "assertion_status": "present", "documentation_status": "explicit", "confidence": 1.0, "evidence_ids": [], "contradicting_evidence_ids": []}
+    ]
+  },
+  "classes": [
+    {"class_id": "Entity", "label": "Entity", "abstract": true},
+    {"class_id": "FinancialEntity", "label": "Financial entity", "parent": "Entity", "abstract": true},
+    {"class_id": "Patient", "label": "Patient", "parent": "Entity"},
+    {"class_id": "Encounter", "label": "Encounter", "parent": "Entity"},
+    {"class_id": "Claim", "label": "Claim", "parent": "FinancialEntity"},
+    {"class_id": "ClaimLine", "label": "Claim line", "parent": "FinancialEntity"},
+    {"class_id": "DenialEvent", "label": "Payer denial event", "parent": "FinancialEntity"},
+    {"class_id": "DenialReasonCode", "label": "Denial reason code", "parent": "FinancialEntity", "value_set": "reason_code_system"}
+  ],
+  "relations": [
+    {"relation_id": "hasEncounter", "domain": ["Patient"], "range": ["Encounter"], "requires_evidence": false},
+    {"relation_id": "hasClaim", "domain": ["Encounter"], "range": ["Claim"], "requires_evidence": false},
+    {"relation_id": "containsLine", "domain": ["Claim"], "range": ["ClaimLine"], "requires_evidence": false},
+    {"relation_id": "hasDenialEvent", "domain": ["Claim"], "range": ["DenialEvent"], "requires_evidence": true},
+    {"relation_id": "deniesLine", "domain": ["DenialEvent"], "range": ["ClaimLine"], "requires_evidence": true},
+    {"relation_id": "hasReasonCode", "domain": ["DenialEvent"], "range": ["DenialReasonCode"], "requires_evidence": true}
+  ],
+  "value_sets": {
+    "assertion_status": ["present", "absent", "uncertain", "historical"],
+    "documentation_status": ["explicit", "inferred", "conflicted", "absent"],
+    "reason_code_system": ["CARC", "RARC"]
+  }
+}

@@ -13,7 +13,7 @@ import json
 from dataclasses import replace
 from typing import Any, Mapping, Protocol, Sequence
 
-from .grouper import Grouper
+from .grouper import Grouper, derivation_pair
 from .models import Disposition, EncounterCase, Finding, ImpactStatus
 
 
@@ -139,6 +139,31 @@ class BasicHypothesisValidator:
         errors.extend(f"unknown assertion: {item}" for item in set(hypothesis.assertion_ids) - assertions)
         if hypothesis.category is OpportunityCategory.DRG_DISCREPANCY and not packet.case.claim.drg:
             errors.append("DRG discrepancy requires a submitted DRG")
+
+        # (a) Cited claim-line IDs must resolve to real charge lines when the claim
+        # carries them. Only bites when charge_lines are present (additive fidelity).
+        charge_lines = packet.case.claim.charge_lines
+        if charge_lines and hypothesis.claim_line_ids:
+            known_line_ids = {line.line_id for line in charge_lines}
+            errors.extend(
+                f"unknown claim_line_id: {item}"
+                for item in dict.fromkeys(hypothesis.claim_line_ids)
+                if item not in known_line_ids
+            )
+
+        # (b) A denial-risk hypothesis must cite at least one line that appears in a
+        # denied line of the financial snapshot.
+        if hypothesis.category is OpportunityCategory.DENIAL_RISK:
+            financial = packet.case.financial
+            if financial is None:
+                errors.append("denial risk requires a financial snapshot with denied lines")
+            else:
+                denied_line_ids = {
+                    line_id for denial in financial.denials for line_id in denial.line_ids
+                }
+                if not set(hypothesis.claim_line_ids) & denied_line_ids:
+                    errors.append("denial risk must cite a claim_line_id from a denied line")
+
         return not errors, tuple(errors)
 
 
@@ -218,6 +243,7 @@ def promote_hypotheses_to_findings(
             estimated_impact_cents=impact,
             impact_status=impact_status,
             grouper_version=baseline.grouper_version,
+            derivation=derivation_pair(baseline, simulated),
         ))
     return findings
 

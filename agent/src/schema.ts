@@ -287,6 +287,173 @@ export function createCritiqueOutputSchema(
   })
 }
 
+const documentationGapKindSchema = z.enum([
+  'missing_evidence',
+  'inferred_only',
+  'conflicted',
+  'low_confidence',
+])
+
+export const documentationObservationSchema = z.object({
+  observation_id: nonEmptyString,
+  assertion_id: nonEmptyString,
+  subject_id: nonEmptyString,
+  gap_kind: documentationGapKindSchema,
+  observation: nonEmptyString,
+  evidence_ids: z.array(nonEmptyString).default([]),
+  suggested_documentation: z.string().default(''),
+}).strict()
+
+/**
+ * Advisory documentation-gap output. The critic may only flag assertions that
+ * are already present in the encounter; it never emits coding, DRG, payment, or
+ * claim fields, and every citation must resolve to a real assertion/evidence id.
+ */
+export function createDocumentationCritiqueSchema(encounter: z.infer<typeof encounterCaseSchema>) {
+  const assertionIds = new Set(encounter.assertions.map(item => item.assertion_id))
+  const subjectByAssertion = new Map(encounter.assertions.map(item => [item.assertion_id, item.subject_id]))
+  const evidenceIds = new Set(encounter.evidence.map(item => item.evidence_id))
+  return z.object({ observations: z.array(documentationObservationSchema) }).strict().superRefine((value, context) => {
+    const seenIds = new Set<string>()
+    const seenAssertions = new Set<string>()
+    for (const [index, observation] of value.observations.entries()) {
+      if (seenIds.has(observation.observation_id)) {
+        context.addIssue({ code: 'custom', path: ['observations', index, 'observation_id'], message: 'observation_id values must be unique' })
+      }
+      seenIds.add(observation.observation_id)
+      if (!assertionIds.has(observation.assertion_id)) {
+        context.addIssue({ code: 'custom', path: ['observations', index, 'assertion_id'], message: `unknown assertion: ${observation.assertion_id}` })
+      } else if (subjectByAssertion.get(observation.assertion_id) !== observation.subject_id) {
+        context.addIssue({ code: 'custom', path: ['observations', index, 'subject_id'], message: 'must match the assertion subject_id' })
+      }
+      if (seenAssertions.has(observation.assertion_id)) {
+        context.addIssue({ code: 'custom', path: ['observations', index, 'assertion_id'], message: 'duplicate observation for assertion' })
+      }
+      seenAssertions.add(observation.assertion_id)
+      for (const evidenceId of observation.evidence_ids) {
+        if (!evidenceIds.has(evidenceId)) {
+          context.addIssue({ code: 'custom', path: ['observations', index, 'evidence_ids'], message: `unknown evidence: ${evidenceId}` })
+        }
+      }
+    }
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Clinical-care-gap EXTRACTION-ONLY schemas
+// ---------------------------------------------------------------------------
+// The extractor may observe and report a longitudinal wound picture: dated wound
+// assessments with numeric measurements, and candidate clinical findings framed as
+// grounded hypotheses. It must NEVER emit an authoritative gap output — no gap_domain,
+// no alert_urgency, no timing/elapsed-day math, no gap decision/disposition/status, and
+// no claim/charge/DRG/payment field. Those are computed exclusively by the deterministic
+// Python engine (`rules.py` DSL + `engine._longitudinal_assessment_facts`). All schemas
+// are `.strict()`, so any attempt to smuggle such a field in is rejected structurally
+// rather than by convention.
+
+/** A single numeric wound measurement in centimeters. Raw observation only — no trend,
+ *  no percentage change, no elapsed-day arithmetic (all of that is derived downstream). */
+export const woundMeasurementSchema = z.object({
+  length_cm: z.number().nonnegative(),
+  width_cm: z.number().nonnegative(),
+  // Depth is frequently un-probed; optional but, when present, still a raw observation.
+  depth_cm: z.number().nonnegative().optional(),
+}).strict()
+
+/**
+ * A dated wound assessment the extractor observed in the record. It carries the raw,
+ * grounded observation (a measurement + when it was observed + supporting evidence) and a
+ * subject link to a WoundAssessment ontology entity. It deliberately has NO comparison,
+ * trend, size_trend_pct, days_since_baseline, reassessment_overdue, urgency, or gap field:
+ * those deterministic longitudinal facts are computed by Python from the dated series.
+ */
+export const datedWoundAssessmentSchema = z.object({
+  assessment_id: nonEmptyString,
+  subject_id: nonEmptyString,
+  observed_at: isoDateTime,
+  measurement: woundMeasurementSchema,
+  evidence_ids: z.array(nonEmptyString).min(1),
+}).strict()
+
+/**
+ * A candidate clinical finding, framed as a grounded HYPOTHESIS for a clinician/engine to
+ * adjudicate — never a decision. It reports what the notes describe (a normalized concept
+ * with present/absent/uncertain/historical status and explicit/inferred/conflicted/absent
+ * documentation), with a subject link and supporting/contradicting evidence. It carries no
+ * recommended action, no urgency, no gap_domain, and no claim/coding field.
+ */
+export const candidateClinicalFindingSchema = z.object({
+  candidate_id: nonEmptyString,
+  subject_id: nonEmptyString,
+  concept: nonEmptyString,
+  status: z.enum(['present', 'absent', 'uncertain', 'historical']),
+  documentation_status: z.enum(['explicit', 'inferred', 'conflicted', 'absent']),
+  confidence: z.number().min(0).max(1),
+  observation: nonEmptyString,
+  evidence_ids: z.array(nonEmptyString).min(1),
+  contradicting_evidence_ids: z.array(nonEmptyString).default([]),
+}).strict()
+
+/**
+ * Advisory clinical-care-gap extraction output. Every citation must resolve to a real
+ * evidence id (checked below); the deterministic layer independently re-verifies grounding,
+ * derives all temporal/co-occurrence facts, and decides whether any gap exists. This schema
+ * cannot express a gap decision — there is no field for one.
+ */
+export const gapExtractionOutputSchema = z.object({
+  assessments: z.array(datedWoundAssessmentSchema).default([]),
+  candidate_findings: z.array(candidateClinicalFindingSchema).default([]),
+}).strict()
+
+/**
+ * Build a lineage-checked clinical-care-gap extraction schema. Every ``evidence_ids`` /
+ * ``contradicting_evidence_ids`` entry must resolve to an id in ``allowedEvidenceIds`` (the
+ * validated encounter evidence), ids must be unique, and evidence cannot both support and
+ * contradict the same candidate finding. Purely a grounding check; it never introduces an
+ * authoritative field.
+ */
+export function createGapExtractionSchema(allowedEvidenceIds: Iterable<string> = []) {
+  const allowed = new Set(allowedEvidenceIds)
+  const checkEvidence = (
+    ids: readonly string[], context: z.RefinementCtx, path: (string | number)[],
+  ): void => {
+    if (allowed.size === 0) return
+    for (const evidenceId of ids) {
+      if (!allowed.has(evidenceId)) {
+        context.addIssue({ code: 'custom', path, message: `unknown evidence: ${evidenceId}` })
+      }
+    }
+  }
+  return gapExtractionOutputSchema.superRefine((value, context) => {
+    const assessmentIds = new Set<string>()
+    for (const [index, assessment] of value.assessments.entries()) {
+      if (assessmentIds.has(assessment.assessment_id)) {
+        context.addIssue({ code: 'custom', path: ['assessments', index, 'assessment_id'], message: 'assessment_id values must be unique' })
+      }
+      assessmentIds.add(assessment.assessment_id)
+      if (new Set(assessment.evidence_ids).size !== assessment.evidence_ids.length) {
+        context.addIssue({ code: 'custom', path: ['assessments', index, 'evidence_ids'], message: 'must not contain duplicates' })
+      }
+      checkEvidence(assessment.evidence_ids, context, ['assessments', index, 'evidence_ids'])
+    }
+    const candidateIds = new Set<string>()
+    for (const [index, candidate] of value.candidate_findings.entries()) {
+      if (candidateIds.has(candidate.candidate_id)) {
+        context.addIssue({ code: 'custom', path: ['candidate_findings', index, 'candidate_id'], message: 'candidate_id values must be unique' })
+      }
+      candidateIds.add(candidate.candidate_id)
+      const supporting = new Set(candidate.evidence_ids)
+      checkEvidence(candidate.evidence_ids, context, ['candidate_findings', index, 'evidence_ids'])
+      checkEvidence(candidate.contradicting_evidence_ids, context, ['candidate_findings', index, 'contradicting_evidence_ids'])
+      for (const evidenceId of candidate.contradicting_evidence_ids) {
+        if (supporting.has(evidenceId)) {
+          context.addIssue({ code: 'custom', path: ['candidate_findings', index], message: `evidence cannot both support and contradict: ${evidenceId}` })
+        }
+      }
+    }
+  })
+}
+
 export const ontologyDefinitionSchema = z.object({
   ontology_id: nonEmptyString,
   version: nonEmptyString,
@@ -322,6 +489,10 @@ export type OntologyGraph = z.infer<typeof ontologyGraphSchema>
 export type InvestigationPacket = z.infer<typeof investigationPacketSchema>
 export type OpportunityHypothesis = z.infer<typeof opportunityHypothesisSchema>
 export type OpportunityCritique = z.infer<typeof opportunityCritiqueSchema>
+export type DocumentationObservation = z.infer<typeof documentationObservationSchema>
+export type DatedWoundAssessment = z.infer<typeof datedWoundAssessmentSchema>
+export type CandidateClinicalFinding = z.infer<typeof candidateClinicalFindingSchema>
+export type GapExtractionOutput = z.infer<typeof gapExtractionOutputSchema>
 
 function validateLineage(
   value: {

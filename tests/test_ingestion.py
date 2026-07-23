@@ -21,10 +21,93 @@ from revenue_integrity.ontology import load_builtin_ontology
 ROOT = Path(__file__).parents[1]
 BULK = ROOT / "examples/bulk/clinic_alpha"
 ADAPTER_PATH = ROOT / "examples/adapters/clinic_alpha_wound_care_v1.json"
+MERCY_BULK = ROOT / "examples/bulk/mercy_regional"
+MERCY_ADAPTER_PATH = ROOT / "examples/adapters/mercy_regional_wound_care_v1.json"
 
 
 def load_json(path: Path):
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _case_from_bundle(bundle: dict, definition: dict) -> dict:
+    """Deterministically assemble an EncounterCase payload from a source bundle's
+    structured extraction (no model narrative), mirroring the demonstrated bundle->engine path."""
+    extraction = bundle["structured_extraction"]
+    return {
+        "schema_version": "2.0.0",
+        **{key: bundle[key] for key in ("case_id", "patient_id", "encounter_id", "admitted_at", "discharged_at", "metadata", "claim")},
+        "evidence": extraction["evidence"],
+        "ontology": {
+            **extraction["ontology"],
+            "entities": [*definition["structural_graph"]["entities"], *extraction["ontology"]["entities"]],
+            "relations": [*definition["structural_graph"]["relations"], *extraction["ontology"]["relations"]],
+        },
+        "assertions": extraction["assertions"],
+        "provenance": {
+            "framework": "mastra", "model_id": "test/no-narrative-facts", "agent_id": "test-extractor",
+            "extracted_at": "2026-07-15T00:00:00Z", "schema_version": "2.0.0",
+            "extraction_policy": {
+                "max_documents": 100, "max_document_characters": 100000, "max_total_document_characters": 1000000,
+                "max_evidence_items": 100, "max_evidence_characters": 10000, "max_total_evidence_characters": 100000,
+                "max_entities": 100, "max_relations": 100, "max_assertions": 100,
+            },
+            "ingestion": bundle["ingestion_provenance"],
+        },
+    }
+
+
+class MercyRegionalNotionalDataTests(unittest.TestCase):
+    """The notional Mercy Regional provider export exercises the full onboarding path:
+    profile -> approved adapter -> evidence-grounded bundles -> governed rules -> findings."""
+
+    def setUp(self) -> None:
+        self.adapter = load_adapter(MERCY_ADAPTER_PATH)
+        self.ontology = load_builtin_ontology(self.adapter.ontology.ontology_id, self.adapter.ontology.version)
+        self.definition = load_json(ROOT / "src/revenue_integrity/data/wound_care_ontology_v1.json")
+
+    def _bundles(self) -> dict:
+        result = run_adapter(MERCY_BULK, self.adapter, self.ontology, now=lambda: datetime(2026, 7, 15, tzinfo=timezone.utc))
+        return {bundle["encounter_id"]: bundle for bundle in result.source_bundles}, result.report
+
+    def test_profile_fingerprint_matches_the_committed_adapter(self):
+        profile = profile_directory(MERCY_BULK)
+        self.assertEqual(profile.schema_fingerprint, self.adapter.source_schema_fingerprint)
+        self.assertEqual(profile.artifact_count, 7)
+
+    def test_run_produces_six_evidence_grounded_bundles(self):
+        bundles, report = self._bundles()
+        self.assertEqual(report.output_cases, 6)
+        self.assertEqual(report.output_assertions, 5)  # five encounters carry a wound assessment
+        # Datetime transform resolved the local timestamp against America/Chicago.
+        self.assertTrue(bundles["ENC-MR-2001"]["admitted_at"].endswith("-05:00"))
+        # POA=N mapped to a hospital-acquired (present_on_admission False) wound.
+        assertion = bundles["ENC-MR-2001"]["structured_extraction"]["assertions"][0]
+        self.assertEqual(assertion["attributes"], {"site": "sacral_region", "stage": 4, "poa": "N", "present_on_admission": False})
+
+    def test_hospital_acquired_bundle_flows_to_severity_and_poa_findings(self):
+        bundles, _ = self._bundles()
+        case = EncounterCase.from_dict(_case_from_bundle(bundles["ENC-MR-2001"], self.definition))
+        findings = {
+            f.rule_id: f
+            for f in RuleEngine(load_json(ROOT / "rules/wound_care_v2.json"), DeterministicDemoGrouper()).evaluate(case)
+        }
+        self.assertIn("WC-PI-SEVERITY-001", findings)  # exercises between/starts_with/count_gte/has_contradicting_evidence
+        self.assertIn("WC-PI-POA-002", findings)       # POA=N -> compliance review
+        coding = findings["WC-PI-SEVERITY-001"]
+        self.assertEqual((coding.current_drg, coding.simulated_drg), ("DEMO-292", "DEMO-290"))
+        self.assertEqual(findings["WC-PI-POA-002"].disposition.value, "compliance_review")
+
+    def test_clean_encounter_yields_no_wound_findings(self):
+        bundles, _ = self._bundles()
+        # ENC-MR-2004 has no skin assessment -> an empty structured wound extraction.
+        self.assertEqual(bundles["ENC-MR-2004"]["structured_extraction"]["assertions"], [])
+        case = EncounterCase.from_dict(_case_from_bundle(bundles["ENC-MR-2004"], self.definition))
+        rule_ids = {
+            f.rule_id
+            for f in RuleEngine(load_json(ROOT / "rules/wound_care_v2.json"), DeterministicDemoGrouper()).evaluate(case)
+        }
+        self.assertNotIn("WC-PI-SEVERITY-001", rule_ids)
+        self.assertNotIn("WC-PI-POA-002", rule_ids)
 
 
 class BulkIngestionTests(unittest.TestCase):

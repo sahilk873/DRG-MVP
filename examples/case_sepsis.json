@@ -1,0 +1,88 @@
+{
+  "schema_version": "2.0.0",
+  "case_id": "CASE-DEMO-SEPSIS-001",
+  "patient_id": "PATIENT-DEIDENTIFIED-SEPSIS-001",
+  "encounter_id": "ENC-DEMO-SEPSIS-001",
+  "admitted_at": "2026-06-10T08:00:00Z",
+  "discharged_at": "2026-06-17T11:00:00Z",
+  "metadata": {"payer": "demo", "facility": "demo-hospital", "poa_status": "Y", "service_line": "sepsis"},
+  "evidence": [
+    {
+      "evidence_id": "EV-SEP-001",
+      "document_id": "ICU-PROGRESS-NOTE-001",
+      "author_role": "physician",
+      "recorded_at": "2026-06-10T13:15:00Z",
+      "text": "Severe sepsis due to community-acquired pneumonia with acute organ dysfunction: acute kidney injury and lactate 4.2 mmol/L. Severity of illness major, risk of mortality major. Present on admission."
+    }
+  ],
+  "ontology": {
+    "ontology_id": "sepsis-encounter-ontology",
+    "ontology_version": "1.0.0-draft",
+    "ontology_digest": "8e4f774cbf47f3fff9c680672b07a251091b94ae8b666553cde51b4ef6df0617",
+    "entities": [
+      {"entity_id": "root:patient", "entity_type": "Patient", "label": "Patient", "properties": {}},
+      {"entity_id": "root:encounter", "entity_type": "Encounter", "label": "Encounter", "properties": {}},
+      {"entity_id": "root:claim", "entity_type": "Claim", "label": "Submitted claim", "properties": {}},
+      {
+        "entity_id": "condition:severe-sepsis",
+        "entity_type": "SevereSepsis",
+        "label": "Severe sepsis with acute organ dysfunction",
+        "concept": {"system": "urn:kunal:sepsis", "code": "severe-sepsis", "display": "Severe sepsis"},
+        "properties": {"present_on_admission": true}
+      },
+      {"entity_id": "infection:pneumonia", "entity_type": "Infection", "label": "Community-acquired pneumonia", "properties": {}},
+      {"entity_id": "organ:aki", "entity_type": "AcuteOrganDysfunction", "label": "Acute kidney injury", "properties": {}},
+      {"entity_id": "lab:lactate", "entity_type": "LaboratoryResult", "label": "Serum lactate 4.2 mmol/L", "properties": {}},
+      {"entity_id": "soi:major", "entity_type": "SeverityOfIllness", "label": "Severity of illness major", "properties": {"value": "major"}},
+      {"entity_id": "rom:major", "entity_type": "RiskOfMortality", "label": "Risk of mortality major", "properties": {"value": "major"}}
+    ],
+    "relations": [
+      {"relation_id": "rel:patient-encounter", "predicate": "hasEncounter", "source_id": "root:patient", "target_id": "root:encounter", "assertion_status": "present", "documentation_status": "explicit", "confidence": 1.0, "evidence_ids": []},
+      {"relation_id": "rel:encounter-claim", "predicate": "hasClaim", "source_id": "root:encounter", "target_id": "root:claim", "assertion_status": "present", "documentation_status": "explicit", "confidence": 1.0, "evidence_ids": []},
+      {"relation_id": "rel:patient-sepsis", "predicate": "hasCondition", "source_id": "root:patient", "target_id": "condition:severe-sepsis", "assertion_status": "present", "documentation_status": "explicit", "confidence": 0.97, "evidence_ids": ["EV-SEP-001"]},
+      {"relation_id": "rel:sepsis-infection", "predicate": "causedBy", "source_id": "condition:severe-sepsis", "target_id": "infection:pneumonia", "assertion_status": "present", "documentation_status": "explicit", "confidence": 0.95, "evidence_ids": ["EV-SEP-001"]},
+      {"relation_id": "rel:sepsis-organ", "predicate": "hasOrganDysfunction", "source_id": "condition:severe-sepsis", "target_id": "organ:aki", "assertion_status": "present", "documentation_status": "explicit", "confidence": 0.95, "evidence_ids": ["EV-SEP-001"]},
+      {"relation_id": "rel:organ-lab", "predicate": "hasFinding", "source_id": "organ:aki", "target_id": "lab:lactate", "assertion_status": "present", "documentation_status": "explicit", "confidence": 0.95, "evidence_ids": ["EV-SEP-001"]},
+      {"relation_id": "rel:sepsis-soi", "predicate": "hasSeverityOfIllness", "source_id": "condition:severe-sepsis", "target_id": "soi:major", "assertion_status": "present", "documentation_status": "explicit", "confidence": 0.95, "evidence_ids": ["EV-SEP-001"]},
+      {"relation_id": "rel:sepsis-rom", "predicate": "hasRiskOfMortality", "source_id": "condition:severe-sepsis", "target_id": "rom:major", "assertion_status": "present", "documentation_status": "explicit", "confidence": 0.95, "evidence_ids": ["EV-SEP-001"]}
+    ]
+  },
+  "assertions": [
+    {
+      "assertion_id": "AS-SEP-001",
+      "subject_id": "condition:severe-sepsis",
+      "concept": "severe_sepsis",
+      "status": "present",
+      "documentation_status": "explicit",
+      "confidence": 0.97,
+      "attributes": {"severity_of_illness": "major", "risk_of_mortality": "major", "poa": "Y", "organ_dysfunction": "acute_kidney_injury"},
+      "evidence_ids": ["EV-SEP-001"],
+      "contradicting_evidence_ids": []
+    }
+  ],
+  "claim": {
+    "diagnoses": ["A41.9"],
+    "procedures": [],
+    "charges": ["ROOM-BOARD"],
+    "drg": "DEMO-873",
+    "allowed_amount_cents": 1000000
+  },
+  "provenance": {
+    "framework": "mastra",
+    "model_id": "synthetic/test-fixture",
+    "agent_id": "encounter-evidence-extractor",
+    "extracted_at": "2026-06-17T12:00:00Z",
+    "schema_version": "2.0.0",
+    "extraction_policy": {
+      "max_documents": 200,
+      "max_document_characters": 200000,
+      "max_total_document_characters": 1000000,
+      "max_evidence_items": 2000,
+      "max_evidence_characters": 2000,
+      "max_total_evidence_characters": 250000,
+      "max_entities": 2000,
+      "max_relations": 5000,
+      "max_assertions": 2000
+    }
+  }
+}

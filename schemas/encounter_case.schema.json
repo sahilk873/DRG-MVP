@@ -17,10 +17,63 @@
     "ontology": {"$ref": "#/$defs/ontologyGraph"},
     "assertions": {"type": "array", "items": {"$ref": "#/$defs/assertion"}},
     "claim": {"$ref": "https://example.org/schemas/claim-v1.json"},
-    "provenance": {"$ref": "#/$defs/provenance"}
+    "provenance": {"$ref": "#/$defs/provenance"},
+    "documents": {"type": "array", "items": {"$ref": "#/$defs/document"}},
+    "assessments": {"type": "array", "items": {"$ref": "#/$defs/woundAssessment"}},
+    "episode": {"$ref": "#/$defs/episode"}
   },
   "$defs": {
     "nonEmptyString": {"type": "string", "minLength": 1},
+    "document": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["document_id", "text"],
+      "properties": {
+        "document_id": {"$ref": "#/$defs/nonEmptyString"},
+        "text": {"$ref": "#/$defs/nonEmptyString"}
+      }
+    },
+    "sizeMeasurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["length_cm", "width_cm"],
+      "properties": {
+        "length_cm": {"type": "number", "minimum": 0},
+        "width_cm": {"type": "number", "minimum": 0},
+        "depth_cm": {"type": "number", "minimum": 0}
+      }
+    },
+    "woundAssessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["assessment_id", "observed_at", "evidence_ids"],
+      "properties": {
+        "assessment_id": {"$ref": "#/$defs/nonEmptyString"},
+        "observed_at": {"type": "string", "format": "date-time"},
+        "size": {"$ref": "#/$defs/sizeMeasurement"},
+        "tissue": {"$ref": "#/$defs/nonEmptyString"},
+        "exudate": {"$ref": "#/$defs/nonEmptyString"},
+        "periwound": {"$ref": "#/$defs/nonEmptyString"},
+        "standard_care_documented": {"type": "boolean"},
+        "provider_reassessment": {"type": "boolean"},
+        "compared_with_id": {"$ref": "#/$defs/nonEmptyString"},
+        "subject_entity_id": {"$ref": "#/$defs/nonEmptyString"},
+        "attributes": {"type": "object"},
+        "evidence_ids": {"allOf": [{"$ref": "#/$defs/uniqueStringArray"}, {"type": "array", "minItems": 1}]}
+      }
+    },
+    "episode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["episode_id", "patient_id", "episode_start"],
+      "properties": {
+        "episode_id": {"$ref": "#/$defs/nonEmptyString"},
+        "patient_id": {"$ref": "#/$defs/nonEmptyString"},
+        "episode_start": {"type": "string", "format": "date-time"},
+        "episode_end": {"type": "string", "format": "date-time"},
+        "encounter_ids": {"$ref": "#/$defs/uniqueStringArray"}
+      }
+    },
     "uniqueStringArray": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/nonEmptyString"}},
     "evidence": {
       "type": "object",

@@ -7,6 +7,7 @@ import type { ReviewDecision } from '../workflow'
 
 interface ReviewQueueProps {
   onNavigate: (view: ViewId) => void
+  onOpenCase: (opportunityId: string) => void
   notify: (message: string) => void
   decisions: ReviewDecision[]
   onReset: () => void
@@ -19,11 +20,15 @@ const filters: Array<{ label: string; value: 'all' | AutomationOutcome }> = [
   { label: 'All', value: 'all' },
 ]
 
-export function ReviewQueue({ onNavigate, notify, decisions, onReset }: ReviewQueueProps) {
+export function ReviewQueue({ onNavigate, onOpenCase, notify, decisions, onReset }: ReviewQueueProps) {
   const [filter, setFilter] = useState<(typeof filters)[number]['value']>('human_exception')
   const [query, setQuery] = useState('')
   const resolvedFindingIds = useMemo(() => new Set(decisions.map(decision => decision.finding_id)), [decisions])
   const pendingHumanCount = humanOpportunities.filter(item => !resolvedFindingIds.has(item.id)).length
+  const topCase = useMemo(
+    () => humanOpportunities.find(item => item.packetBacked && !resolvedFindingIds.has(item.id)) ?? humanOpportunities[0],
+    [resolvedFindingIds],
+  )
 
   const visible = useMemo(() => opportunities.filter(item => {
     const resolved = resolvedFindingIds.has(item.id)
@@ -56,7 +61,7 @@ export function ReviewQueue({ onNavigate, notify, decisions, onReset }: ReviewQu
         <div className="page-header__actions">
           {decisions.length > 0 && <button className="button button--quiet" onClick={onReset} type="button">Reset demo</button>}
           <button className="button button--quiet" onClick={exportQueue} type="button"><Download size={16} /> Export queue</button>
-          <button className="button button--dark" onClick={() => onNavigate('case')} type="button">Review top case <ArrowRight size={16} /></button>
+          <button className="button button--dark" onClick={() => topCase && onOpenCase(topCase.id)} type="button">Review top case <ArrowRight size={16} /></button>
         </div>
       </header>
 
@@ -102,7 +107,7 @@ export function ReviewQueue({ onNavigate, notify, decisions, onReset }: ReviewQu
             <div className="confidence-cell"><strong>{item.confidence}%</strong><span><i style={{ width: `${item.confidence}%` }} /></span></div>
             <div className="impact-cell"><strong>{item.impact == null ? 'Unavailable' : item.impact ? `$${item.impact.toLocaleString()}` : '—'}</strong><small>{item.currentDrg !== item.simulatedDrg ? `${item.currentDrg} → ${item.simulatedDrg}` : 'No DRG change'}</small></div>
             <div className="age-cell">{resolvedFindingIds.has(item.id) ? 'Done' : item.estimatedReviewSeconds ? `~${item.estimatedReviewSeconds} sec` : 'No review'}</div>
-            {item.packetBacked ? <button className="row-open" onClick={() => onNavigate('case')} type="button" aria-label={`Open ${item.title}`}><ArrowRight size={17} /></button> : <span className="row-arrow"><ArrowRight size={17} /></span>}
+            {item.packetBacked ? <button className="row-open" onClick={() => onOpenCase(item.id)} type="button" aria-label={`Open ${item.title}`}><ArrowRight size={17} /></button> : <span className="row-arrow"><ArrowRight size={17} /></span>}
           </div>
         )) : (
           <div className="empty-state"><Search size={24} /><strong>No opportunities found</strong><span>Try changing the queue filter or search term.</span></div>

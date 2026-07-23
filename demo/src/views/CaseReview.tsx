@@ -7,18 +7,22 @@ import {
   CircleDollarSign,
   ClipboardCheck,
   Code2,
+  Fingerprint,
   FileText,
   GitBranch,
   History,
   Info,
   Link2,
+  Loader2,
+  ShieldAlert,
   ShieldCheck,
   UserRoundCheck,
   X,
 } from 'lucide-react'
-import { useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 
-import { opportunities, primaryInvestigation, primaryReviewPacket } from '../data'
+import { opportunities, packetCases, primaryInvestigation, primaryOpportunity } from '../data'
+import { verifyPacketHashFromText } from '../packet-hash'
 import type { ReviewPacket } from '../review-packet'
 import type { ViewId } from '../types'
 import type { ReviewerIdentity, ReviewWorkflowGateway, ReviewDecision } from '../workflow'
@@ -29,23 +33,26 @@ interface CaseReviewProps {
   notify: (message: string) => void
   workflowGateway: ReviewWorkflowGateway
   reviewer: ReviewerIdentity
-  automationPlan: AutomationPlan
+  opportunityId: string
   decisions: ReviewDecision[]
   onDecisionRecorded: (decision: ReviewDecision) => void
 }
 
 type CaseTab = 'evidence' | 'graph' | 'claim' | 'investigation' | 'audit'
 
-export function CaseReview({ onNavigate, notify, workflowGateway, reviewer, automationPlan, decisions, onDecisionRecorded }: CaseReviewProps) {
-  const opportunity = opportunities[0]
-  const packet = primaryReviewPacket
-  const finding = packet.findings[0]
-  if (!opportunity || !finding) throw new Error('The demo case requires an engine-generated finding')
+export function CaseReview({ onNavigate, notify, workflowGateway, reviewer, opportunityId, decisions, onDecisionRecorded }: CaseReviewProps) {
+  const opportunity = opportunities.find(item => item.id === opportunityId) ?? primaryOpportunity
+  const packetCase = packetCases[opportunity.id] ?? packetCases[primaryOpportunity.id]!
+  const packet = packetCase.packet
+  const automationPlan = packetCase.plan
+  const finding = packet.findings.find(item => item.finding_id === opportunity.id) ?? packet.findings[0]
+  if (!finding) throw new Error('The demo case requires an engine-generated finding')
   const automation = automationPlan.findings.find(item => item.finding_id === finding.finding_id)
   if (!automation) throw new Error('The demo case requires a deterministic automation decision')
   const [tab, setTab] = useState<CaseTab>('evidence')
   const [dismissOpen, setDismissOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const hashVerification = usePacketHashVerification(packetCase.packetRaw, packet.provenance.packet_hash)
   const latestDecision = decisions.find(item => item.finding_id === finding.finding_id)
   const decision = latestDecision?.action === 'dismiss_with_reason' ? 'dismissed' : latestDecision ? 'routed' : 'open'
   const recommendedAction = automation.recommended_action
@@ -53,6 +60,13 @@ export function CaseReview({ onNavigate, notify, workflowGateway, reviewer, auto
   const route = async () => {
     if (!recommendedAction) {
       notify('This finding does not have a governed routing action')
+      return
+    }
+    // The revenue-integrity reviewer workflow only accepts revenue routing actions. A
+    // clinical_care_gap alert (route_to_care_team) rides the separate gap-closure lane, which
+    // the dedicated care-gap surface (C5) drives — never this claim-scoped review path.
+    if (recommendedAction === 'route_to_care_team') {
+      notify('Clinical care-gap alerts are routed on the care-gap lane, not the revenue review workflow')
       return
     }
     setSubmitting(true)
@@ -109,6 +123,19 @@ export function CaseReview({ onNavigate, notify, workflowGateway, reviewer, auto
           </button>
         </div>
       </header>
+
+      <div className="trust-strip" role="note" aria-label="Safety guarantees">
+        <ShieldCheck size={15} />
+        <span className={packet.controls.claim_mutation_allowed ? 'trust-flag trust-flag--warn' : 'trust-flag trust-flag--safe'}>
+          Claim mutation: <strong>{packet.controls.claim_mutation_allowed ? 'ALLOWED' : 'BLOCKED'}</strong>
+        </span>
+        <span className="trust-flag trust-flag--safe">
+          Reviewer authorization: <strong>{packet.controls.human_review_required ? 'REQUIRED' : 'not required'}</strong>
+        </span>
+        <span className="trust-flag">Model output: <strong>evidence &amp; hypotheses only</strong></span>
+        <PacketHashBadge verification={hashVerification} packetHash={packet.provenance.packet_hash} />
+        <button className="text-button" onClick={() => onNavigate('governance')} type="button">Why this is safe <ChevronRight size={14} /></button>
+      </div>
 
       {decision !== 'open' && (
         <div className={`decision-banner decision-banner--${decision}`}>
@@ -167,6 +194,10 @@ export function CaseReview({ onNavigate, notify, workflowGateway, reviewer, auto
             <p>{String(automation.draft.body)}</p>
             <small>Policy {automationPlan.policy.version} · deterministic quick confirmation · no claim mutation</small>
           </div>
+          <div className="priority-breakdown" title="Deterministic priority = tier + confidence + uncapped dollar impact + urgency">
+            <span>Priority {automation.priority_score.toLocaleString()}</span>
+            <small>tier {automation.priority_components.tier_weight.toLocaleString()} · confidence {automation.priority_components.confidence_weight.toLocaleString()} · impact {automation.priority_components.impact_weight.toLocaleString()} · urgency {automation.priority_components.urgency_weight.toLocaleString()}</small>
+          </div>
         </div>
 
         <div className="impact-summary">
@@ -180,6 +211,8 @@ export function CaseReview({ onNavigate, notify, workflowGateway, reviewer, auto
           <small className="simulation-note">Synthetic illustration. Final result requires a licensed grouper, payer context, and coder approval.</small>
         </div>
       </section>
+
+      <LineageRail packet={packet} finding={finding} />
 
       <section className="case-workspace">
         <div className="case-tabs" role="tablist" aria-label="Encounter review details">
@@ -198,6 +231,62 @@ export function CaseReview({ onNavigate, notify, workflowGateway, reviewer, auto
         </div>
       </section>
     </>
+  )
+}
+
+type HashVerificationState =
+  | { status: 'checking' }
+  | { status: 'verified'; computed: string }
+  | { status: 'failed'; computed: string; claimed: string | null }
+
+// Independently re-verify the packet hash in the browser: recompute the canonical hash
+// from the raw fixture text and compare it to the value the deterministic Python engine
+// stored in provenance.packet_hash. Cross-language parity with audit.canonical_hash.
+function usePacketHashVerification(packetRaw: string, expectedHash: string): HashVerificationState {
+  const [state, setState] = useState<HashVerificationState>({ status: 'checking' })
+  useEffect(() => {
+    let active = true
+    setState({ status: 'checking' })
+    verifyPacketHashFromText(packetRaw)
+      .then(result => {
+        if (!active) return
+        setState(
+          result.ok && result.computed === expectedHash
+            ? { status: 'verified', computed: result.computed }
+            : { status: 'failed', computed: result.computed, claimed: result.claimed },
+        )
+      })
+      .catch(() => {
+        if (active) setState({ status: 'failed', computed: '', claimed: null })
+      })
+    return () => { active = false }
+  }, [packetRaw, expectedHash])
+  return state
+}
+
+function PacketHashBadge({ verification, packetHash }: { verification: HashVerificationState; packetHash: string }) {
+  const short = `${packetHash.slice(0, 12)}…`
+  if (verification.status === 'checking') {
+    return (
+      <span className="trust-flag trust-flag--pending" title="Recomputing the canonical packet hash in your browser">
+        <Loader2 size={13} className="trust-flag__spin" /> Packet hash: <strong>verifying…</strong>
+      </span>
+    )
+  }
+  if (verification.status === 'failed') {
+    return (
+      <span className="trust-flag trust-flag--warn" title="Client-side hash did not match the engine-signed packet hash">
+        <ShieldAlert size={13} /> Packet hash: <strong>MISMATCH</strong>
+      </span>
+    )
+  }
+  return (
+    <span
+      className="trust-flag trust-flag--safe"
+      title={`Recomputed in-browser (SHA-256, Web Crypto) and matched the engine-signed hash ${packetHash}`}
+    >
+      <Fingerprint size={13} /> Packet hash: <strong>RE-VERIFIED</strong> <code>{short}</code>
+    </span>
   )
 }
 
@@ -236,14 +325,22 @@ function EvidenceTab({ packet }: { packet: ReviewPacket }) {
     <div className="evidence-layout">
       <div className="evidence-list">
         <div className="tab-section-heading"><div><span className="panel-kicker">Source-grounded record</span><h3>Supporting evidence</h3></div><span className="evidence-complete"><ShieldCheck size={15} /> Lineage verified</span></div>
-        {packet.evidence.map(item => <EvidenceItem
-          key={item.evidence_id}
-          type={item.source_locator ? 'Structured source record' : 'Clinical note excerpt'}
-          source={item.source_locator ? `${item.source_locator.path} · row ${item.source_locator.row_number}` : `${titleCase(item.author_role)} · ${item.document_id}`}
-          time={formatDateTime(item.recorded_at)}
-          content={<>“{item.text}”</>}
-          tags={item.source_locator ? ['Deterministic lineage', 'Source row', 'Fields linked'] : ['Exact excerpt', titleCase(item.author_role), 'Grounded']}
-        />)}
+        {packet.evidence.map(item => {
+          const locator = item.source_locator
+          const structured = locator.kind === 'structured_source_record'
+          const deepLink = locator.kind === 'structured_source_record'
+            ? `${locator.path} · row ${locator.row_number}`
+            : `${locator.document_id} · chars ${locator.char_start}–${locator.char_end}`
+          return <EvidenceItem
+            key={item.evidence_id}
+            type={structured ? 'Structured source record' : 'Clinical note excerpt'}
+            source={structured ? deepLink : `${titleCase(item.author_role)} · ${item.document_id}`}
+            time={formatDateTime(item.recorded_at)}
+            content={<>“{item.text}”</>}
+            deepLink={deepLink}
+            tags={structured ? ['Deterministic lineage', 'Source row', 'Fields linked'] : ['Exact excerpt', titleCase(item.author_role), 'Grounded']}
+          />
+        })}
       </div>
       <aside className="reasoning-panel">
         <span className="panel-kicker">Why this was surfaced</span>
@@ -261,7 +358,7 @@ function EvidenceTab({ packet }: { packet: ReviewPacket }) {
   )
 }
 
-function EvidenceItem({ type, source, time, content, tags }: { type: string; source: string; time: string; content: ReactNode; tags: string[] }) {
+function EvidenceItem({ type, source, time, content, tags, deepLink }: { type: string; source: string; time: string; content: ReactNode; tags: string[]; deepLink: string }) {
   return (
     <article className="evidence-item">
       <div className="evidence-item__icon"><FileText size={17} /></div>
@@ -270,7 +367,7 @@ function EvidenceItem({ type, source, time, content, tags }: { type: string; sou
         <blockquote>{content}</blockquote>
         <div className="evidence-tags">{tags.map(tag => <span className="evidence-tag" key={tag}>{tag}</span>)}</div>
       </div>
-      <button className="icon-button" type="button" aria-label={`Open ${type}`}><Link2 size={16} /></button>
+      <button className="icon-button" type="button" title={`Deep link: ${deepLink}`} aria-label={`Open ${type} at ${deepLink}`}><Link2 size={16} /></button>
     </article>
   )
 }
@@ -333,7 +430,74 @@ function ClaimTab({ packet }: { packet: ReviewPacket }) {
           <div className="claim-payment claim-payment--candidate"><span>Demo grouper payment</span><strong>{candidatePayment == null ? 'Unavailable' : formatCurrency(candidatePayment)}</strong></div>
         </div>
       </div>
+      <DerivationPanel finding={finding} />
       <div className="claim-warning"><ShieldCheck size={17} /><div><strong>Simulation is not a coding decision.</strong><span>The proposed code remains a review hypothesis until a qualified coder confirms documentation, coding criteria, sequencing, and POA.</span></div></div>
+    </div>
+  )
+}
+
+function DerivationPanel({ finding }: { finding: ReviewPacket['findings'][number] }) {
+  const current = finding.derivation?.current ?? []
+  const simulated = finding.derivation?.simulated ?? []
+  if (!current.length && !simulated.length) return null
+  return (
+    <div className="derivation-panel">
+      <div className="tab-section-heading">
+        <div><span className="panel-kicker">Deterministic grouper derivation</span><h3>Why the DRG changed</h3></div>
+        <span className="evidence-complete"><ShieldCheck size={15} /> Reproducible &amp; hash-covered</span>
+      </div>
+      <div className="derivation-columns">
+        <DerivationColumn label={`Current · ${finding.current_drg}`} steps={current} />
+        <ArrowRight size={18} />
+        <DerivationColumn label={`Candidate · ${finding.simulated_drg}`} steps={simulated} highlight />
+      </div>
+      <small className="simulation-note">Each step is produced by the deterministic grouper, never a model, and is covered by the review-packet hash.</small>
+    </div>
+  )
+}
+
+function DerivationColumn({ label, steps, highlight = false }: { label: string; steps: Array<{ step: string; value: string; detail: string }>; highlight?: boolean }) {
+  return (
+    <div className={highlight ? 'derivation-column derivation-column--candidate' : 'derivation-column'}>
+      <div className="derivation-column__header">{label}</div>
+      <ol className="derivation-steps">
+        {steps.map(item => (
+          <li key={item.step}>
+            <span>{item.step.replaceAll('_', ' ')}</span>
+            <strong>{item.value}</strong>
+            {item.detail && <small>{item.detail}</small>}
+          </li>
+        ))}
+      </ol>
+    </div>
+  )
+}
+
+function LineageRail({ packet, finding }: { packet: ReviewPacket; finding: ReviewPacket['findings'][number] }) {
+  const assertion = packet.assertions.find(item => finding.assertion_ids.includes(item.assertion_id)) ?? packet.assertions[0]
+  const evidenceId = finding.evidence_ids[0] ?? assertion?.evidence_ids[0] ?? '—'
+  const stage = assertion ? String(assertion.attributes.stage ?? '') : ''
+  return (
+    <section className="lineage-rail" aria-label="Evidence to claim lineage">
+      <LineageNode kicker="Evidence" value={evidenceId} detail="exact source excerpt" />
+      <ChevronRight size={16} />
+      <LineageNode kicker="Assertion" value={assertion ? assertion.concept.replaceAll('_', ' ') : '—'} detail={stage ? `stage ${stage}` : 'grounded'} />
+      <ChevronRight size={16} />
+      <LineageNode kicker="Governed rule" value={finding.rule_id} detail={finding.disposition.replaceAll('_', ' ')} />
+      <ChevronRight size={16} />
+      <LineageNode kicker="Proposed code" value={proposedDiagnosis(finding)} detail="human review required" />
+      <ChevronRight size={16} />
+      <LineageNode kicker="DRG" value={`${finding.current_drg} → ${finding.simulated_drg}`} detail="deterministic grouper" />
+    </section>
+  )
+}
+
+function LineageNode({ kicker, value, detail }: { kicker: string; value: string; detail: string }) {
+  return (
+    <div className="lineage-node">
+      <span>{kicker}</span>
+      <strong>{value}</strong>
+      <small>{detail}</small>
     </div>
   )
 }
@@ -393,6 +557,7 @@ function proposedDiagnosis(finding: ReviewPacket['findings'][number]) {
 function diagnosisLabel(code: string) {
   const labels: Record<string, string> = {
     'A41.9': 'Sepsis, unspecified organism',
+    'E11.9': 'Type 2 diabetes mellitus without complications',
     'L89.154': 'Pressure ulcer of sacral region, stage 4',
   }
   return labels[code] ?? 'Submitted diagnosis'

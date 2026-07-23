@@ -1,0 +1,17 @@
+{
+  "grouper_id": "deterministic-demo-grouper",
+  "version": "demo-0.2-not-for-billing",
+  "status": "approved-for-demo",
+  "description": "SYNTHETIC data-driven demo grouping definition. Models a single pressure-injury base DRG whose severity tier (MCC/CC/none) is driven by the coded diagnoses. NOT a licensed grouper and NOT for real coding or billing.",
+  "base_rate_cents": 1000000,
+  "tiers": [
+    {"severity": "mcc", "drg": "DEMO-290", "title": "Pressure injury with MCC (synthetic)", "relative_weight_micros": 1842000},
+    {"severity": "cc", "drg": "DEMO-291", "title": "Pressure injury with CC (synthetic)", "relative_weight_micros": 1280000},
+    {"severity": "none", "drg": "DEMO-292", "title": "Pressure injury without CC/MCC (synthetic)", "relative_weight_micros": 1000000}
+  ],
+  "diagnosis_severity": {
+    "codes": {"L89.154": "mcc"},
+    "prefixes": {"L89": "cc"}
+  },
+  "hac_codes": ["L89.154"]
+}

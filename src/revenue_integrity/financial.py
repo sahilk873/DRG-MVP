@@ -19,6 +19,52 @@ def _cents(value: Any, name: str, *, allow_none: bool = False) -> int | None:
     return value
 
 
+def _seq(value: Any, name: str) -> list[Any]:
+    if isinstance(value, (str, bytes)) or not isinstance(value, (list, tuple)):
+        raise ValueError(f"{name} must be an array")
+    return list(value)
+
+
+def _denial_from_dict(data: Any) -> "Denial":
+    if not isinstance(data, Mapping):
+        raise ValueError("financial.denials item must be an object")
+    required = {"denial_id", "line_ids", "reason_code", "status"}
+    allowed = required | {"amount_cents"}
+    missing = sorted(required - set(data))
+    unknown = sorted(set(data) - allowed)
+    if missing:
+        raise ValueError(f"denial missing required fields: {missing}")
+    if unknown:
+        raise ValueError(f"denial contains unknown fields: {unknown}")
+    return Denial(
+        denial_id=data["denial_id"],
+        line_ids=tuple(_seq(data["line_ids"], "denial.line_ids")),
+        reason_code=data["reason_code"],
+        status=data["status"],
+        amount_cents=data.get("amount_cents"),
+    )
+
+
+def _remittance_from_dict(data: Any) -> "Remittance":
+    if not isinstance(data, Mapping):
+        raise ValueError("financial.remittances item must be an object")
+    required = {"remittance_id", "paid_amount_cents", "adjustment_amount_cents", "status"}
+    allowed = required | {"denial_ids"}
+    missing = sorted(required - set(data))
+    unknown = sorted(set(data) - allowed)
+    if missing:
+        raise ValueError(f"remittance missing required fields: {missing}")
+    if unknown:
+        raise ValueError(f"remittance contains unknown fields: {unknown}")
+    return Remittance(
+        remittance_id=data["remittance_id"],
+        paid_amount_cents=data["paid_amount_cents"],
+        adjustment_amount_cents=data["adjustment_amount_cents"],
+        status=data["status"],
+        denial_ids=tuple(_seq(data.get("denial_ids", ()), "remittance.denial_ids")),
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class ClaimLine:
     line_id: str
@@ -38,6 +84,29 @@ class ClaimLine:
             raise ValueError("units must be a positive integer")
         _cents(self.charged_amount_cents, "charged_amount_cents")
         _cents(self.allowed_amount_cents, "allowed_amount_cents", allow_none=True)
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> "ClaimLine":
+        required = {"line_id", "code", "code_system", "units", "charged_amount_cents"}
+        allowed = required | {"allowed_amount_cents", "status"}
+        missing = sorted(required - set(data))
+        unknown = sorted(set(data) - allowed)
+        if missing:
+            raise ValueError(f"claim line missing required fields: {missing}")
+        if unknown:
+            raise ValueError(f"claim line contains unknown fields: {unknown}")
+        return cls(
+            line_id=data["line_id"], code=data["code"], code_system=data["code_system"],
+            units=data["units"], charged_amount_cents=data["charged_amount_cents"],
+            allowed_amount_cents=data.get("allowed_amount_cents"), status=data.get("status", "submitted"),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "line_id": self.line_id, "code": self.code, "code_system": self.code_system,
+            "units": self.units, "charged_amount_cents": self.charged_amount_cents,
+            "allowed_amount_cents": self.allowed_amount_cents, "status": self.status,
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -99,6 +168,40 @@ class FinancialSnapshot:
         for denial in self.denials:
             if set(denial.line_ids) - known:
                 raise ValueError("denial references an unknown claim line")
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, Any]) -> "FinancialSnapshot":
+        if not isinstance(data, Mapping):
+            raise ValueError("financial snapshot must be an object")
+        required = {"schema_version", "payer_id", "claim_id"}
+        allowed = required | {"claim_lines", "denials", "remittances", "contract_context"}
+        missing = sorted(required - set(data))
+        unknown = sorted(set(data) - allowed)
+        if missing:
+            raise ValueError(f"financial snapshot missing required fields: {missing}")
+        if unknown:
+            raise ValueError(f"financial snapshot contains unknown fields: {unknown}")
+        claim_lines = tuple(
+            ClaimLine.from_dict(item) for item in _seq(data.get("claim_lines", ()), "financial.claim_lines")
+        )
+        denials = tuple(
+            _denial_from_dict(item) for item in _seq(data.get("denials", ()), "financial.denials")
+        )
+        remittances = tuple(
+            _remittance_from_dict(item) for item in _seq(data.get("remittances", ()), "financial.remittances")
+        )
+        contract_context = data.get("contract_context", {})
+        if not isinstance(contract_context, Mapping):
+            raise ValueError("financial.contract_context must be an object")
+        return cls(
+            schema_version=_text(data["schema_version"], "financial.schema_version"),
+            payer_id=_text(data["payer_id"], "financial.payer_id"),
+            claim_id=_text(data["claim_id"], "financial.claim_id"),
+            claim_lines=claim_lines,
+            denials=denials,
+            remittances=remittances,
+            contract_context=dict(contract_context),
+        )
 
     @property
     def denied_amount_cents(self) -> int:

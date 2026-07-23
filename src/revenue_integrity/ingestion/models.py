@@ -36,6 +36,27 @@ class IngestionPolicy:
 
 
 @dataclass(frozen=True, slots=True)
+class DegradationPolicy:
+    """Controls how the adapter runtime reacts to bad rows.
+
+    Default ``abort`` preserves the fail-closed contract (any bad row raises). ``quarantine`` routes
+    the recoverable per-encounter failures (duplicate encounter, multiple/zero claims, orphan rows
+    referencing an unknown encounter, admission-after-discharge) to a quarantine list and keeps
+    processing the clean encounters — until ``max_quarantined`` is exceeded, which trips a circuit
+    breaker and aborts the whole run (a batch that broken should not be trusted).
+    """
+
+    mode: str = "abort"
+    max_quarantined: int = 1_000
+
+    def __post_init__(self) -> None:
+        if self.mode not in {"abort", "quarantine"}:
+            raise ValueError("degradation mode must be 'abort' or 'quarantine'")
+        if isinstance(self.max_quarantined, bool) or not isinstance(self.max_quarantined, int) or self.max_quarantined <= 0:
+            raise ValueError("degradation max_quarantined must be a positive integer")
+
+
+@dataclass(frozen=True, slots=True)
 class Operation:
     op: str
     delimiter: str | None = None

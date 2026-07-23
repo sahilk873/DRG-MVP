@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "mastra dev",
     "build": "mastra build",
-    "test": "node --import tsx --test src/**/*.test.ts",
+    "test": "node --import tsx --test $(find src -name '*.test.ts' -print | sort)",
     "check": "npm run test && npm run typecheck",
     "typecheck": "tsc --noEmit",
     "extract": "tsx src/extract.ts"

@@ -1,0 +1,150 @@
+{
+  "adapter_id": "mercy-regional-wound-care",
+  "version": "1.0.0",
+  "status": "approved-for-demo",
+  "source_schema_fingerprint": "84df1a4c86f67b294a6837606fddc8e69e09ee8f625eae438b7a8b0c309450ca",
+  "ontology": {
+    "ontology_id": "wound-care-encounter-ontology",
+    "version": "1.1.0-draft",
+    "digest": "66da3211d53adaa7cffc4fd45e0a7ca86175f5a7774d5ce80d4a34a0a0786f52"
+  },
+  "resources": {
+    "encounters": {"path": "encounters.csv", "format": "csv"},
+    "clinical_notes": {"path": "clinical_notes.csv", "format": "csv"},
+    "claims": {"path": "claims.csv", "format": "csv"},
+    "diagnoses": {"path": "diagnoses.csv", "format": "csv"},
+    "procedures": {"path": "procedures.csv", "format": "csv"},
+    "charges": {"path": "charges.csv", "format": "csv"},
+    "skin_assessments": {"path": "skin_assessments.csv", "format": "csv"}
+  },
+  "encounter": {
+    "resource": "encounters",
+    "case_id": {"field": "case_id", "operations": [{"op": "trim"}]},
+    "patient_id": {"field": "mrn", "operations": [{"op": "trim"}]},
+    "encounter_id": {"field": "encounter_id", "operations": [{"op": "trim"}]},
+    "admitted_at": {"field": "admit_dttm", "operations": [{"op": "datetime", "format": "%Y-%m-%d %H:%M", "timezone": "America/Chicago"}]},
+    "discharged_at": {"field": "disch_dttm", "operations": [{"op": "datetime", "format": "%Y-%m-%d %H:%M", "timezone": "America/Chicago"}]},
+    "metadata": {
+      "facility": {"field": "facility", "operations": [{"op": "trim"}]},
+      "patient_class": {"field": "patient_class", "operations": [{"op": "trim"}]},
+      "admit_source": {"field": "admit_source", "operations": [{"op": "trim"}]},
+      "discharge_disposition": {"field": "disch_disposition", "operations": [{"op": "trim"}]},
+      "payer": {"field": "primary_payer", "operations": [{"op": "trim"}]}
+    }
+  },
+  "documents": [
+    {
+      "resource": "clinical_notes",
+      "encounter_id": {"field": "encounter_id", "operations": [{"op": "trim"}]},
+      "document_id": {"field": "doc_id", "operations": [{"op": "trim"}]},
+      "author_role": {"field": "author_role", "operations": [{"op": "trim"}, {"op": "lower"}]},
+      "recorded_at": {"field": "auth_dttm", "operations": [{"op": "datetime", "format": "%Y-%m-%d %H:%M", "timezone": "America/Chicago"}]},
+      "text": {"field": "note_text", "operations": [{"op": "trim"}]}
+    }
+  ],
+  "claim": {
+    "resource": "claims",
+    "encounter_id": {"field": "encounter_id", "operations": [{"op": "trim"}]},
+    "drg": {"field": "final_drg", "operations": [{"op": "trim"}]},
+    "allowed_amount_cents": {"field": "expected_reimb_cents", "operations": [{"op": "integer"}]},
+    "diagnoses": {
+      "resource": "diagnoses",
+      "encounter_id": {"field": "encounter_id", "operations": [{"op": "trim"}]},
+      "value": {"field": "icd10_cm", "operations": [{"op": "trim"}, {"op": "upper"}]}
+    },
+    "procedures": {
+      "resource": "procedures",
+      "encounter_id": {"field": "encounter_id", "operations": [{"op": "trim"}]},
+      "value": {"field": "icd10_pcs", "operations": [{"op": "trim"}, {"op": "upper"}]}
+    },
+    "charges": {
+      "resource": "charges",
+      "encounter_id": {"field": "encounter_id", "operations": [{"op": "trim"}]},
+      "value": {"field": "rev_code", "operations": [{"op": "trim"}]}
+    }
+  },
+  "structured_projections": [
+    {
+      "projection_id": "skin-assessment-v1",
+      "resource": "skin_assessments",
+      "encounter_id": {"field": "encounter_id", "operations": [{"op": "trim"}]},
+      "source_record_id": {"field": "assess_id", "operations": [{"op": "trim"}]},
+      "evidence": {
+        "evidence_id": {"template": "structured-evidence:{assess_id}"},
+        "document_id": {"template": "structured-source:{assess_id}"},
+        "author_role": {"constant": "source-system"},
+        "recorded_at": {"field": "assess_dttm", "operations": [{"op": "datetime", "format": "%Y-%m-%d %H:%M", "timezone": "America/Chicago"}]},
+        "text": {"template": "WOUND={wound_num}; STAGE={pi_stage}; SITE={body_site}; POA={poa_flag}"},
+        "field_names": ["wound_num", "pi_stage", "body_site", "poa_flag", "assess_dttm"]
+      },
+      "entities": [
+        {
+          "entity_id": {"template": "wound:{wound_num}"},
+          "entity_type": "PressureInjury",
+          "label": {"template": "Pressure injury {wound_num}"},
+          "properties": {"present_on_admission": {"field": "poa_flag", "operations": [{"op": "lower"}, {"op": "boolean"}]}}
+        },
+        {
+          "entity_id": {"template": "location:{wound_num}"},
+          "entity_type": "AnatomicalLocation",
+          "label": {"field": "body_site", "operations": [{"op": "trim"}]},
+          "properties": {}
+        },
+        {
+          "entity_id": {"template": "stage:{wound_num}"},
+          "entity_type": "PressureInjuryStage",
+          "label": {"field": "pi_stage", "operations": [{"op": "trim"}]},
+          "properties": {"value": {"field": "pi_stage", "operations": [{"op": "map", "values": {"Stage I": "1", "Stage II": "2", "Stage III": "3", "Stage IV": "4", "Unstageable": "unstageable", "Deep Tissue": "deep_tissue_pressure_injury"}}]}}
+        }
+      ],
+      "relations": [
+        {
+          "relation_id": {"template": "relation:patient-wound:{wound_num}"},
+          "predicate": "hasWound",
+          "source_id": {"constant": "root:patient"},
+          "target_id": {"template": "wound:{wound_num}"},
+          "assertion_status": "present",
+          "documentation_status": "explicit",
+          "confidence": 1.0,
+          "cite_evidence": true
+        },
+        {
+          "relation_id": {"template": "relation:wound-location:{wound_num}"},
+          "predicate": "hasLocation",
+          "source_id": {"template": "wound:{wound_num}"},
+          "target_id": {"template": "location:{wound_num}"},
+          "assertion_status": "present",
+          "documentation_status": "explicit",
+          "confidence": 1.0,
+          "cite_evidence": true
+        },
+        {
+          "relation_id": {"template": "relation:wound-stage:{wound_num}"},
+          "predicate": "hasStage",
+          "source_id": {"template": "wound:{wound_num}"},
+          "target_id": {"template": "stage:{wound_num}"},
+          "assertion_status": "present",
+          "documentation_status": "explicit",
+          "confidence": 1.0,
+          "cite_evidence": true
+        }
+      ],
+      "assertions": [
+        {
+          "assertion_id": {"template": "assertion:pressure-injury:{assess_id}"},
+          "subject_id": {"template": "wound:{wound_num}"},
+          "concept": "pressure_injury",
+          "status": "present",
+          "documentation_status": "explicit",
+          "confidence": 1.0,
+          "attributes": {
+            "site": {"field": "body_site", "operations": [{"op": "map", "values": {"Sacrum": "sacral_region", "Coccyx": "coccyx", "Right Heel": "right_heel", "Left Heel": "left_heel"}}]},
+            "stage": {"field": "pi_stage", "operations": [{"op": "map", "values": {"Stage I": 1, "Stage II": 2, "Stage III": 3, "Stage IV": 4, "Unstageable": "unstageable", "Deep Tissue": "deep_tissue_pressure_injury"}}]},
+            "poa": {"field": "poa_flag", "operations": [{"op": "trim"}, {"op": "upper"}]},
+            "present_on_admission": {"field": "poa_flag", "operations": [{"op": "lower"}, {"op": "boolean"}]}
+          }
+        }
+      ]
+    }
+  ]
+}

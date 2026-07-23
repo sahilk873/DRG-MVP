@@ -1,0 +1,78 @@
+{
+  "ontology_id": "sepsis-encounter-ontology",
+  "version": "1.0.0-draft",
+  "status": "clinical-review-required",
+  "purpose": "Represent patient-specific sepsis evidence, organ-dysfunction findings, and coding artifacts with Severity of Illness (SOI) and Risk of Mortality (ROM) as first-class governed concepts. Additive to the encounter model; it never creates or changes a claim, assigns a DRG, computes reimbursement, or bypasses review. Synthetic; not for production coding or billing.",
+  "sources": [
+    {
+      "source_id": "sepsis-3-consensus-definitions",
+      "title": "The Third International Consensus Definitions for Sepsis and Septic Shock (structure reference)",
+      "contribution": "Sepsis, severe sepsis, septic shock, and organ-dysfunction concept scaffolding used to model deterministic sepsis findings."
+    },
+    {
+      "source_id": "apr-drg-soi-rom-methodology",
+      "title": "Severity of Illness / Risk of Mortality subclass methodology (structure reference)",
+      "contribution": "Four-level SOI and ROM subclass value sets (minor, moderate, major, extreme) modeled as governed first-class concepts."
+    }
+  ],
+  "structural_graph": {
+    "entities": [
+      {"entity_id": "root:patient", "entity_type": "Patient", "label": "Patient", "properties": {}},
+      {"entity_id": "root:encounter", "entity_type": "Encounter", "label": "Encounter", "properties": {}},
+      {"entity_id": "root:claim", "entity_type": "Claim", "label": "Submitted claim", "properties": {}}
+    ],
+    "relations": [
+      {"relation_id": "rel:patient-encounter", "predicate": "hasEncounter", "source_id": "root:patient", "target_id": "root:encounter", "assertion_status": "present", "documentation_status": "explicit", "confidence": 1.0, "evidence_ids": [], "contradicting_evidence_ids": []},
+      {"relation_id": "rel:encounter-claim", "predicate": "hasClaim", "source_id": "root:encounter", "target_id": "root:claim", "assertion_status": "present", "documentation_status": "explicit", "confidence": 1.0, "evidence_ids": [], "contradicting_evidence_ids": []}
+    ]
+  },
+  "classes": [
+    {"class_id": "Entity", "label": "Entity", "abstract": true},
+    {"class_id": "ClinicalEntity", "label": "Clinical entity", "parent": "Entity", "abstract": true},
+    {"class_id": "FinancialEntity", "label": "Financial entity", "parent": "Entity", "abstract": true},
+    {"class_id": "Patient", "label": "Patient", "parent": "ClinicalEntity"},
+    {"class_id": "Encounter", "label": "Encounter", "parent": "ClinicalEntity"},
+    {"class_id": "Condition", "label": "Condition", "parent": "ClinicalEntity", "abstract": true},
+    {"class_id": "SepsisCondition", "label": "Sepsis condition", "parent": "Condition"},
+    {"class_id": "Sepsis", "label": "Sepsis", "parent": "SepsisCondition"},
+    {"class_id": "SevereSepsis", "label": "Severe sepsis", "parent": "SepsisCondition"},
+    {"class_id": "SepticShock", "label": "Septic shock", "parent": "SepsisCondition"},
+    {"class_id": "OrganDysfunction", "label": "Organ dysfunction", "parent": "ClinicalEntity"},
+    {"class_id": "AcuteOrganDysfunction", "label": "Acute organ dysfunction", "parent": "OrganDysfunction"},
+    {"class_id": "Infection", "label": "Infection", "parent": "ClinicalEntity"},
+    {"class_id": "ClinicalFinding", "label": "Clinical finding", "parent": "ClinicalEntity"},
+    {"class_id": "VitalSign", "label": "Vital sign", "parent": "ClinicalFinding"},
+    {"class_id": "LaboratoryResult", "label": "Laboratory result", "parent": "ClinicalFinding"},
+    {"class_id": "Evidence", "label": "Evidence", "parent": "ClinicalEntity"},
+    {"class_id": "SeverityOfIllness", "label": "Severity of illness (SOI)", "parent": "ClinicalEntity", "value_set": "soi_subclass"},
+    {"class_id": "RiskOfMortality", "label": "Risk of mortality (ROM)", "parent": "ClinicalEntity", "value_set": "rom_subclass"},
+    {"class_id": "Claim", "label": "Claim", "parent": "FinancialEntity"},
+    {"class_id": "DiagnosisCode", "label": "Diagnosis code", "parent": "FinancialEntity"},
+    {"class_id": "ProcedureCode", "label": "Procedure code", "parent": "FinancialEntity"},
+    {"class_id": "GroupingResult", "label": "Grouping result", "parent": "FinancialEntity"},
+    {"class_id": "PresentOnAdmission", "label": "Present on admission status", "parent": "ClinicalEntity", "value_set": "poa_status"}
+  ],
+  "relations": [
+    {"relation_id": "hasEncounter", "domain": ["Patient"], "range": ["Encounter"], "requires_evidence": false},
+    {"relation_id": "hasClaim", "domain": ["Encounter"], "range": ["Claim"], "requires_evidence": false},
+    {"relation_id": "hasCondition", "domain": ["Patient", "Encounter"], "range": ["Condition"], "requires_evidence": true},
+    {"relation_id": "causedBy", "domain": ["SepsisCondition"], "range": ["Infection"], "requires_evidence": true},
+    {"relation_id": "hasOrganDysfunction", "domain": ["SepsisCondition"], "range": ["OrganDysfunction"], "requires_evidence": true},
+    {"relation_id": "hasFinding", "domain": ["Condition", "OrganDysfunction"], "range": ["ClinicalFinding"], "requires_evidence": true},
+    {"relation_id": "hasEvidence", "domain": ["ClinicalFinding", "Condition", "OrganDysfunction"], "range": ["Evidence"], "requires_evidence": false},
+    {"relation_id": "hasSeverityOfIllness", "domain": ["Condition", "Encounter"], "range": ["SeverityOfIllness"], "requires_evidence": true},
+    {"relation_id": "hasRiskOfMortality", "domain": ["Condition", "Encounter"], "range": ["RiskOfMortality"], "requires_evidence": true},
+    {"relation_id": "containsDiagnosis", "domain": ["Claim"], "range": ["DiagnosisCode"], "requires_evidence": false},
+    {"relation_id": "containsProcedure", "domain": ["Claim"], "range": ["ProcedureCode"], "requires_evidence": false},
+    {"relation_id": "groupedAs", "domain": ["Claim"], "range": ["GroupingResult"], "requires_evidence": false},
+    {"relation_id": "encodedBy", "domain": ["Condition", "OrganDysfunction"], "range": ["DiagnosisCode", "ProcedureCode"], "requires_evidence": true},
+    {"relation_id": "hasPOAStatus", "domain": ["Condition"], "range": ["PresentOnAdmission"], "requires_evidence": true}
+  ],
+  "value_sets": {
+    "assertion_status": ["present", "absent", "uncertain", "historical"],
+    "documentation_status": ["explicit", "inferred", "conflicted", "absent"],
+    "soi_subclass": ["minor", "moderate", "major", "extreme"],
+    "rom_subclass": ["minor", "moderate", "major", "extreme"],
+    "poa_status": ["Y", "N", "U", "W"]
+  }
+}

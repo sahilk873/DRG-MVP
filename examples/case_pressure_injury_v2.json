@@ -1,0 +1,100 @@
+{
+  "schema_version": "2.0.0",
+  "case_id": "CASE-DEMO-002",
+  "patient_id": "PATIENT-DEIDENTIFIED-002",
+  "encounter_id": "ENC-DEMO-002",
+  "admitted_at": "2026-06-02T08:00:00Z",
+  "discharged_at": "2026-06-09T15:00:00Z",
+  "metadata": {"payer": "demo", "facility": "demo-hospital", "poa_status": "N"},
+  "evidence": [
+    {
+      "evidence_id": "EV-001",
+      "document_id": "ADMISSION-SKIN-001",
+      "author_role": "nurse",
+      "recorded_at": "2026-06-02T09:15:00Z",
+      "text": "Admission skin assessment: skin intact over the sacrum, no pressure injury present on admission."
+    },
+    {
+      "evidence_id": "EV-002",
+      "document_id": "WOUND-CONSULT-002",
+      "author_role": "physician",
+      "recorded_at": "2026-06-05T14:30:00Z",
+      "text": "Stage 4 pressure injury of the sacral region with exposed muscle, newly identified on hospital day 3. Hospital-acquired."
+    }
+  ],
+  "ontology": {
+    "ontology_id": "wound-care-encounter-ontology",
+    "ontology_version": "1.1.0-draft",
+    "ontology_digest": "66da3211d53adaa7cffc4fd45e0a7ca86175f5a7774d5ce80d4a34a0a0786f52",
+    "entities": [
+      {"entity_id": "root:patient", "entity_type": "Patient", "label": "Patient", "properties": {}},
+      {"entity_id": "root:encounter", "entity_type": "Encounter", "label": "Encounter", "properties": {}},
+      {"entity_id": "root:claim", "entity_type": "Claim", "label": "Submitted claim", "properties": {}},
+      {
+        "entity_id": "wound:1",
+        "entity_type": "PressureInjury",
+        "label": "Sacral pressure injury",
+        "concept": {"system": "urn:kunal:wound-care", "code": "pressure-injury", "display": "Pressure injury"},
+        "properties": {"present_on_admission": false}
+      },
+      {"entity_id": "assessment:1", "entity_type": "WoundAssessment", "label": "Hospital day 3 wound assessment", "properties": {}},
+      {"entity_id": "location:sacral", "entity_type": "AnatomicalLocation", "label": "Sacral region", "properties": {}},
+      {"entity_id": "stage:4", "entity_type": "PressureInjuryStage", "label": "Stage 4", "properties": {"value": "4"}},
+      {"entity_id": "finding:exposed-muscle", "entity_type": "ClinicalFinding", "label": "Exposed muscle", "properties": {}},
+      {"entity_id": "poa:1", "entity_type": "PresentOnAdmission", "label": "Not present on admission", "properties": {"value": "N"}},
+      {"entity_id": "condition:hapi", "entity_type": "DiseaseCondition", "label": "Hospital-acquired pressure injury", "properties": {}},
+      {"entity_id": "severity:mcc", "entity_type": "DRGSeverityTier", "label": "Major complication or comorbidity", "properties": {"value": "mcc"}}
+    ],
+    "relations": [
+      {"relation_id": "rel:patient-encounter", "predicate": "hasEncounter", "source_id": "root:patient", "target_id": "root:encounter", "assertion_status": "present", "documentation_status": "explicit", "confidence": 1.0, "evidence_ids": []},
+      {"relation_id": "rel:encounter-claim", "predicate": "hasClaim", "source_id": "root:encounter", "target_id": "root:claim", "assertion_status": "present", "documentation_status": "explicit", "confidence": 1.0, "evidence_ids": []},
+      {"relation_id": "rel:patient-wound", "predicate": "hasWound", "source_id": "root:patient", "target_id": "wound:1", "assertion_status": "present", "documentation_status": "explicit", "confidence": 0.97, "evidence_ids": ["EV-002"]},
+      {"relation_id": "rel:wound-encounter", "predicate": "associatedWithEncounter", "source_id": "wound:1", "target_id": "root:encounter", "assertion_status": "present", "documentation_status": "explicit", "confidence": 1.0, "evidence_ids": []},
+      {"relation_id": "rel:wound-assessment", "predicate": "hasAssessment", "source_id": "wound:1", "target_id": "assessment:1", "assertion_status": "present", "documentation_status": "explicit", "confidence": 0.97, "evidence_ids": ["EV-002"]},
+      {"relation_id": "rel:wound-location", "predicate": "hasLocation", "source_id": "wound:1", "target_id": "location:sacral", "assertion_status": "present", "documentation_status": "explicit", "confidence": 0.97, "evidence_ids": ["EV-002"]},
+      {"relation_id": "rel:wound-stage", "predicate": "hasStage", "source_id": "wound:1", "target_id": "stage:4", "assertion_status": "present", "documentation_status": "explicit", "confidence": 0.97, "evidence_ids": ["EV-002"]},
+      {"relation_id": "rel:assessment-finding", "predicate": "hasFinding", "source_id": "assessment:1", "target_id": "finding:exposed-muscle", "assertion_status": "present", "documentation_status": "explicit", "confidence": 0.97, "evidence_ids": ["EV-002"]},
+      {"relation_id": "rel:wound-poa", "predicate": "hasPOAStatus", "source_id": "wound:1", "target_id": "poa:1", "assertion_status": "present", "documentation_status": "explicit", "confidence": 0.96, "evidence_ids": ["EV-001", "EV-002"]},
+      {"relation_id": "rel:wound-condition", "predicate": "hasCondition", "source_id": "wound:1", "target_id": "condition:hapi", "assertion_status": "present", "documentation_status": "explicit", "confidence": 0.96, "evidence_ids": ["EV-002"]},
+      {"relation_id": "rel:condition-severity", "predicate": "hasSeverityTier", "source_id": "condition:hapi", "target_id": "severity:mcc", "assertion_status": "present", "documentation_status": "inferred", "confidence": 0.9, "evidence_ids": ["EV-002"]}
+    ]
+  },
+  "assertions": [
+    {
+      "assertion_id": "AS-001",
+      "subject_id": "wound:1",
+      "concept": "pressure_injury",
+      "status": "present",
+      "documentation_status": "explicit",
+      "confidence": 0.97,
+      "attributes": {"site": "sacral_region", "stage": 4, "poa": "N"},
+      "evidence_ids": ["EV-002"],
+      "contradicting_evidence_ids": []
+    }
+  ],
+  "claim": {
+    "diagnoses": ["A41.9", "E11.9"],
+    "procedures": [],
+    "charges": ["ROOM-BOARD"],
+    "drg": "DEMO-292",
+    "allowed_amount_cents": 1000000
+  },
+  "provenance": {
+    "framework": "mastra",
+    "model_id": "synthetic/test-fixture",
+    "agent_id": "encounter-evidence-extractor",
+    "extracted_at": "2026-06-09T16:00:00Z",
+    "schema_version": "2.0.0",
+    "extraction_policy": {
+      "max_documents": 200,
+      "max_document_characters": 200000,
+      "max_total_document_characters": 1000000,
+      "max_evidence_items": 2000,
+      "max_evidence_characters": 2000,
+      "max_total_evidence_characters": 250000,
+      "max_entities": 2000,
+      "max_relations": 5000,
+      "max_assertions": 2000
+    }
+  }
+}

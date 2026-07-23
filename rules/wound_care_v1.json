@@ -1,11 +1,11 @@
 {
   "package_id": "wound-care-revenue-integrity",
-  "version": "2.0.0-demo",
+  "version": "2.1.0-demo",
   "rule_domain": "revenue_integrity",
   "ontology": {
     "ontology_id": "wound-care-encounter-ontology",
-    "version": "1.0.0-draft",
-    "digest": "eb2b6f6aa447825fa45012fd23a91fe0f572fe280cf776a239699d6230390779"
+    "version": "1.1.0-draft",
+    "digest": "66da3211d53adaa7cffc4fd45e0a7ca86175f5a7774d5ce80d4a34a0a0786f52"
   },
   "status": "approved-for-demo",
   "effective_from": "2026-01-01",

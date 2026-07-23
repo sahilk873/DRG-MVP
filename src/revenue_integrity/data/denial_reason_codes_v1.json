@@ -1,0 +1,23 @@
+{
+  "table_id": "denial-reason-codes",
+  "version": "1.0.0",
+  "status": "approved-for-demo",
+  "description": "SYNTHETIC governed reference table mapping payer denial reason codes (CARC = Claim Adjustment Reason Code; RARC = Remittance Advice Remark Code) to a deterministic root-cause category and a suggested review disposition. Used only to route already-received denials to the correct human reviewer; it NEVER creates or changes a claim, assigns a DRG, computes reimbursement, or bypasses review. NOT for real coding, billing, or payer adjudication.",
+  "carc": {
+    "16": {"root_cause": "missing_or_incomplete_information", "disposition": "charge_review"},
+    "18": {"root_cause": "duplicate_claim", "disposition": "charge_review"},
+    "50": {"root_cause": "medical_necessity_not_established", "disposition": "cdi_query"},
+    "11": {"root_cause": "diagnosis_procedure_inconsistent", "disposition": "coding_review"},
+    "97": {"root_cause": "service_bundled_into_another", "disposition": "charge_review"},
+    "197": {"root_cause": "authorization_missing", "disposition": "compliance_review"},
+    "109": {"root_cause": "claim_not_covered_by_payer", "disposition": "compliance_review"},
+    "45": {"root_cause": "charge_exceeds_fee_schedule", "disposition": "charge_review"}
+  },
+  "rarc": {
+    "N657": {"root_cause": "billed_code_not_valid_for_service", "disposition": "coding_review"},
+    "M76": {"root_cause": "missing_or_invalid_diagnosis", "disposition": "coding_review"},
+    "N130": {"root_cause": "plan_benefit_documentation_required", "disposition": "compliance_review"},
+    "MA130": {"root_cause": "claim_contains_incomplete_information", "disposition": "charge_review"},
+    "N30": {"root_cause": "patient_ineligible_for_service", "disposition": "compliance_review"}
+  }
+}

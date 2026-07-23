@@ -9,6 +9,8 @@ import {
   type BulkProfile,
 } from '../onboarding/schema.ts'
 import { resolveModelId } from './encounter-extractor.ts'
+import { retrieve, type Exemplar } from '../runtime/retrieval.ts'
+import { featuresFromProfile } from '../runtime/adapter-precedent.ts'
 
 export const ADAPTER_DESIGNER_AGENT_ID = 'bulk-adapter-designer'
 export const MAX_ADAPTER_DESIGN_ATTEMPTS = 3
@@ -52,6 +54,8 @@ export async function designAdapter(
     maxAttempts?: number
     validateCandidate?: (candidate: AdapterDefinition) => Promise<AdapterValidationFeedback>
     priorTemplates?: AdapterDefinition[]
+    precedentLibrary?: Exemplar<AdapterDefinition>[]
+    retrieveK?: number
   } = {},
 ): Promise<AdapterDefinition> {
   const profile = bulkProfileSchema.parse(rawProfile)
@@ -63,13 +67,24 @@ export async function designAdapter(
     throw new Error(`maxAttempts must be between 1 and ${MAX_ADAPTER_DESIGN_ATTEMPTS}`)
   }
 
+  // RAG: when a precedent library is supplied, retrieve only the few most relevant approved adapters
+  // for THIS profile instead of inlining every prior template — fewer prompt tokens, better priors.
+  let priorTemplates = options.priorTemplates ?? []
+  let precedentDigest: string | null = null
+  if (options.precedentLibrary && options.precedentLibrary.length > 0) {
+    const retrieved = retrieve(featuresFromProfile(profile), options.precedentLibrary, { k: options.retrieveK ?? 3 })
+    priorTemplates = retrieved.exemplars.map(exemplar => exemplar.payload)
+    precedentDigest = retrieved.digest
+  }
+
   let feedback: string[] = []
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     const input = {
       attempt,
       profile,
       ontology_contract: ontologyDesignContract(ontology),
-      prior_templates: options.priorTemplates ?? [],
+      prior_templates: priorTemplates,
+      retrieved_precedent_digest: precedentDigest,
       validation_feedback: feedback,
     }
     const response = await agent.generate(

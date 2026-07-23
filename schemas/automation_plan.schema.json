@@ -6,7 +6,7 @@
   "additionalProperties": false,
   "required": ["automation_schema_version", "tenant", "packet", "policy", "findings", "review_now_finding_ids", "deferred_finding_ids", "metrics", "plan_hash"],
   "properties": {
-    "automation_schema_version": {"const": "1.0.0"},
+    "automation_schema_version": {"const": "1.3.0"},
     "tenant": {"$ref": "#/$defs/tenant"},
     "packet": {"$ref": "#/$defs/packet"},
     "policy": {"$ref": "#/$defs/policy"},
@@ -50,16 +50,26 @@
     },
     "findingAutomation": {
       "type": "object", "additionalProperties": false,
-      "required": ["automation_id", "finding_id", "finding_hash", "semantic_fingerprint", "tier", "queue", "reason_codes", "recommended_action", "allowed_actions", "draft", "priority_score", "estimated_review_seconds", "duplicate_of", "related_finding_ids"],
+      "required": ["automation_id", "finding_id", "finding_hash", "semantic_fingerprint", "tier", "queue", "reason_codes", "recommended_action", "allowed_actions", "draft", "priority_score", "priority_components", "estimated_review_seconds", "duplicate_of", "related_finding_ids"],
       "properties": {
         "automation_id": {"type": "string", "pattern": "^automation-[0-9a-f]{20}$"},
         "finding_id": {"$ref": "#/$defs/nonEmpty"}, "finding_hash": {"$ref": "#/$defs/digest"}, "semantic_fingerprint": {"$ref": "#/$defs/digest"},
         "tier": {"enum": ["suppressed", "needs_enrichment", "auto_routed", "quick_confirm", "focused_review", "escalated"]},
-        "queue": {"enum": ["none", "coding", "cdi", "charge", "compliance"]},
+        "queue": {"enum": ["none", "coding", "cdi", "charge", "compliance", "care_gap"]},
         "reason_codes": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/nonEmpty"}},
         "recommended_action": {"type": ["string", "null"]},
         "allowed_actions": {"$ref": "#/$defs/uniqueStrings"},
         "draft": {"type": "object"}, "priority_score": {"type": "integer", "minimum": 0},
+        "priority_components": {
+          "type": "object", "additionalProperties": false,
+          "required": ["tier_weight", "confidence_weight", "impact_weight", "urgency_weight"],
+          "properties": {
+            "tier_weight": {"type": "integer", "minimum": 0},
+            "confidence_weight": {"type": "integer", "minimum": 0},
+            "impact_weight": {"type": "integer", "minimum": 0},
+            "urgency_weight": {"type": "integer", "minimum": 0}
+          }
+        },
         "estimated_review_seconds": {"type": "integer", "minimum": 0},
         "duplicate_of": {"type": ["string", "null"]},
         "related_finding_ids": {"$ref": "#/$defs/uniqueStrings"}
@@ -67,11 +77,37 @@
     },
     "metrics": {
       "type": "object", "additionalProperties": false,
-      "required": ["input_findings", "consolidated_findings", "review_now", "deferred", "estimated_review_seconds", "suppressed", "needs_enrichment", "auto_routed", "quick_confirm", "focused_review", "escalated"],
+      "required": ["input_findings", "consolidated_findings", "review_now", "deferred", "estimated_review_seconds", "reviewer_effort", "gap_worklist", "suppressed", "needs_enrichment", "auto_routed", "quick_confirm", "focused_review", "escalated"],
       "properties": {
         "input_findings": {"type": "integer", "minimum": 0}, "consolidated_findings": {"type": "integer", "minimum": 0},
         "review_now": {"type": "integer", "minimum": 0}, "deferred": {"type": "integer", "minimum": 0},
         "estimated_review_seconds": {"type": "integer", "minimum": 0},
+        "reviewer_effort": {
+          "type": "object", "additionalProperties": false,
+          "required": ["estimated_review_seconds", "seconds_avoided_estimate", "no_touch_rate", "no_touch_finding_count", "consolidated_duplicate_count", "is_estimate"],
+          "properties": {
+            "estimated_review_seconds": {"type": "integer", "minimum": 0},
+            "seconds_avoided_estimate": {"type": "integer", "minimum": 0},
+            "no_touch_rate": {"type": "number", "minimum": 0, "maximum": 1},
+            "no_touch_finding_count": {"type": "integer", "minimum": 0},
+            "consolidated_duplicate_count": {"type": "integer", "minimum": 0},
+            "is_estimate": {"const": true}
+          }
+        },
+        "gap_worklist": {
+          "type": "object", "additionalProperties": false,
+          "required": ["open_high_risk_gaps", "avg_expected_window_days", "top_alert_reason", "gaps_closed_pct", "median_closure_days", "top_barrier", "total_gaps", "is_estimate"],
+          "properties": {
+            "open_high_risk_gaps": {"type": "integer", "minimum": 0},
+            "avg_expected_window_days": {"type": "number", "minimum": 0},
+            "top_alert_reason": {"type": ["string", "null"]},
+            "gaps_closed_pct": {"type": "number", "minimum": 0, "maximum": 1},
+            "median_closure_days": {"type": "number", "minimum": 0},
+            "top_barrier": {"type": ["string", "null"]},
+            "total_gaps": {"type": "integer", "minimum": 0},
+            "is_estimate": {"const": true}
+          }
+        },
         "suppressed": {"type": "integer", "minimum": 0}, "needs_enrichment": {"type": "integer", "minimum": 0},
         "auto_routed": {"type": "integer", "minimum": 0}, "quick_confirm": {"type": "integer", "minimum": 0},
         "focused_review": {"type": "integer", "minimum": 0}, "escalated": {"type": "integer", "minimum": 0}

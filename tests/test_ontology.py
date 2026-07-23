@@ -15,7 +15,7 @@ def fixture():
 
 class OntologyValidationTests(unittest.TestCase):
     def test_builtin_definition_accepts_subclass_relations(self):
-        definition = load_builtin_ontology("wound-care-encounter-ontology", "1.0.0-draft")
+        definition = load_builtin_ontology("wound-care-encounter-ontology", "1.1.0-draft")
         case = EncounterCase.from_dict(fixture(), ontology_definition=definition)
         self.assertTrue(definition.is_a("PressureInjury", "Wound"))
         self.assertEqual(case.ontology.entities[3].entity_type, "PressureInjury")
@@ -156,3 +156,44 @@ class OntologyValidationTests(unittest.TestCase):
         payload["classes"][0]["unreviewed_semantics"] = True
         with self.assertRaisesRegex(ValueError, "unknown fields"):
             OntologyDefinition.from_dict(payload)
+
+
+class DenialEventOntologyTests(unittest.TestCase):
+    def test_builtin_denial_ontology_loads_and_defines_denial_event(self):
+        definition = load_builtin_ontology("denial-event-ontology", "1.0.0-draft")
+        self.assertEqual(definition.ontology_id, "denial-event-ontology")
+        self.assertIn("DenialEvent", definition.classes)
+        # DenialEvent is a concrete FinancialEntity subject usable as finding lineage.
+        self.assertTrue(definition.is_a("DenialEvent", "FinancialEntity"))
+        self.assertFalse(definition.classes["DenialEvent"].abstract)
+        self.assertEqual(len(definition.digest), 64)
+
+    def test_denial_ontology_digest_is_self_consistent(self):
+        # Loading recomputes and self-verifies the structural graph digest; a second
+        # load produces a stable digest (no drift).
+        first = load_builtin_ontology("denial-event-ontology", "1.0.0-draft")
+        second = load_builtin_ontology("denial-event-ontology", "1.0.0-draft")
+        self.assertEqual(first.digest, second.digest)
+        self.assertEqual(
+            first.structural_graph.ontology_digest, first.digest
+        )
+
+    def test_tampered_denial_ontology_digest_is_rejected(self):
+        definition = load_builtin_ontology("denial-event-ontology", "1.0.0-draft")
+        tampered_graph = json.loads(json.dumps({
+            "ontology_id": definition.ontology_id,
+            "ontology_version": definition.version,
+            # A digest that does not match the recomputed definition digest.
+            "ontology_digest": "0" * 64,
+            "entities": [
+                {"entity_id": "root:patient", "entity_type": "Patient", "label": "Patient", "properties": {}},
+                {"entity_id": "root:encounter", "entity_type": "Encounter", "label": "Encounter", "properties": {}},
+                {"entity_id": "root:claim", "entity_type": "Claim", "label": "Claim", "properties": {}},
+            ],
+            "relations": [],
+        }))
+        from revenue_integrity.ontology import OntologyGraph
+
+        graph = OntologyGraph.from_dict(tampered_graph)
+        with self.assertRaisesRegex(ValueError, "digest"):
+            definition.validate_graph(graph, set())
